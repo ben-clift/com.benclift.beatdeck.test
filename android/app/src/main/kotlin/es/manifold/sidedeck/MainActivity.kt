@@ -50,6 +50,17 @@ class MainActivity : FlutterActivity() {
                         val channels = call.argument<Int>("channels") ?: 4
                         result.success(UsbPlayer.start(this, handle, deviceId, channels))
                     }
+                    "openUrl" -> {
+                        val url = call.argument<String>("url") ?: ""
+                        try {
+                            val i = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))
+                            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            startActivity(i)
+                            result.success(true)
+                        } catch (e: Exception) {
+                            result.success(false)
+                        }
+                    }
                     "openAppByName" -> {
                         val name = call.argument<String>("name") ?: ""
                         result.success(openAppByName(name))

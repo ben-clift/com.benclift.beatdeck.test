@@ -14,6 +14,7 @@ import 'package:sidedeck/state/library_controller.dart';
 import 'package:sidedeck/state/screen_brightness.dart';
 import 'package:sidedeck/suggest/auto_fetch.dart';
 import 'package:sidedeck/suggest/genres.dart';
+import 'package:sidedeck/suggest/suggest_service.dart';
 import 'package:sidedeck/theme/sidedeck_theme.dart';
 
 class _Vibe {
@@ -62,6 +63,8 @@ class SimpleView extends StatefulWidget {
 class _SimpleViewState extends State<SimpleView> {
   final Set<int> _picked = {0};
   bool _starting = false;
+  final _artist = TextEditingController();
+  final _track = TextEditingController();
   bool _bpmAny = true;
   RangeValues _bpm = const RangeValues(120, 130);
   String _note = '';
@@ -71,6 +74,72 @@ class _SimpleViewState extends State<SimpleView> {
   void initState() {
     super.initState();
     _restore();
+  }
+
+  @override
+  void dispose() {
+    _artist.dispose();
+    _track.dispose();
+    super.dispose();
+  }
+
+  bool get _hasRequest => _artist.text.trim().isNotEmpty || _track.text.trim().isNotEmpty;
+
+  /// Fetch exactly what they typed and play it next.
+  void _requestNow() {
+    final a = _artist.text.trim(), t = _track.text.trim();
+    if (a.isEmpty && t.isEmpty) return;
+    widget.dj.armPlayNext();
+    AutoFetch.instance.enqueueTracks([Suggestion(a, t, 0, 'your request')], widget.library);
+    FocusManager.instance.primaryFocus?.unfocus();
+    _toast('Looking for ${[a, t].where((x) => x.isNotEmpty).join(' - ')}. It plays next when it arrives.');
+  }
+
+  Future<void> _soundCloud() async {
+    final q = Uri.encodeQueryComponent([_artist.text.trim(), _track.text.trim()].where((x) => x.isNotEmpty).join(' '));
+    final url = q.isEmpty ? 'https://soundcloud.com/discover' : 'https://soundcloud.com/search?q=$q';
+    var ok = false;
+    try {
+      ok = (await const MethodChannel('sidedeck/audio').invokeMethod<bool>('openUrl', {'url': url})) ?? false;
+    } catch (_) {}
+    if (!ok) _toast('Could not open SoundCloud.');
+  }
+
+  Widget _requestBox({required bool running}) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      const Text('Want something specific?', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+      const SizedBox(height: 8),
+      TextField(
+        controller: _artist,
+        textInputAction: TextInputAction.next,
+        decoration: const InputDecoration(labelText: 'Artist', border: OutlineInputBorder(), isDense: true),
+      ),
+      const SizedBox(height: 8),
+      TextField(
+        controller: _track,
+        textInputAction: TextInputAction.done,
+        decoration: const InputDecoration(labelText: 'Track name (optional)', border: OutlineInputBorder(), isDense: true),
+      ),
+      const SizedBox(height: 8),
+      Row(children: [
+        if (running)
+          Expanded(
+            child: FilledButton.tonalIcon(
+              onPressed: _requestNow,
+              icon: const Icon(Icons.search),
+              label: const Text('Play this next'),
+            ),
+          ),
+        if (running) const SizedBox(width: 8),
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: _soundCloud,
+            icon: const Icon(Icons.cloud),
+            label: const Text('SoundCloud'),
+          ),
+        ),
+      ]),
+    ]);
   }
 
   Future<void> _restore() async {
@@ -157,6 +226,12 @@ class _SimpleViewState extends State<SimpleView> {
       final dj = widget.dj;
       List<String> paths() => [for (final t in widget.library.tracks) t.path];
 
+      final req = _hasRequest;
+      final reqArtist = _artist.text.trim(), reqTrack = _track.text.trim();
+      final hadMusic = paths().isNotEmpty;
+      if (req && !hadMusic) {
+        af.enqueueTracks([Suggestion(reqArtist, reqTrack, 0, 'your request')], widget.library);
+      }
       if (paths().isEmpty) {
         // Nothing on the phone yet: fetch the first track, then start.
         final started = DateTime.now();
@@ -170,7 +245,8 @@ class _SimpleViewState extends State<SimpleView> {
             setState(() => _note = 'Connecting…');
           } else {
             setState(() => _note = af.status.isNotEmpty ? af.status : 'Finding your first track…');
-            if (!af.running && DateTime.now().difference(asked).inSeconds >= 8) {
+            final waitingForRequest = req && DateTime.now().difference(started).inSeconds < 90;
+            if (!waitingForRequest && !af.running && af.manualPending == 0 && DateTime.now().difference(asked).inSeconds >= 8) {
               asked = DateTime.now();
               final g = genres[math.Random().nextInt(genres.length)];
               dj.onNeedTrack?.call('', 0, null, '', g);
@@ -181,7 +257,12 @@ class _SimpleViewState extends State<SimpleView> {
         if (!mounted || run != _run) return;
       }
       await dj.startAutomix(paths(), fadeSeconds: 24, startOffsetSeconds: 10);
-      if (!dj.automixOn) setState(() => _note = dj.automixStatus ?? '');
+      if (!dj.automixOn) {
+        setState(() => _note = dj.automixStatus ?? '');
+      } else if (req && hadMusic) {
+        dj.armPlayNext();
+        af.enqueueTracks([Suggestion(reqArtist, reqTrack, 0, 'your request')], widget.library);
+      }
     } catch (e) {
       DebugLog.add('simple', 'start failed: $e');
       if (mounted) setState(() => _note = 'Something went wrong. Try again.');
@@ -307,6 +388,8 @@ class _SimpleViewState extends State<SimpleView> {
             onChanged: _starting ? null : (v) => setState(() => _bpm = v),
           ),
         const SizedBox(height: 20),
+        _requestBox(running: false),
+        const SizedBox(height: 20),
         SizedBox(
           height: 64,
           child: FilledButton.icon(
@@ -339,10 +422,9 @@ class _SimpleViewState extends State<SimpleView> {
     final genre = d.path == null ? '' : (dj.genreOf?.call(d.path!) ?? '');
     final af = AutoFetch.instance;
     final status = af.running && af.status.isNotEmpty ? af.status : (dj.automixStatus ?? '');
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return ListView(
       children: [
-        const Spacer(),
+        const SizedBox(height: 16),
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
@@ -385,7 +467,9 @@ class _SimpleViewState extends State<SimpleView> {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(fontSize: 12, color: Color(0xFF8A857C))),
-        const Spacer(),
+        const SizedBox(height: 12),
+        _requestBox(running: true),
+        const SizedBox(height: 20),
         Row(children: [
           Expanded(
             child: SizedBox(
