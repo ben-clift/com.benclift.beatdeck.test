@@ -36,9 +36,14 @@
 
 #include "chunk_cache.hpp"
 
+#ifdef __ANDROID__
 #include <android/log.h>
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, "sidedeck", __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, "sidedeck", __VA_ARGS__)
+#else
+#define LOGI(...) do { std::printf("[sidedeck] "); std::printf(__VA_ARGS__); std::printf("\n"); } while (0)
+#define LOGE(...) do { std::printf("[sidedeck ERROR] "); std::printf(__VA_ARGS__); std::printf("\n"); } while (0)
+#endif
 
 namespace {
 

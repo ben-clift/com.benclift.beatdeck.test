@@ -15,8 +15,12 @@
 
 #include "last_error.hpp"
 
-#ifdef __ANDROID__
+#if defined(__ANDROID__)
 #include "mediacodec_aac.hpp"
+#define SD_HAVE_M4A 1
+#elif defined(__APPLE__)
+#include "apple_aac.hpp"
+#define SD_HAVE_M4A 1
 #endif
 
 struct StreamingDecoder {
@@ -27,7 +31,7 @@ struct StreamingDecoder {
   drmp3 mp3{};
   drflac* flac = nullptr;
   OggOpusFile* opus = nullptr;
-#ifdef __ANDROID__
+#ifdef SD_HAVE_M4A
   std::unique_ptr<MediaCodecAacDecoder> aac;
 #endif
   unsigned channels = 0;
@@ -51,7 +55,7 @@ struct StreamingDecoder {
     } else if (kind == Kind::Opus && opus) {
       op_free(opus);
     }
-#ifdef __ANDROID__
+#ifdef SD_HAVE_M4A
     else if (kind == Kind::M4a && aac) {
       aac->close();
       aac.reset();
@@ -104,7 +108,7 @@ struct StreamingDecoder {
     if (isOgg(head, nHead) || extIs(path, ".opus") || extIs(path, ".ogg")) {
       return tryOpus(path);
     }
-#ifdef __ANDROID__
+#ifdef SD_HAVE_M4A
     // ISO BMFF (ftyp) or explicit M4A/AAC extensions — MediaCodec (AAC or ALAC).
     if (isFtyp(head, nHead) || extIs(path, ".m4a") || extIs(path, ".aac") ||
         extIs(path, ".m4b") || extIs(path, ".mp4")) {
@@ -164,7 +168,7 @@ struct StreamingDecoder {
       const ogg_int64_t pos = op_pcm_tell(opus);
       return pos < 0 ? 0 : (uint64_t)pos;
     }
-#ifdef __ANDROID__
+#ifdef SD_HAVE_M4A
     if (kind == Kind::M4a && aac) {
       return aac->tell();
     }
@@ -188,7 +192,7 @@ struct StreamingDecoder {
     if (kind == Kind::Opus && opus) {
       return op_pcm_seek(opus, (ogg_int64_t)frame) == 0;
     }
-#ifdef __ANDROID__
+#ifdef SD_HAVE_M4A
     if (kind == Kind::M4a && aac) {
       return aac->seek(frame);
     }
@@ -218,7 +222,7 @@ struct StreamingDecoder {
  private:
   // One shot at the underlying codec. Opus may return far fewer than requested.
   uint64_t readStereoOnce(float* out, uint64_t frames) {
-#ifdef __ANDROID__
+#ifdef SD_HAVE_M4A
     if (kind == Kind::M4a && aac) {
       return aac->readStereo(out, frames);
     }
@@ -292,7 +296,7 @@ struct StreamingDecoder {
         return tryOpus(path);
       case Kind::Mp3:
         return tryMp3(path);
-#ifdef __ANDROID__
+#ifdef SD_HAVE_M4A
       case Kind::M4a:
         return tryM4a(path);
 #endif
@@ -397,7 +401,7 @@ struct StreamingDecoder {
     return true;
   }
 
-#ifdef __ANDROID__
+#ifdef SD_HAVE_M4A
   bool tryM4a(const char* path) {
     auto dec = std::make_unique<MediaCodecAacDecoder>();
     if (!dec->open(path)) {

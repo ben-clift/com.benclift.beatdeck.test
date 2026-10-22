@@ -1,0 +1,73 @@
+name: iPhone build (experimental)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  ios:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Flutter
+        run: |
+          set -euo pipefail
+          rev=$(sed -n -E 's/.*revision: "(.*)"/\1/p' .metadata | head -n1)
+          git clone --filter=blob:none https://github.com/flutter/flutter.git "$HOME/flutter"
+          git -C "$HOME/flutter" fetch --depth 1 origin "$rev"
+          git -C "$HOME/flutter" checkout --force FETCH_HEAD
+          echo "$HOME/flutter/bin" >> "$GITHUB_PATH"
+          echo "FLUTTER_ROOT=$HOME/flutter" >> "$GITHUB_ENV"
+
+      - name: Build the DJ engine for iPhone
+        run: |
+          set -euo pipefail
+          cmake -S native/ios -B build/ios-engine \
+            -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_SYSROOT=iphoneos \
+            -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_DEPLOYMENT_TARGET=15.5 \
+            -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/ios-engine --parallel 4 2>&1 | tee engine-build.txt
+          libs=$(find build/ios-engine -name '*.a')
+          echo "$libs"
+          mkdir -p native/ios_plugin/ios/libs
+          libtool -static -o native/ios_plugin/ios/libs/libdj_engine_all.a $libs
+          ls -la native/ios_plugin/ios/libs
+
+      - name: Create the iPhone project
+        run: |
+          set -euo pipefail
+          flutter config --no-analytics
+          flutter create --platforms=ios --org com.benclift --project-name sidedeck .
+          flutter pub add dj_engine_ios --path native/ios_plugin
+          # Bundle id, minimum iOS, background audio and permission texts.
+          sed -i '' 's/com\.benclift\.sidedeck/com.benclift.beatdeck.friends/g' ios/Runner.xcodeproj/project.pbxproj
+          sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = [0-9.]*;/IPHONEOS_DEPLOYMENT_TARGET = 15.5;/g' ios/Runner.xcodeproj/project.pbxproj
+          sed -i '' "s/^# platform :ios, .*/platform :ios, '15.5'/" ios/Podfile
+          P=ios/Runner/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName BeatDeck Friends" $P || true
+          /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes array" $P || true
+          /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes:0 string audio" $P || true
+          /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryUsageDescription string To read playlist screenshots you choose." $P || true
+          /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" $P || true
+
+      - name: Build the app (unsigned)
+        run: |
+          set -euo pipefail
+          flutter pub get
+          flutter build ios --release --no-codesign --build-name=1.2.${{ github.run_number }} --build-number=${{ github.run_number }} --dart-define=BUILD_EPOCH=$(date +%s) 2>&1 | tee ios-build.txt
+
+      - name: Keep the logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-logs
+          path: |
+            engine-build.txt
+            ios-build.txt
+          if-no-files-found: ignore
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: beatdeck-ios-unsigned
+          path: build/ios/iphoneos/Runner.app
+          if-no-files-found: error

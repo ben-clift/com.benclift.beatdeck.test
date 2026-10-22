@@ -10,7 +10,9 @@
 #include "streaming_decoder.hpp"
 
 #include <algorithm>
+#ifdef __ANDROID__
 #include <android/log.h>
+#endif
 #include <atomic>
 #include <chrono>
 #include <cmath>
@@ -25,7 +27,11 @@
 #include <unordered_map>
 #include <vector>
 
+#ifdef __ANDROID__
 #define CACHE_LOGI(...) __android_log_print(ANDROID_LOG_INFO, "sidedeck.cache", __VA_ARGS__)
+#else
+#define CACHE_LOGI(...) ((void)0)
+#endif
 
 struct ChunkCache {
   static constexpr int kChunkFrames = 8192;
@@ -438,7 +444,11 @@ struct ChunkCache {
   void workerMain() {
     // Best effort: if the platform refuses the priority bump, decoding still
     // works, it just has less headroom against a busy UI thread.
+#ifdef __ANDROID__
     setpriority(PRIO_PROCESS, (id_t)gettid(), kWorkerNice);
+#else
+    (void)kWorkerNice;
+#endif
     StreamingDecoder dec;
     std::string path;
     {
