@@ -20,6 +20,11 @@ import 'package:sidedeck/ui/screenshot_import.dart';
 import 'package:sidedeck/wishlist/wishlist.dart';
 import 'package:sidedeck/theme/sidedeck_theme.dart';
 
+const _bg = Color(0xFF121212);
+const _panel = Color(0xFF1F1F1F);
+const _green = Color(0xFF1DB954);
+const _dim = Color(0xFFB3B3B3);
+
 class _Vibe {
   const _Vibe(this.label, this.genres, {this.bands = false});
   final String label;
@@ -735,7 +740,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
       builder: (context, _) {
         final on = dj.automixOn;
         return Scaffold(
-          backgroundColor: SideDeckTheme.bg,
+          backgroundColor: _bg,
           body: SafeArea(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
@@ -866,85 +871,182 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     );
   }
 
+  String _mmss(double sec) {
+    final t = sec.isFinite && sec > 0 ? sec.round() : 0;
+    return '${t ~/ 60}:${(t % 60).toString().padLeft(2, '0')}';
+  }
+
+  ({String title, String artist}) _nameOf(String path) {
+    for (final t in widget.library.tracks) {
+      if (t.path == path) return (title: t.title, artist: t.artist);
+    }
+    final f = path.split(RegExp(r'[\\/]')).last.replaceFirst(RegExp(r'\.[^.]+$'), '');
+    return (title: f, artist: '');
+  }
+
+  void _sheet(String title, Widget body) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: _panel,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.fromLTRB(20, 16, 20, 20 + MediaQuery.of(ctx).viewInsets.bottom),
+        child: SingleChildScrollView(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 12),
+            body,
+          ]),
+        ),
+      ),
+    );
+  }
+
+  Widget _action(IconData icon, String label, VoidCallback onTap) {
+    return Expanded(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: Material(
+          color: const Color(0xFF2A2A2A),
+          borderRadius: BorderRadius.circular(12),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Icon(icon, size: 24),
+                const SizedBox(height: 4),
+                Text(label, style: const TextStyle(fontSize: 12)),
+              ]),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _playing(DjController dj) {
     final d = dj.deck(dj.automixPlayingDeck.clamp(0, 1));
-    final genre = d.path == null ? '' : (dj.genreOf?.call(d.path!) ?? '');
     final af = AutoFetch.instance;
+    final genre = d.path == null ? '' : (dj.genreOf?.call(d.path!) ?? '');
     final status = af.running && af.status.isNotEmpty ? af.status : (dj.automixStatus ?? '');
+    final upcoming = dj.automixUpcoming;
+    final hue = (genre.isEmpty ? d.title : genre).codeUnits.fold<int>(7, (a, c) => (a * 31 + c) % 360).toDouble();
+    final c1 = HSLColor.fromAHSL(1, hue, 0.55, 0.38).toColor();
+    final c2 = HSLColor.fromAHSL(1, (hue + 40) % 360, 0.6, 0.12).toColor();
+    final frac = d.duration > 0 ? (d.position / d.duration).clamp(0.0, 1.0) : 0.0;
     return ListView(
       children: [
-        const SizedBox(height: 16),
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: SideDeckTheme.panel,
-            borderRadius: BorderRadius.circular(16),
+        // Big "cover": colour comes from the genre, like an album picture.
+        AspectRatio(
+          aspectRatio: 1.15,
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [c1, c2]),
+            ),
+            child: Stack(children: [
+              const Center(child: Icon(Icons.graphic_eq, size: 96, color: Colors.white24)),
+              Positioned(
+                left: 12,
+                bottom: 12,
+                child: Wrap(spacing: 8, children: [
+                  if (genre.isNotEmpty) _chip(genre.toUpperCase()),
+                  if (d.bpm > 1) _chip('${(d.bpm * d.rate).round()} BPM'),
+                ]),
+              ),
+            ]),
           ),
-          child: Column(children: [
-            const Text('NOW PLAYING',
-                style: TextStyle(fontSize: 11, letterSpacing: 1.5, color: Color(0xFF8A857C))),
-            const SizedBox(height: 10),
-            Text(d.loaded ? d.title : '…',
-                textAlign: TextAlign.center,
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
-            if (d.artist.isNotEmpty) ...[
-              const SizedBox(height: 4),
-              Text(d.artist,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 16, color: Color(0xFFB8B3AA))),
-            ],
-            if (genre.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              Text(genre.toUpperCase(),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                      fontSize: 13, letterSpacing: 1.2, fontWeight: FontWeight.w700, color: SideDeckTheme.accentB)),
-            ],
-            if (d.bpm > 1) ...[
-              const SizedBox(height: 10),
-              Text('${(d.bpm * d.rate).round()} BPM',
-                  style: const TextStyle(color: SideDeckTheme.accentA, fontWeight: FontWeight.w700)),
-            ],
+        ),
+        const SizedBox(height: 16),
+        Text(d.loaded ? d.title : '…',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
+        if (d.artist.isNotEmpty)
+          Text(d.artist, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16, color: _dim)),
+        const SizedBox(height: 12),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: frac,
+            minHeight: 4,
+            backgroundColor: const Color(0xFF404040),
+            valueColor: const AlwaysStoppedAnimation(Colors.white),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Row(children: [
+            Text(_mmss(d.position), style: const TextStyle(fontSize: 12, color: _dim)),
+            const Spacer(),
+            Text(_mmss(d.duration), style: const TextStyle(fontSize: 12, color: _dim)),
           ]),
         ),
         const SizedBox(height: 12),
-        if (status.isNotEmpty)
-          Text(status,
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 12, color: Color(0xFF8A857C))),
-        const SizedBox(height: 12),
-        _requestBox(running: true),
-        const SizedBox(height: 16),
-        _importBox(),
-        const SizedBox(height: 20),
+        // Queue card, like the Spotify queue sheet.
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(16)),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('Queue', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 10),
+            Row(children: [
+              const Icon(Icons.equalizer, color: _green),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(d.loaded ? d.title : '…',
+                    maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _green, fontSize: 16, fontWeight: FontWeight.w700)),
+              ),
+            ]),
+            const Divider(height: 24, color: Color(0xFF333333)),
+            const Text('Next up', style: TextStyle(color: _dim)),
+            const SizedBox(height: 6),
+            if (upcoming.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: Row(children: [
+                  const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(status.isNotEmpty ? status : 'Finding the next track…',
+                        maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _dim)),
+                  ),
+                ]),
+              )
+            else
+              for (final p in upcoming.take(5))
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Row(children: [
+                    const Icon(Icons.music_note, color: _dim),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(_nameOf(p).title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16)),
+                        if (_nameOf(p).artist.isNotEmpty)
+                          Text(_nameOf(p).artist, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _dim, fontSize: 13)),
+                      ]),
+                    ),
+                  ]),
+                ),
+          ]),
+        ),
+        const SizedBox(height: 14),
         Row(children: [
-          Expanded(
-            child: SizedBox(
-              height: 60,
-              child: FilledButton.icon(
-                onPressed: _skip,
-                icon: const Icon(Icons.skip_next, size: 28),
-                label: const Text('Skip', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: SizedBox(
-              height: 60,
-              child: OutlinedButton.icon(
-                onPressed: _stop,
-                icon: const Icon(Icons.stop, size: 28),
-                label: const Text('Stop / Back', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
-              ),
-            ),
-          ),
+          _action(Icons.skip_next, 'Skip', _skip),
+          _action(Icons.search, 'Play next', () => _sheet('Play something next', _requestBox(running: true))),
+          _action(Icons.playlist_add, 'Import', () => _sheet('Import a playlist', _importBox())),
+          _action(Icons.stop, 'Stop / Back', _stop),
         ]),
       ],
     );
   }
+
+  Widget _chip(String t) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(20)),
+        child: Text(t, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.8)),
+      );
 }

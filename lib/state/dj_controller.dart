@@ -479,6 +479,18 @@ class DjController extends ChangeNotifier {
   final Set<String> loadedPaths = {};
   final Set<String> failedPaths = {};
 
+  /// Paths of what plays next (the chosen next track first), for the screen.
+  List<String> get automixUpcoming {
+    if (!automixOn) return const [];
+    final out = <String>[];
+    if (_upNext != null) out.add(_upNext!);
+    for (var i = math.max(0, _automixIndex + 1); i < _automixQueue.length; i++) {
+      final q = _automixQueue[i];
+      if (!out.contains(q) && !_wasPlayed(q)) out.add(q);
+    }
+    return out;
+  }
+
   /// Tracks queued after the one now playing in automix.
   int get automixWaiting =>
       automixOn ? math.max(0, _automixQueue.length - _automixIndex - 1) : 0;
