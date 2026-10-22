@@ -13,6 +13,7 @@ import 'package:sidedeck/state/app_mode.dart';
 import 'package:sidedeck/state/dj_controller.dart';
 import 'package:sidedeck/state/library_controller.dart';
 import 'package:sidedeck/state/screen_brightness.dart';
+import 'package:sidedeck/state/starred.dart';
 import 'package:sidedeck/suggest/auto_fetch.dart';
 import 'package:sidedeck/suggest/genres.dart';
 import 'package:sidedeck/suggest/shazam_watcher.dart';
@@ -101,6 +102,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _restore();
+    Starred.instance.load();
     _loadIntro();
     _keepAhead = Timer.periodic(const Duration(seconds: 8), (_) => _refill());
   }
@@ -794,6 +796,150 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => _EqPage(dj: widget.dj)));
   }
 
+  /// Artist and title of what is on the deck, cleaned of track numbers and
+  /// file endings ("01. Artist - Title.flac" becomes Artist / Title).
+  ({String artist, String title}) _cleanNames(DeckState d) {
+    var t = d.title.replaceFirst(RegExp(r'\.(flac|mp3|m4a|wav|ogg|opus|aiff?)$', caseSensitive: false), '');
+    t = t.replaceFirst(RegExp(r'^\d{1,3}\s*[\.\-_)]\s*'), '').trim();
+    var a = d.artist.trim();
+    if (a.isEmpty) {
+      final dash = t.indexOf(' - ');
+      if (dash > 0) {
+        a = t.substring(0, dash).trim();
+        t = t.substring(dash + 3).trim();
+      }
+    }
+    return (artist: a, title: t);
+  }
+
+  void _toggleStar(DjController dj) {
+    final d = dj.deck(dj.automixPlayingDeck.clamp(0, 1));
+    if (!d.loaded) return;
+    final n = _cleanNames(d);
+    final genre = d.path == null ? '' : (dj.genreOf?.call(d.path!) ?? '');
+    final was = Starred.instance.has(n.artist, n.title);
+    Starred.instance.toggle(n.artist, n.title, genre, d.bpm > 1 ? d.bpm.round() : 0);
+    _toast(was ? 'Removed from your stars.' : 'Starred: ${n.title}');
+  }
+
+  /// Your starred tracks with filters: search, genre, artist and BPM.
+  void _showStarred() {
+    String q = '', genre = '', artist = '';
+    RangeValues? bpm;
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: _panel,
+      builder: (ctx) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.85,
+        builder: (ctx, scroll) => StatefulBuilder(
+          builder: (ctx, setS) => ListenableBuilder(
+            listenable: Starred.instance,
+            builder: (ctx, _) {
+              final all = Starred.instance.items;
+              final genres = {for (final t in all) if (t.genre.isNotEmpty) t.genre}.toList()..sort();
+              final artists = {for (final t in all) if (t.artist.isNotEmpty) t.artist}.toList()..sort();
+              final bpms = [for (final t in all) if (t.bpm > 0) t.bpm];
+              final lo = bpms.isEmpty ? 60.0 : bpms.reduce(math.min).toDouble();
+              final hi = bpms.isEmpty ? 200.0 : math.max(bpms.reduce(math.max).toDouble(), lo + 1);
+              final range = bpm == null ? null : RangeValues(bpm!.start.clamp(lo, hi), bpm!.end.clamp(lo, hi));
+              final shown = [
+                for (final t in all)
+                  if ((q.isEmpty || '${t.artist} ${t.title}'.toLowerCase().contains(q.toLowerCase())) &&
+                      (genre.isEmpty || t.genre == genre) &&
+                      (artist.isEmpty || t.artist == artist) &&
+                      (range == null || (t.bpm > 0 && t.bpm >= range.start.round() && t.bpm <= range.end.round())))
+                    t,
+              ];
+              Widget chips(List<String> items, String sel, void Function(String) pick) => SizedBox(
+                    height: 40,
+                    child: ListView(scrollDirection: Axis.horizontal, children: [
+                      for (final g in items)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: ChoiceChip(label: Text(g), selected: sel == g, onSelected: (v) => setS(() => pick(v ? g : ''))),
+                        ),
+                    ]),
+                  );
+              return Column(children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+                  child: Row(children: [
+                    const Icon(Icons.star, color: Color(0xFFFFC83D)),
+                    const SizedBox(width: 8),
+                    Text('Starred (${shown.length}${shown.length == all.length ? '' : ' of ${all.length}'})',
+                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+                  ]),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+                  child: TextField(
+                    decoration: const InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'Search artist or track', isDense: true, border: OutlineInputBorder()),
+                    onChanged: (v) => setS(() => q = v),
+                  ),
+                ),
+                if (genres.isNotEmpty)
+                  Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 0), child: chips(genres, genre, (v) => genre = v)),
+                if (artists.length > 1)
+                  Padding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 0), child: chips(artists, artist, (v) => artist = v)),
+                if (bpms.length > 1)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Row(children: [
+                      Text(range == null ? 'BPM any' : 'BPM ${range.start.round()}-${range.end.round()}',
+                          style: const TextStyle(color: _dim)),
+                      Expanded(
+                        child: RangeSlider(
+                          values: range ?? RangeValues(lo, hi),
+                          min: lo,
+                          max: hi,
+                          onChanged: (v) => setS(() => bpm = (v.start <= lo && v.end >= hi) ? null : v),
+                        ),
+                      ),
+                    ]),
+                  ),
+                const Divider(height: 8),
+                Expanded(
+                  child: shown.isEmpty
+                      ? Center(
+                          child: Text(all.isEmpty ? 'Tap the star on a track you like.' : 'Nothing matches those filters.',
+                              style: const TextStyle(color: _dim)))
+                      : ListView.builder(
+                          controller: scroll,
+                          itemCount: shown.length,
+                          itemBuilder: (_, i) {
+                            final t = shown[i];
+                            final sub = [
+                              if (t.artist.isNotEmpty) t.artist,
+                              if (t.genre.isNotEmpty) t.genre,
+                              if (t.bpm > 0) '${t.bpm} BPM',
+                            ].join('  ·  ');
+                            return ListTile(
+                              title: Text(t.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+                              subtitle: sub.isEmpty ? null : Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis),
+                              leading: const Icon(Icons.play_arrow),
+                              trailing: IconButton(
+                                tooltip: 'Remove star',
+                                icon: const Icon(Icons.star, color: Color(0xFFFFC83D)),
+                                onPressed: () => Starred.instance.toggle(t.artist, t.title, t.genre, t.bpm),
+                              ),
+                              onTap: () {
+                                Navigator.pop(ctx);
+                                _playFromList(WishItem(t.artist, t.title));
+                              },
+                            );
+                          },
+                        ),
+                ),
+              ]);
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
   void _cut() {
     if (!widget.dj.automixCut()) _toast('No next track is ready yet. Try Skip in a moment.');
   }
@@ -1148,6 +1294,20 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
           ),
           const SizedBox(width: 20),
           IconButton(iconSize: 40, onPressed: _skip, icon: const Icon(Icons.skip_next)),
+          const SizedBox(width: 8),
+          ListenableBuilder(
+            listenable: Starred.instance,
+            builder: (_, __) {
+              final n = _cleanNames(d);
+              final on = Starred.instance.has(n.artist, n.title);
+              return IconButton(
+                iconSize: 34,
+                tooltip: on ? 'Remove star' : 'Star this track',
+                onPressed: () => _toggleStar(dj),
+                icon: Icon(on ? Icons.star : Icons.star_border, color: on ? const Color(0xFFFFC83D) : null),
+              );
+            },
+          ),
         ]),
         const SizedBox(height: 12),
         // Queue card, like the Spotify queue sheet.
@@ -1155,7 +1315,18 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(16)),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('Queue', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+            Row(children: [
+              const Text('Queue', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+              const Spacer(),
+              ListenableBuilder(
+                listenable: Starred.instance,
+                builder: (_, __) => TextButton.icon(
+                  onPressed: _showStarred,
+                  icon: const Icon(Icons.star, size: 18, color: Color(0xFFFFC83D)),
+                  label: Text('Starred (${Starred.instance.items.length})'),
+                ),
+              ),
+            ]),
             const SizedBox(height: 10),
             Row(children: [
               const Icon(Icons.equalizer, color: _green),
