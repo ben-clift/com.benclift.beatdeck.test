@@ -62,6 +62,8 @@ class SimpleView extends StatefulWidget {
 class _SimpleViewState extends State<SimpleView> {
   final Set<int> _picked = {0};
   bool _starting = false;
+  bool _bpmAny = true;
+  RangeValues _bpm = const RangeValues(120, 130);
   String _note = '';
   int _run = 0;
 
@@ -135,7 +137,10 @@ class _SimpleViewState extends State<SimpleView> {
           }
         }
       }
-      if (hi > 0) {
+      if (!_bpmAny) {
+        af.bpmMin = _bpm.start.roundToDouble();
+        af.bpmMax = _bpm.end.roundToDouble();
+      } else if (hi > 0) {
         af.bpmMin = lo;
         af.bpmMax = hi;
       }
@@ -280,7 +285,28 @@ class _SimpleViewState extends State<SimpleView> {
               ),
           ],
         ),
-        const SizedBox(height: 28),
+        const SizedBox(height: 20),
+        Row(children: [
+          const Text('Speed (BPM)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+          const Spacer(),
+          Text(_bpmAny ? 'Any' : '${_bpm.start.round()} to ${_bpm.end.round()}',
+              style: const TextStyle(color: SideDeckTheme.accentA, fontWeight: FontWeight.w700)),
+          const SizedBox(width: 8),
+          Switch(
+            value: !_bpmAny,
+            onChanged: _starting ? null : (v) => setState(() => _bpmAny = !v),
+          ),
+        ]),
+        if (!_bpmAny)
+          RangeSlider(
+            values: _bpm,
+            min: 70,
+            max: 180,
+            divisions: 110,
+            labels: RangeLabels('${_bpm.start.round()}', '${_bpm.end.round()}'),
+            onChanged: _starting ? null : (v) => setState(() => _bpm = v),
+          ),
+        const SizedBox(height: 20),
         SizedBox(
           height: 64,
           child: FilledButton.icon(
@@ -310,6 +336,7 @@ class _SimpleViewState extends State<SimpleView> {
 
   Widget _playing(DjController dj) {
     final d = dj.deck(dj.automixPlayingDeck.clamp(0, 1));
+    final genre = d.path == null ? '' : (dj.genreOf?.call(d.path!) ?? '');
     final af = AutoFetch.instance;
     final status = af.running && af.status.isNotEmpty ? af.status : (dj.automixStatus ?? '');
     return Column(
@@ -336,6 +363,13 @@ class _SimpleViewState extends State<SimpleView> {
               Text(d.artist,
                   textAlign: TextAlign.center,
                   style: const TextStyle(fontSize: 16, color: Color(0xFFB8B3AA))),
+            ],
+            if (genre.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Text(genre.toUpperCase(),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      fontSize: 13, letterSpacing: 1.2, fontWeight: FontWeight.w700, color: SideDeckTheme.accentB)),
             ],
             if (d.bpm > 1) ...[
               const SizedBox(height: 10),
