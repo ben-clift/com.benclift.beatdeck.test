@@ -36,7 +36,8 @@
       lastSwitch = performance.now();
     }
     next(0);
-    canvas.addEventListener('click', function () { next(1.5); });
+    var paused = false;
+    canvas.addEventListener('click', function () { paused = !paused; });
 
     // The app sends 14 band levels (0..1). Make a waveform whose spectrum has
     // that shape so the presets react to bass, mids and treble.
@@ -74,7 +75,7 @@
         tb[i] = v; tl[i] = v; tr[i] = w;
       }
       if (!held && autoSecs > 0 && now - lastSwitch > autoSecs * 1000) next(2.7);
-      viz.render({ audioLevels: { timeByteArray: tb, timeByteArrayL: tl, timeByteArrayR: tr }, elapsedTime: (now - t0) / 1000 });
+      if (!paused) viz.render({ audioLevels: { timeByteArray: tb, timeByteArrayL: tl, timeByteArrayR: tr }, elapsedTime: (now - t0) / 1000 });
       if (firstFrame) { firstFrame = false; say('ok'); say('names:' + JSON.stringify(names)); }
       requestAnimationFrame(frame);
     }

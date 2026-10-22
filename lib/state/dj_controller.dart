@@ -1791,6 +1791,28 @@ class DjController extends ChangeNotifier {
   /// Cut: drop the playing track (it is removed from the downloads) and play
   /// the next one that is ready, instantly with no mix. False when nothing is
   /// ready yet (the playing track carries on).
+  /// Jump 32 beats (about 15 s) further into the playing track, on the beat.
+  /// False when too little is left to do that (the caller then plays the next).
+  bool automixJumpAhead() {
+    if (!automixOn || _automixDeck < 0 || _automixFading) return false;
+    final d = deck(_automixDeck);
+    if (!d.loaded || d.duration <= 0) return false;
+    final bpm = d.bpm > 1 ? d.bpm * d.rate : 0.0;
+    final span = bpm > 1 ? 32 * 60 / bpm : 30.0;
+    final left = d.duration - d.position;
+    if (left - span < _fadeLen + 20) return false;
+    if (bpm > 1) {
+      _engine.beatJump(_automixDeck, 32);
+      d.position = _engine.position(_automixDeck);
+      _readLoop(_automixDeck);
+    } else {
+      seekTo(_automixDeck, d.position + span);
+    }
+    DebugLog.add('automix', 'jumped ahead ${span.round()} s in the playing track');
+    notifyListeners();
+    return true;
+  }
+
   bool automixCut() {
     if (!automixOn || _automixDeck < 0) return false;
     if (_automixFading) {

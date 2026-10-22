@@ -959,7 +959,8 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
   }
 
   void _cut() {
-    if (!widget.dj.automixCut()) _toast('No next track is ready yet. Try Skip in a moment.');
+    if (widget.dj.automixJumpAhead()) return;
+    if (!widget.dj.automixCut()) _toast('Near the end and no next track is ready yet. Try Skip in a moment.');
   }
 
   bool _unknownKind(DjController dj, String path) =>
@@ -1431,7 +1432,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
           }),
           _action(Icons.search, 'Request', () => _sheet('Request a track', _requestBox(running: true))),
           _action(Icons.playlist_add, 'Import', () => _sheet('Import a playlist', _importBox())),
-          _action(Icons.fast_forward, 'Stop track', _cut),
+          _action(Icons.fast_forward, 'Jump ahead', _cut),
           _action(Icons.stop_circle_outlined, 'End set', _stop),
         ]),
       ],
