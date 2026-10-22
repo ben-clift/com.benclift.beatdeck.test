@@ -791,10 +791,18 @@ class DjController extends ChangeNotifier {
     // what is playing now (key and genre break ties).
     final keep = onPlaying ? _upNext : null;
     String? best;
-    if (keep != null && _isLoadedNext(keep) && _tempoGap(heard, keep) <= 8) {
-      best = keep; // the track already waiting on the other deck fits: use it
+    if (keep != null && File(keep).existsSync() && !_rejected.contains(keep)) {
+      best = keep; // a track is ready and waiting: that is the one to play
     } else {
       best = _closestTempoPick(heard, exclude: {if (pressed != null) pressed});
+    }
+    if (best == null) {
+      for (final u in automixUpcoming) {
+        if (u != pressed && File(u).existsSync() && !failedPaths.contains(u)) {
+          best = u;
+          break;
+        }
+      }
     }
     if (pressed != null && !onPlaying) {
       _markPlayed(pressed);

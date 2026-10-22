@@ -1385,7 +1385,14 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
         const SizedBox(height: 14),
         Row(children: [
           _action(Icons.equalizer, 'EQ', _openEq),
-          _action(Icons.search, 'Play next', () => _sheet('Play something next', _requestBox(running: true))),
+          _action(Icons.skip_next, 'Play next', () {
+            if (widget.dj.automixUpcoming.isNotEmpty) {
+              _skip();
+            } else {
+              _sheet('Play something next', _requestBox(running: true));
+            }
+          }),
+          _action(Icons.search, 'Request', () => _sheet('Request a track', _requestBox(running: true))),
           _action(Icons.playlist_add, 'Import', () => _sheet('Import a playlist', _importBox())),
           _action(Icons.fast_forward, 'Stop track', _cut),
           _action(Icons.stop_circle_outlined, 'End set', _stop),
