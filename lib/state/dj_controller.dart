@@ -2332,6 +2332,14 @@ class DjController extends ChangeNotifier {
       outRate: out.rate,
       inBpm: inc.bpm,
     );
+    // Tempos too far apart to match (beyond 8 % even at half/double time):
+    // overlapping the beats would clash. Play the new track at its own speed
+    // and do a short clean hand-over instead of a long blend.
+    var rr = (out.bpm > 1 && inc.bpm > 1) ? out.bpm * out.rate / inc.bpm : 1.0;
+    if (rr > 1.85 && rr < 2.15) rr /= 2;
+    if (rr > 0.46 && rr < 0.54) rr *= 2;
+    final tempoClash = rr < 0.92 || rr > 1.08;
+    if (tempoClash) inc.rate = 1.0;
     inc.synced = false;
     _applyRate(other);
     final startRaw = incomingStartPosition(
@@ -2352,6 +2360,10 @@ class DjController extends ChangeNotifier {
     final left = remainingSeconds(position: outPosition, duration: out.duration, rate: out.rate);
     final cap = left > 5 ? left - 1.0 : math.max(2.0, left - 0.3);
     _fadeLen = math.min(_plan?.seconds ?? automixFadeSeconds, cap).toDouble();
+    if (tempoClash && _fadeLen > 5) {
+      _fadeLen = 5;
+      DebugLog.add('automix', 'tempos too far apart to match: short clean hand-over at the new track\'s own speed');
+    }
     if (_fadeLen < (_plan?.seconds ?? automixFadeSeconds)) {
       DebugLog.add('automix', 'only ${left.toStringAsFixed(0)} s left, mix shortened to ${_fadeLen.toStringAsFixed(0)} s');
     }
