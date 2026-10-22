@@ -1354,7 +1354,15 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
               ),
           ],
         ),
-        for (final i in _picked)
+        Theme(
+          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+          child: ExpansionTile(
+            tilePadding: EdgeInsets.zero,
+            childrenPadding: const EdgeInsets.only(bottom: 8),
+            title: const Text('Sub-genres', style: TextStyle(fontSize: 14, color: SideDeckTheme.accentB)),
+            expandedCrossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (final i in _picked)
           if (_vibes[i].genres.length > 1)
             Padding(
               padding: const EdgeInsets.only(top: 10),
@@ -1369,7 +1377,12 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                   ),
               ]),
             ),
-        const SizedBox(height: 16),
+              if (!_picked.any((i) => _vibes[i].genres.length > 1))
+                const Text('Nothing more to choose for this genre.', style: TextStyle(color: Color(0xFF8A857C))),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
         Row(children: [
           const Text('Vocals', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
           const Spacer(),
@@ -1385,7 +1398,15 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
           ),
         ]),
         if (_vocal != 2)
-          for (final i in _picked)
+          Theme(
+            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+            child: ExpansionTile(
+              tilePadding: EdgeInsets.zero,
+              childrenPadding: const EdgeInsets.only(bottom: 8),
+              title: const Text('Vocal styles', style: TextStyle(fontSize: 14, color: SideDeckTheme.accentB)),
+              expandedCrossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (final i in _picked)
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Wrap(spacing: 8, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
@@ -1401,6 +1422,9 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                   ),
               ]),
             ),
+              ],
+            ),
+          ),
         const SizedBox(height: 20),
         Row(children: [
           const Text('Speed (BPM)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
