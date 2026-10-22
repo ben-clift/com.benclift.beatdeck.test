@@ -746,13 +746,18 @@ class DjController extends ChangeNotifier {
   bool Function()? allowBothKinds;
   bool Function()? bandsMode;
 
+  /// When true, a track whose genre is unknown is treated as the wrong kind
+  /// (so an untagged band track never slips into an electronic set).
+  bool Function()? rejectUnknownKind;
+
   bool get _kindStrict => !(allowBothKinds?.call() ?? false);
 
   /// False for a track of the other kind. Unknown or pop-like genres pass.
   bool _kindOk(String path) {
     if (!_kindStrict) return true;
     final fam = genreFamily(genreOf?.call(path) ?? '');
-    if (fam == null || fam == 'pop') return true;
+    if (fam == null) return !(rejectUnknownKind?.call() ?? false);
+    if (fam == 'pop') return true;
     final bands = bandsMode?.call() ?? false;
     return bands ? fam == 'bands' : fam != 'bands';
   }

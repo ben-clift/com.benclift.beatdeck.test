@@ -1,6 +1,7 @@
 import 'package:sidedeck/automix/genre_family.dart';
 import 'package:sidedeck/suggest/genres.dart';
 import 'dart:math' as math;
+import 'package:sidedeck/state/app_mode.dart';
 import 'dart:io';
 import 'package:sidedeck/state/backup_tracks.dart';
 import 'package:sidedeck/state/ratings.dart';
@@ -173,6 +174,7 @@ class SlskSetup {
     };
     dj?.yearOf = lib.yearOf;
     dj?.allowBothKinds = () => AutoFetch.instance.mixKinds;
+    dj?.rejectUnknownKind = () => AppMode.simple.value;
     dj?.bandsMode = () => AutoFetch.instance.bandsPicked;
     dj?.genreOf = (path) {
       final g = lib.genreOf(path);
