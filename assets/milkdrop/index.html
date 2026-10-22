@@ -25,7 +25,7 @@
     var idx = -1, lastSwitch = 0, gain = 0.5, autoSecs = 30, held = null;
     names.sort();
     window.setGain = function (g) { gain = Math.max(0.05, Math.min(1.6, g)); };
-    var fps = 30, lastDraw = 0;
+    var fps = 15, lastDraw = 0;
     window.setFps = function (f) { fps = Math.max(2, Math.min(60, f)); };
     window.setDim = function (b) { canvas.style.filter = 'brightness(' + Math.max(0.05, Math.min(1, b)) + ')'; };
     window.setAuto = function (s) { autoSecs = s; lastSwitch = performance.now(); };

@@ -15,7 +15,7 @@ class MilkdropSettings extends ChangeNotifier {
   double intensity = 0.3;
 
   /// Frames per second drawn (lower = slower, gentler motion).
-  int fps = 30;
+  int fps = 15;
 
   /// Screen brightness of the picture, 0.1 .. 1.
   double dim = 0.8;
@@ -34,7 +34,7 @@ class MilkdropSettings extends ChangeNotifier {
       final p = await SharedPreferences.getInstance();
       intensity = p.getDouble('md_intensity') ?? 0.3;
       autoSecs = p.getInt('md_auto') ?? 30;
-      fps = p.getInt('md_fps') ?? 30;
+      fps = p.getInt('md_fps') ?? 15;
       dim = p.getDouble('md_dim') ?? 0.8;
       preset = p.getString('md_preset');
       notifyListeners();
