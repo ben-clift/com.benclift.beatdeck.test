@@ -548,6 +548,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
       af.mixKinds = false;
       af.intensity = _intensity.round();
       af.endless = true;
+      af.buffer = 4; // keep fetching until 4 tracks are waiting, so it never runs dry
       var lo = 999.0, hi = 0.0;
       for (final grp in genreGroups) {
         for (final g in grp.$2) {

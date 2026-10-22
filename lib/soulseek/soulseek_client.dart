@@ -151,8 +151,24 @@ class SoulseekClient extends ChangeNotifier {
     try {
       _listener = await ServerSocket.bind(InternetAddress.anyIPv4, 0);
       _listener!.listen(_onIncoming, onError: (_) {});
+      // Some phones fail the name lookup now and then ("Failed host lookup")
+      // while the internet works. Remember the last address that worked and
+      // fall back to it.
+      Object target = _host;
+      final prefs = await SharedPreferences.getInstance();
+      try {
+        final found = await InternetAddress.lookup(_host).timeout(const Duration(seconds: 8));
+        if (found.isNotEmpty) {
+          target = found.first;
+          prefs.setString('slsk_server_ip', found.first.address);
+        }
+      } catch (e) {
+        final ip = prefs.getString('slsk_server_ip') ?? '208.76.170.59';
+        DebugLog.add('soulseek', 'name lookup failed ($e), using the saved address $ip');
+        target = InternetAddress(ip);
+      }
       final s = await Socket.connect(
-        _host,
+        target,
         _port,
         timeout: const Duration(seconds: 15),
       );
@@ -160,7 +176,7 @@ class SoulseekClient extends ChangeNotifier {
       s.setOption(SocketOption.tcpNoDelay, true);
       s.listen(
         _onServerData,
-        onError: (Object e) => _serverLost('Connection lost'),
+        onError: (Object e) => _serverLost('Connection lost ($e)'),
         onDone: () => _serverLost('Disconnected from the Soulseek server'),
         cancelOnError: true,
       );
