@@ -314,6 +314,89 @@ class WishListController extends ChangeNotifier {
     return out;
   }
 
+  /// Public SoundCloud playlist or track link. The page carries its first
+  /// tracks in its own data; SoundCloud shows the rest only to signed-in apps.
+  Future<bool> importSoundCloud(String link) async {
+    final l = link.trim();
+    if (!l.contains('soundcloud.com')) {
+      message = 'Paste a SoundCloud link (a playlist or a track).';
+      notifyListeners();
+      return false;
+    }
+    busy = true;
+    message = null;
+    notifyListeners();
+    try {
+      final res = await http.get(Uri.parse(l), headers: const {
+        'User-Agent':
+            'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36',
+        'Accept-Language': 'en-GB,en;q=0.9',
+      }).timeout(const Duration(seconds: 25));
+      final m = RegExp(r'window\.__sc_hydration\s*=\s*(\[.*?\]);\s*</script>', dotAll: true)
+          .firstMatch(res.body);
+      final items = <WishItem>[];
+      var total = 0;
+      String name = '';
+      if (m != null) {
+        final seen = <String>{};
+        void add1(Map t) {
+          final title = t['title'];
+          if (title is! String || title.trim().isEmpty) return;
+          var artist = '';
+          final pm = t['publisher_metadata'];
+          if (pm is Map && pm['artist'] is String) artist = pm['artist'] as String;
+          final u = t['user'];
+          if (artist.isEmpty && u is Map && u['username'] is String) artist = u['username'] as String;
+          var tt = title.trim();
+          // "Artist - Title" uploads: split them so the search is cleaner.
+          final dash = tt.indexOf(' - ');
+          if (dash > 0 && dash < 60) {
+            artist = tt.substring(0, dash).trim();
+            tt = tt.substring(dash + 3).trim();
+          }
+          if (seen.add('${artist.toLowerCase()}|${tt.toLowerCase()}')) items.add(WishItem(artist, tt));
+        }
+        for (final h in jsonDecode(m.group(1)!) as List) {
+          if (h is! Map) continue;
+          final d = h['data'];
+          if (d is! Map) continue;
+          if (h['hydratable'] == 'playlist') {
+            name = (d['title'] as String?) ?? '';
+            final tr = d['tracks'];
+            if (tr is List) {
+              total = (d['track_count'] as num?)?.toInt() ?? tr.length;
+              for (final t in tr) {
+                if (t is Map) add1(t);
+              }
+            }
+          } else if (h['hydratable'] == 'sound') {
+            total = 1;
+            add1(d);
+          }
+        }
+      }
+      if (items.isEmpty) {
+        message = 'Could not read songs from that SoundCloud link (it may be private).';
+        DebugLog.add('wishlist', 'soundcloud import found nothing: HTTP ${res.statusCode}, ${res.body.length} bytes');
+        return false;
+      }
+      if (name.isEmpty) name = 'SoundCloud list';
+      add(name, 'SoundCloud', items);
+      if (total > items.length) {
+        message = 'Read ${items.length} of $total tracks: SoundCloud only shares the first few without signing in.';
+      }
+      DebugLog.add('wishlist', 'imported ${items.length}/$total songs from SoundCloud: $name');
+      return true;
+    } catch (e) {
+      message = 'Could not reach that link.';
+      DebugLog.add('wishlist', 'soundcloud import failed: $e');
+      return false;
+    } finally {
+      busy = false;
+      notifyListeners();
+    }
+  }
+
   /// Public Deezer playlist link. Deezer shares playlist details without a key.
   Future<bool> importDeezer(String link) async {
     final m = RegExp(r'playlist/(\d+)').firstMatch(link);

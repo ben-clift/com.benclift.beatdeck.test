@@ -15,6 +15,7 @@ import 'package:sidedeck/state/screen_brightness.dart';
 import 'package:sidedeck/suggest/auto_fetch.dart';
 import 'package:sidedeck/suggest/genres.dart';
 import 'package:sidedeck/suggest/suggest_service.dart';
+import 'package:sidedeck/wishlist/wishlist.dart';
 import 'package:sidedeck/theme/sidedeck_theme.dart';
 
 class _Vibe {
@@ -60,7 +61,9 @@ class SimpleView extends StatefulWidget {
   State<SimpleView> createState() => _SimpleViewState();
 }
 
-class _SimpleViewState extends State<SimpleView> {
+class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
+  String? _awaiting; // 'soundcloud' or 'spotify': waiting for a copied link
+  bool _importing = false;
   final Set<int> _picked = {0};
   bool _starting = false;
   final _artist = TextEditingController();
@@ -74,14 +77,133 @@ class _SimpleViewState extends State<SimpleView> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _restore();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _artist.dispose();
     _track.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && _awaiting != null) _offerClipboard();
+  }
+
+  bool _isLink(String t, String kind) =>
+      kind == 'soundcloud' ? t.contains('soundcloud.com') : (t.contains('spotify.com') || t.startsWith('spotify:'));
+
+  /// Back from SoundCloud or Spotify: if they copied a playlist link, offer it.
+  Future<void> _offerClipboard() async {
+    final kind = _awaiting;
+    if (kind == null || _importing) return;
+    String text = '';
+    try {
+      text = (await Clipboard.getData(Clipboard.kTextPlain))?.text?.trim() ?? '';
+    } catch (_) {}
+    final link = RegExp(r'(https?://\S+|spotify:\S+)').firstMatch(text)?.group(0) ?? '';
+    if (link.isEmpty || !_isLink(link, kind) || !mounted) return;
+    _awaiting = null;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Import this playlist?'),
+        content: Text(link, maxLines: 3, overflow: TextOverflow.ellipsis),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('No')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Import')),
+        ],
+      ),
+    );
+    if (ok == true) await _importLink(kind, link);
+  }
+
+  Future<void> _importLink(String kind, String link) async {
+    if (_importing) return;
+    setState(() => _importing = true);
+    try {
+      final ctl = WishListController();
+      await Future<void>.delayed(const Duration(milliseconds: 300)); // let saved lists load first
+      final good = kind == 'soundcloud' ? await ctl.importSoundCloud(link) : await ctl.importLink(link);
+      if (!good || ctl.lists.isEmpty) {
+        _toast(ctl.message ?? 'Could not import that link.');
+        return;
+      }
+      final l = ctl.lists.first;
+      final tracks = [for (final i in l.items) Suggestion(i.artist, i.title, 0, 'Your playlist')];
+      AutoFetch.instance.enqueueTracks(tracks, widget.library);
+      SlskKeeper.instance.setEnabled(true);
+      await SlskSetup.setAutoFetchForAutomix(true);
+      _toast('Imported ${tracks.length} tracks from "${l.name}". Finding them now.${ctl.message != null ? ' ${ctl.message}' : ''}');
+    } catch (e) {
+      DebugLog.add('simple', 'import failed: $e');
+      _toast('Could not import that link.');
+    } finally {
+      if (mounted) setState(() => _importing = false);
+    }
+  }
+
+  Future<void> _openAndWait(String kind) async {
+    final url = kind == 'soundcloud' ? 'https://soundcloud.com/' : 'https://open.spotify.com/';
+    var ok = false;
+    try {
+      ok = (await const MethodChannel('sidedeck/audio').invokeMethod<bool>('openUrl', {'url': url})) ?? false;
+    } catch (_) {}
+    if (!ok) {
+      _toast('Could not open it.');
+      return;
+    }
+    _awaiting = kind;
+    _toast('Open a playlist, tap Share, then Copy link, and come back here.');
+  }
+
+  Future<void> _pasteDialog() async {
+    final c = TextEditingController();
+    final link = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Paste a playlist link'),
+        content: TextField(controller: c, autofocus: true, decoration: const InputDecoration(hintText: 'SoundCloud or Spotify link')),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, c.text.trim()), child: const Text('Import')),
+        ],
+      ),
+    );
+    if (link == null || link.isEmpty) return;
+    await _importLink(link.contains('soundcloud.com') ? 'soundcloud' : 'spotify', link);
+  }
+
+  Widget _importBox() {
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      const Text('Import a playlist', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+      const SizedBox(height: 4),
+      const Text('Open it, tap Share, Copy link, then come back. We find every track.',
+          style: TextStyle(fontSize: 12, color: Color(0xFF8A857C))),
+      const SizedBox(height: 8),
+      Row(children: [
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: _importing ? null : () => _openAndWait('soundcloud'),
+            icon: const Icon(Icons.cloud),
+            label: const Text('SoundCloud'),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: _importing ? null : () => _openAndWait('spotify'),
+            icon: const Icon(Icons.library_music),
+            label: const Text('Spotify'),
+          ),
+        ),
+      ]),
+      TextButton(onPressed: _importing ? null : _pasteDialog, child: Text(_importing ? 'Importing…' : 'Paste a link instead')),
+    ]);
   }
 
   bool get _hasRequest => _artist.text.trim().isNotEmpty || _track.text.trim().isNotEmpty;
@@ -405,6 +527,8 @@ class _SimpleViewState extends State<SimpleView> {
         ),
         const SizedBox(height: 8),
         _requestBox(running: false),
+        const SizedBox(height: 16),
+        _importBox(),
         const SizedBox(height: 20),
         SizedBox(
           height: 64,
@@ -485,6 +609,8 @@ class _SimpleViewState extends State<SimpleView> {
               style: const TextStyle(fontSize: 12, color: Color(0xFF8A857C))),
         const SizedBox(height: 12),
         _requestBox(running: true),
+        const SizedBox(height: 16),
+        _importBox(),
         const SizedBox(height: 20),
         Row(children: [
           Expanded(
