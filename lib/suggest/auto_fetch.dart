@@ -49,6 +49,9 @@ class AutoFetch extends ChangeNotifier {
   /// How hard the tracks should hit: 0 any, 1 medium, 2 high, 3 peak.
   int intensity = 0;
 
+  /// 0 any, 1 vocals, 2 instrumental (judged from artist, title and file names).
+  int vocal = 0;
+
   /// Use the tempo range below for every search, whatever genre is playing.
   bool tempoPinned = false;
 
@@ -247,6 +250,7 @@ class AutoFetch extends ChangeNotifier {
                 !tried.contains(c.query.toLowerCase()) &&
                 !_inLibrary(library, c) &&
                 _yearOk(c) &&
+                !vocalClash('${c.artist} ${c.title}', vocal) &&
                 (c.bpm == 0 || bpm <= 0 || bpmGapPercent(bpm, c.bpm).abs() <= tempoRange))
             .toList()
           ..sort((a, b) {
@@ -388,7 +392,7 @@ class AutoFetch extends ChangeNotifier {
         _say('Getting $label');
         final found = await more(tried);
         final queue = found
-            .where((c) => !_inLibrary(library, c) && (!useYears || _yearOk(c)))
+            .where((c) => !_inLibrary(library, c) && (!useYears || _yearOk(c)) && (_manualRun || !vocalClash('${c.artist} ${c.title}', vocal)))
             .toList();
         for (final f in found) {
           tried.add(f.query.toLowerCase());
@@ -1190,7 +1194,7 @@ class AutoFetch extends ChangeNotifier {
       while (!_stop && (endless || fetched < limit)) {
         _say('Looking for $genre at ${bpmMin.round()}-${bpmMax.round()} BPM');
         final found = await _service.byGenre(genre, bpmMin, bpmMax, skip: tried);
-        final queue = found.where((c) => !_inLibrary(library, c) && _yearOk(c)).toList();
+        final queue = found.where((c) => !_inLibrary(library, c) && _yearOk(c) && !vocalClash('${c.artist} ${c.title}', vocal)).toList();
         if (queue.isEmpty) {
           if (++empties >= 3) {
             _say('Could not find more $genre in that tempo range');

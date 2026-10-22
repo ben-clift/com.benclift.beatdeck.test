@@ -95,6 +95,8 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
   final _artist = TextEditingController();
   final _track = TextEditingController();
   double _intensity = 0;
+  int _vocal = 0; // 0 any, 1 vocals, 2 instrumental
+  final Set<String> _subOff = {}; // sub-genres switched off
   int _decade = 0; // 0 = any year, else the first year of the decade
   bool _bpmAny = true;
   RangeValues _bpm = const RangeValues(120, 130);
@@ -736,6 +738,8 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
   Future<void> _restore() async {
     try {
       final p = await SharedPreferences.getInstance();
+      _vocal = p.getInt('simple_vocal') ?? 0;
+      _subOff.addAll(p.getStringList('simple_suboff') ?? const []);
       final s = p.getStringList('simple_vibes');
       if (s != null && s.isNotEmpty) {
         _picked
@@ -780,8 +784,18 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     });
     try {
       final vibes = [for (final i in _picked) _vibes[i]];
-      final genres = [for (final v in vibes) ...v.genres];
       final af = AutoFetch.instance;
+      final genres = <String>[];
+      for (final v in vibes) {
+        final on = v.genres.where((g) => !_subOff.contains(g)).toList();
+        genres.addAll(on.isEmpty ? v.genres : on);
+      }
+      af.vocal = _vocal;
+      widget.dj.vocalMode = () => AutoFetch.instance.vocal;
+      SharedPreferences.getInstance().then((p) {
+        p.setInt('simple_vocal', _vocal);
+        p.setStringList('simple_suboff', _subOff.toList());
+      }).catchError((_) {});
       af.genres = genres;
       af.genre = genres.first;
       af.pinned = true;
@@ -1316,6 +1330,36 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
               ),
           ],
         ),
+        for (final i in _picked)
+          if (_vibes[i].genres.length > 1)
+            Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: Wrap(spacing: 8, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                Text('${_vibes[i].label}:', style: const TextStyle(color: Color(0xFFB8B3AA))),
+                for (final g in _vibes[i].genres)
+                  FilterChip(
+                    visualDensity: VisualDensity.compact,
+                    label: Text(g),
+                    selected: !_subOff.contains(g),
+                    onSelected: _starting ? null : (v) => setState(() => v ? _subOff.remove(g) : _subOff.add(g)),
+                  ),
+              ]),
+            ),
+        const SizedBox(height: 16),
+        Row(children: [
+          const Text('Vocals', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+          const Spacer(),
+          SegmentedButton<int>(
+            showSelectedIcon: false,
+            segments: const [
+              ButtonSegment(value: 0, label: Text('Any')),
+              ButtonSegment(value: 1, label: Text('Vocal')),
+              ButtonSegment(value: 2, label: Text('Instrumental')),
+            ],
+            selected: {_vocal},
+            onSelectionChanged: _starting ? null : (v) => setState(() => _vocal = v.first),
+          ),
+        ]),
         const SizedBox(height: 20),
         Row(children: [
           const Text('Speed (BPM)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),

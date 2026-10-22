@@ -759,7 +759,17 @@ class DjController extends ChangeNotifier {
   bool get _kindStrict => !(allowBothKinds?.call() ?? false);
 
   /// False for a track of the other kind. Unknown or pop-like genres pass.
+  /// 0 any, 1 vocals, 2 instrumental.
+  int Function()? vocalMode;
+
   bool _kindOk(String path) {
+    final vm = vocalMode?.call() ?? 0;
+    if (vm != 0 &&
+        !_userOk.contains(path) &&
+        !(requestedPath?.call(path) ?? false) &&
+        vocalClash(path.split(RegExp(r'[\\/]')).last, vm)) {
+      return false;
+    }
     if (!_kindStrict) return true;
     final fam = genreFamily(genreOf?.call(path) ?? '');
     if (fam == null) {

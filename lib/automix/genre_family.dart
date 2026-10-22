@@ -68,3 +68,15 @@ bool genresSimilar(String a, String b) {
   if (fa == null || fb == null) return true;
   return fa == fb || (_near[fa]?.contains(fb) ?? false);
 }
+
+
+final _vocalWords = RegExp(r'\b(feat|ft|featuring|vocal|vocals|vox|acapella|a cappella|sung|singer)\b', caseSensitive: false);
+final _instWords = RegExp(r'\b(instrumental|inst|karaoke|dub mix|beats?)\b', caseSensitive: false);
+
+/// True when [name] (artist and title, or a file name) clashes with the
+/// vocal choice: 1 = wants vocals, 2 = wants instrumentals, 0 = either.
+bool vocalClash(String name, int mode) {
+  if (mode == 2) return _vocalWords.hasMatch(name);
+  if (mode == 1) return _instWords.hasMatch(name);
+  return false;
+}

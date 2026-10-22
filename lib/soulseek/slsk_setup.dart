@@ -175,6 +175,7 @@ class SlskSetup {
     };
     dj?.yearOf = lib.yearOf;
     dj?.allowBothKinds = () => AutoFetch.instance.mixKinds;
+    dj?.vocalMode = () => AutoFetch.instance.vocal;
     dj?.rejectUnknownKind = () => AppMode.simple.value;
     dj?.requestedPath = (path) =>
         AutoFetch.instance.isRequested(path) || (lib.folderPath != null && lib.folderPath!.isNotEmpty && path.startsWith(lib.folderPath!));
