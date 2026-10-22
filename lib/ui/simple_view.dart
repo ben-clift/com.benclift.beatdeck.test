@@ -107,6 +107,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     _restore();
     Starred.instance.load();
+    StyleSettings.instance.load();
     _loadIntro();
     _keepAhead = Timer.periodic(const Duration(seconds: 8), (_) {
       _refill();
@@ -114,19 +115,30 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     });
   }
 
+  Future<void> _loadStyle() => StyleSettings.instance.load();
   DateTime _lastStyle = DateTime.fromMillisecondsSinceEpoch(0);
 
   /// When there is nothing else to play next, play music in the style of the
   /// starred tracks: first from the library, else related artists from Deezer.
-  Future<void> _styleFallback() async {
+  Future<void> _styleFallback({bool force = false}) async {
     final dj = widget.dj;
     final stars = Starred.instance.items;
+    final st = StyleSettings.instance;
     if (!mounted || !dj.automixOn || stars.isEmpty) return;
-    if (dj.automixUpcoming.isNotEmpty) return;
+    if (!force && st.mode == 0) return; // off
     final d = dj.deck(dj.automixPlayingDeck.clamp(0, 1));
-    final left = d.duration - d.position;
-    if (d.duration <= 0 || left > 60) return; // only when the end is near and nothing is waiting
-    if (DateTime.now().difference(_lastStyle).inSeconds < 40) return;
+    if (!force) {
+      if (st.mode == 1) {
+        // only when nothing else is waiting and the end is near
+        if (dj.automixUpcoming.isNotEmpty) return;
+        if (d.duration <= 0 || d.duration - d.position > 60) return;
+        if (DateTime.now().difference(_lastStyle).inSeconds < 40) return;
+      } else {
+        // mixed in regularly: at most one every few minutes
+        if (dj.automixUpcoming.length >= _ahead) return;
+        if (DateTime.now().difference(_lastStyle).inMinutes < st.everyMin) return;
+      }
+    }
     _lastStyle = DateTime.now();
     final genres = {for (final t in stars) if (t.genre.isNotEmpty) t.genre.toLowerCase()};
     final artists = {for (final t in stars) t.artist.toLowerCase()};
@@ -136,9 +148,10 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
       for (final t in widget.library.tracks)
         if (!dj.playedRecently(t.path) &&
             File(t.path).existsSync() &&
-            (genres.contains((t.genre.isNotEmpty ? t.genre : (dj.genreOf?.call(t.path) ?? '')).toLowerCase()) ||
+            (!st.matchGenre ||
+                genres.contains((t.genre.isNotEmpty ? t.genre : (dj.genreOf?.call(t.path) ?? '')).toLowerCase()) ||
                 artists.contains(t.artist.toLowerCase())) &&
-            (mid == 0 || t.bpm == null || t.bpm! <= 0 || (t.bpm! - mid).abs() <= mid * 0.12))
+            (mid == 0 || t.bpm == null || t.bpm! <= 0 || (t.bpm! - mid).abs() <= mid * st.bpmTol / 100))
           t,
     ]..shuffle();
     if (local.isNotEmpty) {
@@ -147,10 +160,20 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
       dj.automixAppend(local.first.path);
       return;
     }
-    if (!soulseek.online || AutoFetch.instance.running) return;
+    if (!st.download || !soulseek.online || AutoFetch.instance.running) return;
     final seed = stars[math.Random().nextInt(stars.length)];
-    DebugLog.add('simple', 'nothing waiting: looking for artists like ${seed.artist}');
-    final found = await SuggestService().relatedTracks(seed.artist);
+    DebugLog.add('simple', 'looking for artists like ${seed.artist} (adventure ${st.adventure})');
+    var found = await SuggestService().relatedTracks(seed.artist);
+    // Adventurous: go one step further out, to artists related to those.
+    if (st.adventure >= 2 && found.isNotEmpty) {
+      final hop = found[math.Random().nextInt(found.length)].artist;
+      final more = await SuggestService().relatedTracks(hop);
+      if (more.isNotEmpty) found = more;
+    }
+    if (st.adventure == 0) {
+      // Close to home: the starred artists' own other tracks come first.
+      found = [...found.where((t) => artists.contains(t.artist.toLowerCase())), ...found];
+    }
     if (found.isEmpty || !mounted) return;
     AutoFetch.instance.enqueueTracks(found.take(3).toList(), widget.library);
   }
@@ -1516,6 +1539,7 @@ Container(
           }),
           _action(Icons.search, 'Request', () => _sheet('Request a track', _requestBox(running: true))),
           _action(Icons.playlist_add, 'Import', () => _sheet('Import a playlist', _importBox())),
+          _action(Icons.auto_awesome, 'My style', () => _sheet('My style', _StyleBox(onPlayNow: () => _styleFallback(force: true)))),
           _action(Icons.tune, 'Mixing', () => _sheet('Mixing', _MixBox(dj: widget.dj))),
           _action(Icons.fast_forward, 'Jump ahead', _cut),
           _action(Icons.stop_circle_outlined, 'End set', _stop),
@@ -1979,4 +2003,118 @@ class _MixPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_MixPainter o) => o.fade != fade || o.offset != offset;
+}
+
+
+/// Settings for music chosen in the style of the starred tracks.
+class StyleSettings {
+  StyleSettings._();
+  static final StyleSettings instance = StyleSettings._();
+  int mode = 1; // 0 off, 1 only when nothing else is waiting, 2 mixed in regularly
+  int everyMin = 6; // for mode 2: at most one every N minutes
+  int adventure = 1; // 0 close to my stars, 1 similar artists, 2 further out
+  double bpmTol = 12; // % either side of the starred tempo for library picks
+  bool matchGenre = true;
+  bool download = true; // may fetch new tracks (else library only)
+  bool _loaded = false;
+
+  Future<void> load() async {
+    if (_loaded) return;
+    try {
+      final p = await SharedPreferences.getInstance();
+      mode = p.getInt('style_mode') ?? 1;
+      everyMin = p.getInt('style_every') ?? 6;
+      adventure = p.getInt('style_adv') ?? 1;
+      bpmTol = p.getDouble('style_bpm') ?? 12;
+      matchGenre = p.getBool('style_genre') ?? true;
+      download = p.getBool('style_dl') ?? true;
+      _loaded = true;
+    } catch (_) {}
+  }
+
+  Future<void> save() async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      await p.setInt('style_mode', mode);
+      await p.setInt('style_every', everyMin);
+      await p.setInt('style_adv', adventure);
+      await p.setDouble('style_bpm', bpmTol);
+      await p.setBool('style_genre', matchGenre);
+      await p.setBool('style_dl', download);
+    } catch (_) {}
+  }
+}
+
+class _StyleBox extends StatefulWidget {
+  const _StyleBox({required this.onPlayNow});
+  final VoidCallback onPlayNow;
+  @override
+  State<_StyleBox> createState() => _StyleBoxState();
+}
+
+class _StyleBoxState extends State<_StyleBox> {
+  final st = StyleSettings.instance;
+  @override
+  void initState() {
+    super.initState();
+    st.load().then((_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  void _chg(VoidCallback f) {
+    setState(f);
+    st.save();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final n = Starred.instance.items.length;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Text(n == 0
+          ? 'Star some tracks first. This uses their genre, tempo and artists.'
+          : 'Music chosen from the style of your $n starred track${n == 1 ? '' : 's'}.',
+          style: const TextStyle(color: Color(0xFF8A857C))),
+      const SizedBox(height: 10),
+      const Text('When to use it', style: TextStyle(fontWeight: FontWeight.w700)),
+      Wrap(spacing: 8, children: [
+        for (final e in const [(0, 'Off'), (1, 'When nothing else is waiting'), (2, 'Mixed in regularly')])
+          ChoiceChip(label: Text(e.$2), selected: st.mode == e.$1, onSelected: (_) => _chg(() => st.mode = e.$1)),
+      ]),
+      if (st.mode == 2) ...[
+        Text('About one every ${st.everyMin} min', style: const TextStyle(fontWeight: FontWeight.w700)),
+        Slider(value: st.everyMin.toDouble(), min: 2, max: 20, divisions: 18, onChanged: (v) => _chg(() => st.everyMin = v.round())),
+      ],
+      const SizedBox(height: 4),
+      Text('Adventure: ${const ['close to my stars', 'similar artists', 'further out'][st.adventure]}',
+          style: const TextStyle(fontWeight: FontWeight.w700)),
+      Slider(value: st.adventure.toDouble(), min: 0, max: 2, divisions: 2, onChanged: (v) => _chg(() => st.adventure = v.round())),
+      Text('Tempo: within ${st.bpmTol.round()}% of my starred tracks', style: const TextStyle(fontWeight: FontWeight.w700)),
+      Slider(value: st.bpmTol, min: 3, max: 30, divisions: 27, onChanged: (v) => _chg(() => st.bpmTol = v)),
+      SwitchListTile(
+        contentPadding: EdgeInsets.zero,
+        title: const Text('Match genre'),
+        value: st.matchGenre,
+        onChanged: (v) => _chg(() => st.matchGenre = v),
+      ),
+      SwitchListTile(
+        contentPadding: EdgeInsets.zero,
+        title: const Text('Download new tracks'),
+        subtitle: const Text('Off = only use music already on the phone'),
+        value: st.download,
+        onChanged: (v) => _chg(() => st.download = v),
+      ),
+      const SizedBox(height: 4),
+      FilledButton.icon(
+        onPressed: n == 0
+            ? null
+            : () {
+                Navigator.pop(context);
+                widget.onPlayNow();
+              },
+        icon: const Icon(Icons.auto_awesome),
+        label: const Text('Play something in my style now'),
+      ),
+    ]);
+  }
 }
