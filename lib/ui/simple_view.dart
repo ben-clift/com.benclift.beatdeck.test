@@ -15,6 +15,7 @@ import 'package:sidedeck/state/library_controller.dart';
 import 'package:sidedeck/state/screen_brightness.dart';
 import 'package:sidedeck/suggest/auto_fetch.dart';
 import 'package:sidedeck/suggest/genres.dart';
+import 'package:sidedeck/suggest/shazam_watcher.dart';
 import 'package:sidedeck/suggest/suggest_service.dart';
 import 'package:sidedeck/ui/screenshot_import.dart';
 import 'package:sidedeck/wishlist/wishlist.dart';
@@ -524,6 +525,39 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     _toast('Looking for ${[a, t].where((x) => x.isNotEmpty).join(' - ')}. It plays next when it arrives.');
   }
 
+  /// Shazam names a song playing around you; BeatDeck reads the result from
+  /// Shazam's notification and fetches the track (and more like it).
+  Future<void> _shazam() async {
+    final ok = await ShazamWatcher.instance.accessGranted();
+    if (!ok) {
+      if (!mounted) return;
+      final go = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Allow Shazam link'),
+          content: const Text(
+              'BeatDeck needs "notification access" to see which song Shazam found. '
+              'On the next screen, switch on BeatDeck Shazam, then come back.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Not now')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Open settings')),
+          ],
+        ),
+      );
+      if (go == true) await ShazamWatcher.instance.openAccessSettings();
+      return;
+    }
+    await ShazamWatcher.instance.setOn(true);
+    widget.dj.armPlayNext();
+    var opened = false;
+    try {
+      opened = (await const MethodChannel('sidedeck/audio').invokeMethod<bool>('openAppByName', {'name': 'Shazam'})) ?? false;
+    } catch (_) {}
+    _toast(opened
+        ? 'Tap Shazam to listen. When it names the song, come back: it is fetched and plays next.'
+        : 'Shazam is not installed. Install it from the Play Store, then try again.');
+  }
+
   Future<void> _soundCloud() async {
     final q = Uri.encodeQueryComponent([_artist.text.trim(), _track.text.trim()].where((x) => x.isNotEmpty).join(' '));
     final url = q.isEmpty ? 'https://soundcloud.com/discover' : 'https://soundcloud.com/search?q=$q';
@@ -565,6 +599,14 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
             onPressed: _soundCloud,
             icon: const Icon(Icons.cloud),
             label: const Text('SoundCloud'),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: _shazam,
+            icon: const Icon(Icons.hearing),
+            label: const Text('Shazam'),
           ),
         ),
       ]),
