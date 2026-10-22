@@ -1011,6 +1011,37 @@ class DjController extends ChangeNotifier {
     return (bpmGapPercent(cur.bpm, c.bpm).abs() / 4).floor();
   }
 
+  /// The playing track is about to end (or has ended) and the usual picks all
+  /// said no: take any track that is ready and unplayed, whatever its tempo or
+  /// genre, so the music does not stop while a track is waiting. Only the hard
+  /// rules stay: deleted/disliked/failed files, and bands versus electronic.
+  int? _pickAnyReady() {
+    final curPath = _automixIndex >= 0 && _automixIndex < _automixQueue.length ? _automixQueue[_automixIndex] : null;
+    final cur = curPath == null ? null : _flowOf(curPath);
+    int? best;
+    var bestScore = -1e9;
+    for (var i = _automixIndex + 1; i < _automixQueue.length; i++) {
+      final path = _automixQueue[i];
+      if (_wasPlayed(path) || failedPaths.contains(path) || Dislikes.instance.hasPath(path)) continue;
+      if (!File(path).existsSync() || !_kindOk(path)) continue;
+      if (!Avoids.instance.isEmpty && _avoided(path)) continue;
+      final c = _flowOf(path);
+      var score = 0.0;
+      if (cur != null && c != null && cur.bpm > 0 && c.bpm > 0) score -= bpmGapPercent(cur.bpm, c.bpm).abs();
+      if (score > bestScore) {
+        bestScore = score;
+        best = i;
+      }
+    }
+    if (best != null) {
+      _upNext = _automixQueue[best];
+      _automixPreloaded = false;
+      _forceAnyTempo = true;
+      DebugLog.add('automix', 'nothing fits well, but a track is ready: playing it so the music does not stop (${_automixQueue[best].split(RegExp(r'[\\/]')).last})');
+    }
+    return best;
+  }
+
   int? _replayPick() {
     while (_replayPool.isNotEmpty) {
       // Oldest-heard first, so the same few tracks never ping-pong. Tempo only
@@ -1829,6 +1860,7 @@ class DjController extends ChangeNotifier {
     var next = _nextUnplayed(tier: tier);
     // Never silent: with the end near and nothing new yet, replay the track
     // played longest ago (never a deleted one) while the helper keeps looking.
+    if (next == null && remaining <= f + 25) next = _pickAnyReady();
     if (next == null && remaining <= f + 25 && _replayPick() != null) {
       next = _nextUnplayed(tier: 2);
     }
@@ -2169,8 +2201,9 @@ class DjController extends ChangeNotifier {
       notifyListeners();
       return true;
     }
-    final waiting = fetchBusy?.call() ?? false;
-    int? picked = _nextUnplayed(tier: 0) ?? (waiting ? null : _nextUnplayed(tier: 2));
+    // The deck has already ended: silence. Do not wait for a better match
+    // while a track is ready; play the best one that is there.
+    int? picked = _nextUnplayed(tier: 0) ?? _nextUnplayed(tier: 2) ?? _pickAnyReady();
     if (picked == null && _replayPick() != null) picked = _nextUnplayed(tier: 2);
     if (picked == null && _lastResortPick() != null) picked = _nextUnplayed(tier: 2);
     if (picked == null) {
