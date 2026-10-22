@@ -162,7 +162,7 @@ class _SimpleViewState extends State<SimpleView> {
         if (!mounted || run != _run) return;
       }
       await dj.startAutomix(paths(), fadeSeconds: 24, startOffsetSeconds: 10);
-      if (!dj.automixOn) setState(() => _note = dj.automixStatus);
+      if (!dj.automixOn) setState(() => _note = dj.automixStatus ?? '');
     } catch (e) {
       DebugLog.add('simple', 'start failed: $e');
       if (mounted) setState(() => _note = 'Something went wrong. Try again.');
@@ -297,7 +297,7 @@ class _SimpleViewState extends State<SimpleView> {
   Widget _playing(DjController dj) {
     final d = dj.deck(dj.automixPlayingDeck.clamp(0, 1));
     final af = AutoFetch.instance;
-    final status = af.running && af.status.isNotEmpty ? af.status : dj.automixStatus;
+    final status = af.running && af.status.isNotEmpty ? af.status : (dj.automixStatus ?? '');
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
