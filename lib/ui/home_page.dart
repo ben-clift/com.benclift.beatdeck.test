@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sidedeck/state/screen_brightness.dart';
 import 'package:sidedeck/state/app_mode.dart';
+import 'package:sidedeck/state/expiry.dart';
 import 'package:sidedeck/ui/simple_view.dart';
 import 'package:sidedeck/state/avoids.dart';
 import 'package:sidedeck/debug/debug_log.dart';
@@ -72,12 +73,23 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     AppMode.load();
     Ratings.instance.load();
     _dj.addListener(_onDjChanged);
+    _checkExpiry();
+  }
+
+  bool _expired = false;
+
+  Future<void> _checkExpiry() async {
+    final e = await Expiry.expired();
+    if (!mounted || e == _expired) return;
+    if (e) _dj.stopAutomix();
+    setState(() => _expired = e);
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // Coming back from Seeker: pick up files it just downloaded.
     if (state == AppLifecycleState.resumed) {
+      _checkExpiry();
       _library.refresh();
     }
   }
@@ -189,6 +201,31 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    if (_expired) {
+      final d = Expiry.expiresAt;
+      return Scaffold(
+        backgroundColor: const Color(0xFF121212),
+        body: SafeArea(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                const Icon(Icons.timer_off, size: 64),
+                const SizedBox(height: 16),
+                const Text('This test version has expired',
+                    textAlign: TextAlign.center, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 12),
+                Text(
+                  'It stopped working${d == null ? '' : ' on ${d.day}/${d.month}/${d.year}'}. Ask Ben for a new one.',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Color(0xFFB3B3B3)),
+                ),
+              ]),
+            ),
+          ),
+        ),
+      );
+    }
     return ValueListenableBuilder<bool>(
       valueListenable: AppMode.simple,
       builder: (context, simple, _) =>

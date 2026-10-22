@@ -11,6 +11,7 @@ import 'package:sidedeck/soulseek/slsk_setup.dart';
 import 'package:sidedeck/soulseek/soulseek_client.dart';
 import 'package:sidedeck/state/app_mode.dart';
 import 'package:sidedeck/state/dj_controller.dart';
+import 'package:sidedeck/state/expiry.dart';
 import 'package:sidedeck/state/library_controller.dart';
 import 'package:sidedeck/state/screen_brightness.dart';
 import 'package:sidedeck/state/starred.dart';
@@ -998,9 +999,17 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                         if (v == 'log') _copyLog();
                         if (v == 'pro') AppMode.set(false);
                       },
-                      itemBuilder: (_) => const [
-                        PopupMenuItem(value: 'log', child: Text('Report a problem (copy log)')),
-                        PopupMenuItem(value: 'pro', child: Text('Switch to Pro mode')),
+                      itemBuilder: (_) => [
+                        if (Expiry.expiresAt != null)
+                          PopupMenuItem(
+                            enabled: false,
+                            child: FutureBuilder<String?>(
+                              future: Expiry.remaining(),
+                              builder: (_, snap) => Text('Test version: ${snap.data ?? '…'}'),
+                            ),
+                          ),
+                        const PopupMenuItem(value: 'log', child: Text('Report a problem (copy log)')),
+                        const PopupMenuItem(value: 'pro', child: Text('Switch to Pro mode')),
                       ],
                     ),
                   ]),
