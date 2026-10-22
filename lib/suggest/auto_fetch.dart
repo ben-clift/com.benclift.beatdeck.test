@@ -764,6 +764,8 @@ class AutoFetch extends ChangeNotifier {
   // when the file itself carries no genre tag.
   final Map<String, String> _genreHint = {};
   bool wasFetched(String path) => _fetched.contains(path);
+  final Set<String> _requested = {};
+  bool isRequested(String path) => _requested.contains(path);
   String hintFor(String path) => _genreHint[path] ?? '';
 
 
@@ -1003,6 +1005,7 @@ class AutoFetch extends ChangeNotifier {
       while (!_stop && winner == null) {
         for (final f in [...flights]) {
           if (f.dl.state == DlState.done && f.dl.savedPath != null) {
+            if (_manualRun) _requested.add(f.dl.savedPath!);
             const generic = {'Hardwax', 'RA', 'You like', 'Bandcamp', 'Discogs'};
             if (f.s.reason.isNotEmpty &&
                 !generic.contains(f.s.reason) &&

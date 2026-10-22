@@ -5,6 +5,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sidedeck/automix/genre_family.dart';
 import 'package:sidedeck/debug/debug_log.dart';
 import 'package:sidedeck/soulseek/slsk_keeper.dart';
 import 'package:sidedeck/soulseek/slsk_setup.dart';
@@ -945,6 +946,9 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     if (!widget.dj.automixCut()) _toast('No next track is ready yet. Try Skip in a moment.');
   }
 
+  bool _unknownKind(DjController dj, String path) =>
+      genreFamily(dj.genreOf?.call(path) ?? '') == null && !(AutoFetch.instance.isRequested(path));
+
   void _skip() {
     final dj = widget.dj;
     final msg = dj.automixSkip(dj.automixPlayingDeck);
@@ -1245,6 +1249,15 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                 ),
               ),
               Positioned(
+                right: 4,
+                top: 4,
+                child: IconButton(
+                  tooltip: 'Visuals settings',
+                  icon: const Icon(Icons.tune, color: Colors.white70),
+                  onPressed: () => _sheet('Visuals', const _VisualsBox()),
+                ),
+              ),
+              Positioned(
                 left: 12,
                 bottom: 12,
                 child: Wrap(spacing: 8, children: [
@@ -1357,17 +1370,25 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 6),
                 child: i < upcoming.length
-                    ? Row(children: [
-                        const Icon(Icons.check_circle, color: _green, size: 22),
+                    ? InkWell(
+                        onTap: () {
+                          final msg = dj.automixSkip(dj.automixPlayingDeck, prefer: upcoming[i]);
+                          if (msg != null) _toast(msg);
+                        },
+                        child: Row(children: [
+                        Icon(_unknownKind(dj, upcoming[i]) ? Icons.help_outline : Icons.check_circle,
+                            color: _unknownKind(dj, upcoming[i]) ? const Color(0xFFFFC83D) : _green, size: 22),
                         const SizedBox(width: 10),
                         Expanded(
                           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                             Text(_nameOf(upcoming[i]).title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16)),
                             if (_nameOf(upcoming[i]).artist.isNotEmpty)
                               Text(_nameOf(upcoming[i]).artist, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _dim, fontSize: 13)),
+                            if (_unknownKind(dj, upcoming[i]))
+                              const Text('Genre unknown. Tap to play it', style: TextStyle(color: Color(0xFFFFC83D), fontSize: 12)),
                           ]),
                         ),
-                      ])
+                      ]))
                     : Row(children: [
                         const SizedBox(width: 22, height: 22, child: Padding(padding: EdgeInsets.all(3), child: CircularProgressIndicator(strokeWidth: 2))),
                         const SizedBox(width: 10),
@@ -1479,6 +1500,82 @@ class _EqPageState extends State<_EqPage> {
         title: const Text('Equaliser', style: TextStyle(fontSize: 16)),
       ),
       body: EqualiserView(dj: widget.dj),
+    );
+  }
+}
+
+
+/// MilkDrop settings: intensity, change timer and a preset list.
+class _VisualsBox extends StatefulWidget {
+  const _VisualsBox();
+  @override
+  State<_VisualsBox> createState() => _VisualsBoxState();
+}
+
+class _VisualsBoxState extends State<_VisualsBox> {
+  String _q = '';
+
+  @override
+  Widget build(BuildContext context) {
+    final m = MilkdropSettings.instance;
+    return ListenableBuilder(
+      listenable: m,
+      builder: (_, __) {
+        const secs = [0, 10, 20, 30, 60, 120];
+        final shown = m.names.where((n) => n.toLowerCase().contains(_q.toLowerCase())).take(60).toList();
+        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Text('Intensity: ${m.intensity < 0.2 ? 'very calm' : m.intensity < 0.45 ? 'calm' : m.intensity < 0.7 ? 'medium' : m.intensity < 0.9 ? 'high' : 'wild'}',
+              style: const TextStyle(fontWeight: FontWeight.w700)),
+          Slider(value: m.intensity, onChanged: (v) => m.set(i: v)),
+          const SizedBox(height: 4),
+          const Text('Change picture', style: TextStyle(fontWeight: FontWeight.w700)),
+          Wrap(spacing: 8, children: [
+            for (final s in secs)
+              ChoiceChip(
+                label: Text(s == 0 ? 'Never' : s < 60 ? '${s}s' : '${s ~/ 60}m'),
+                selected: m.autoSecs == s,
+                onSelected: (_) => m.set(auto: s),
+              ),
+          ]),
+          const SizedBox(height: 8),
+          Row(children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: m.next,
+                icon: const Icon(Icons.skip_next),
+                label: const Text('Next picture'),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: m.preset == null ? null : () => m.set(shuffle: true),
+                icon: const Icon(Icons.shuffle),
+                label: Text(m.preset == null ? 'Shuffling' : 'Back to shuffle'),
+              ),
+            ),
+          ]),
+          const SizedBox(height: 12),
+          Text(m.preset == null ? 'Pick a preset (or leave it shuffling)' : 'Showing: ${m.preset}',
+              style: const TextStyle(fontWeight: FontWeight.w700)),
+          TextField(
+            decoration: const InputDecoration(hintText: 'Search presets', prefixIcon: Icon(Icons.search)),
+            onChanged: (v) => setState(() => _q = v),
+          ),
+          SizedBox(
+            height: 220,
+            child: ListView(children: [
+              for (final n in shown)
+                ListTile(
+                  dense: true,
+                  title: Text(n, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  trailing: m.preset == n ? const Icon(Icons.check, color: Color(0xFF1DB954)) : null,
+                  onTap: () => m.set(pick: n),
+                ),
+            ]),
+          ),
+        ]);
+      },
     );
   }
 }

@@ -750,13 +750,21 @@ class DjController extends ChangeNotifier {
   /// (so an untagged band track never slips into an electronic set).
   bool Function()? rejectUnknownKind;
 
+  /// True for a track that came from a request, import, screenshot or link.
+  bool Function(String path)? requestedPath;
+
+  /// Unknown-genre tracks the user pressed in the waiting queue.
+  final Set<String> _userOk = {};
+
   bool get _kindStrict => !(allowBothKinds?.call() ?? false);
 
   /// False for a track of the other kind. Unknown or pop-like genres pass.
   bool _kindOk(String path) {
     if (!_kindStrict) return true;
     final fam = genreFamily(genreOf?.call(path) ?? '');
-    if (fam == null) return !(rejectUnknownKind?.call() ?? false);
+    if (fam == null) {
+      return !(rejectUnknownKind?.call() ?? false) || _userOk.contains(path) || (requestedPath?.call(path) ?? false);
+    }
     if (fam == 'pop') return true;
     final bands = bandsMode?.call() ?? false;
     return bands ? fam == 'bands' : fam != 'bands';
@@ -778,7 +786,11 @@ class DjController extends ChangeNotifier {
 
   /// Skip: on the playing deck, mix into the next track now; on the waiting
   /// deck, drop that track and choose another.
-  String? automixSkip(int deckIndex) {
+  String? automixSkip(int deckIndex, {String? prefer}) {
+    if (prefer != null) {
+      _userOk.add(prefer);
+      _rejected.remove(prefer);
+    }
     if (!automixOn || _automixDeck < 0) return 'Automix is not running.';
     if (_automixFading) {
       // Skip during a mix: finish it this instant, the new track takes over.
@@ -796,14 +808,16 @@ class DjController extends ChangeNotifier {
     // what is playing now (key and genre break ties).
     final keep = onPlaying ? _upNext : null;
     String? best;
-    if (keep != null && File(keep).existsSync() && !_rejected.contains(keep)) {
+    if (prefer != null && File(prefer).existsSync()) {
+      best = prefer; // the one you pressed in the queue
+    } else if (keep != null && File(keep).existsSync() && !_rejected.contains(keep)) {
       best = keep; // a track is ready and waiting: that is the one to play
     } else {
       best = _closestTempoPick(heard, exclude: {if (pressed != null) pressed});
     }
     if (best == null) {
       for (final u in automixUpcoming) {
-        if (u != pressed && File(u).existsSync() && !failedPaths.contains(u)) {
+        if (u != pressed && File(u).existsSync() && !failedPaths.contains(u) && _kindOk(u)) {
           best = u;
           break;
         }

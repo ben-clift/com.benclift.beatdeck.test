@@ -22,7 +22,14 @@
     var bp = window.butterchurnPresets.getPresets ? window.butterchurnPresets.getPresets() : window.butterchurnPresets;
     var names = Object.keys(bp);
     var order = names.slice().sort(function () { return Math.random() - 0.5; });
-    var idx = -1, lastSwitch = 0;
+    var idx = -1, lastSwitch = 0, gain = 0.5, autoSecs = 30, held = null;
+    names.sort();
+    window.setGain = function (g) { gain = Math.max(0.05, Math.min(1.6, g)); };
+    window.setAuto = function (s) { autoSecs = s; lastSwitch = performance.now(); };
+    window.loadName = function (n) {
+      if (n && bp[n]) { held = n; viz.loadPreset(bp[n], 1.5); lastSwitch = performance.now(); } else { held = null; }
+    };
+    window.nextPreset = function () { held = null; next(1.5); };
     function next(blend) {
       idx = (idx + 1) % order.length;
       viz.loadPreset(bp[order[idx]], blend);
@@ -48,7 +55,7 @@
       var buf = new Float32Array(N), bufR = new Float32Array(N);
       for (var k = 0; k < nb; k++) {
         sm[k] += (levels[k] - sm[k]) * 0.6;
-        var a = sm[k] * sm[k] * 11;
+        var a = sm[k] * sm[k] * 11 * gain * gain * 2.2;
         if (a < 0.05) continue;
         phase[k] += dt * (2.0 + k);
         for (var j = -1; j <= 1; j++) {
@@ -66,9 +73,9 @@
         var w = Math.max(0, Math.min(255, 128 + bufR[i]));
         tb[i] = v; tl[i] = v; tr[i] = w;
       }
-      if (now - lastSwitch > 22000) next(2.7);
+      if (!held && autoSecs > 0 && now - lastSwitch > autoSecs * 1000) next(2.7);
       viz.render({ audioLevels: { timeByteArray: tb, timeByteArrayL: tl, timeByteArrayR: tr }, elapsedTime: (now - t0) / 1000 });
-      if (firstFrame) { firstFrame = false; say('ok'); }
+      if (firstFrame) { firstFrame = false; say('ok'); say('names:' + JSON.stringify(names)); }
       requestAnimationFrame(frame);
     }
     requestAnimationFrame(frame);
