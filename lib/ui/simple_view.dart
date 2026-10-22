@@ -71,6 +71,7 @@ class SimpleView extends StatefulWidget {
 const _firstTracks = 3;
 
 class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
+  bool _showChooser = false; // on the genre screen while music plays
   bool _introLoaded = false;
   bool _introDone = true;
   final _slUser = TextEditingController();
@@ -696,7 +697,10 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
       await dj.startAutomix(paths(), fadeSeconds: 24, startOffsetSeconds: 10);
       if (!dj.automixOn) {
         setState(() => _note = dj.automixStatus ?? '');
-      } else if (req && hadMusic) {
+      } else if (mounted) {
+        setState(() => _showChooser = false);
+      }
+      if (dj.automixOn && req && hadMusic) {
         dj.armPlayNext();
         af.enqueueTracks([Suggestion(reqArtist, reqTrack, 0, 'your request')], widget.library);
       }
@@ -710,11 +714,16 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
 
   void _stop() {
     _run++;
+    _showChooser = false;
     widget.dj.stopAutomix();
     setState(() {
       _starting = false;
       _note = '';
     });
+  }
+
+  void _cut() {
+    if (!widget.dj.automixCut()) _toast('No next track is ready yet. Try Skip in a moment.');
   }
 
   void _skip() {
@@ -748,6 +757,12 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Row(children: [
+                    if (on && !_showChooser)
+                      IconButton(
+                        tooltip: 'Back',
+                        icon: const Icon(Icons.keyboard_arrow_down, size: 30),
+                        onPressed: () => setState(() => _showChooser = true),
+                      ),
                     const Text('BeatDeck',
                         style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, letterSpacing: 1)),
                     const Spacer(),
@@ -768,7 +783,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                     ),
                   ]),
                   const SizedBox(height: 8),
-                  Expanded(child: !_introLoaded ? const SizedBox.shrink() : (!_introDone ? _intro() : (on ? _playing(dj) : _chooser()))),
+                  Expanded(child: !_introLoaded ? const SizedBox.shrink() : (!_introDone ? _intro() : (on && !_showChooser ? _playing(dj) : _chooser()))),
                 ],
               ),
             ),
@@ -778,9 +793,43 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     );
   }
 
+  /// Small "now playing" bar on the genre screen: tap it to go back.
+  Widget _miniPlayer(DjController dj) {
+    final d = dj.deck(dj.automixPlayingDeck.clamp(0, 1));
+    return Material(
+      color: _panel,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () => setState(() => _showChooser = false),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 8, 6, 8),
+          child: Row(children: [
+            const Icon(Icons.equalizer, color: _green),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('NOW PLAYING', style: TextStyle(fontSize: 10, letterSpacing: 1.2, color: _dim)),
+                Text(d.loaded ? d.title : '…', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700)),
+              ]),
+            ),
+            IconButton(
+              tooltip: dj.automixPaused ? 'Play' : 'Pause',
+              icon: Icon(dj.automixPaused ? Icons.play_arrow : Icons.pause),
+              onPressed: dj.automixPauseToggle,
+            ),
+            const Icon(Icons.keyboard_arrow_up),
+            const SizedBox(width: 4),
+          ]),
+        ),
+      ),
+    );
+  }
+
   Widget _chooser() {
     return ListView(
       children: [
+        if (widget.dj.automixOn) _miniPlayer(widget.dj),
         const SizedBox(height: 12),
         const Text('What do you feel like?',
             style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800)),
@@ -986,6 +1035,13 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
         ),
         const SizedBox(height: 8),
         Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          IconButton(
+            iconSize: 34,
+            tooltip: 'Back to genres',
+            onPressed: () => setState(() => _showChooser = true),
+            icon: const Icon(Icons.arrow_back),
+          ),
+          const SizedBox(width: 16),
           Material(
             color: Colors.white,
             shape: const CircleBorder(),
@@ -1052,10 +1108,10 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
         ),
         const SizedBox(height: 14),
         Row(children: [
-          _action(Icons.skip_next, 'Skip', _skip),
           _action(Icons.search, 'Play next', () => _sheet('Play something next', _requestBox(running: true))),
           _action(Icons.playlist_add, 'Import', () => _sheet('Import a playlist', _importBox())),
-          _action(Icons.stop, 'Stop / Back', _stop),
+          _action(Icons.fast_forward, 'Stop track', _cut),
+          _action(Icons.stop_circle_outlined, 'End set', _stop),
         ]),
       ],
     );

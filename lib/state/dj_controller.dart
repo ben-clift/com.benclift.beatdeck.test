@@ -1730,6 +1730,33 @@ class DjController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Cut: drop the playing track (it is removed from the downloads) and play
+  /// the next one that is ready, instantly with no mix. False when nothing is
+  /// ready yet (the playing track carries on).
+  bool automixCut() {
+    if (!automixOn || _automixDeck < 0) return false;
+    if (_automixFading) {
+      _automixFadeStart = DateTime.now().subtract(Duration(milliseconds: (_fadeLen * 1000).ceil() + 50));
+      _automixAdvanceFade();
+      notifyListeners();
+      return true;
+    }
+    if (automixUpcoming.isEmpty) return false;
+    final cur = _automixDeck;
+    final path = deck(cur).path;
+    if (automixPaused) {
+      automixPaused = false;
+      _pausedDecks.clear();
+    }
+    _engine.play(cur, false);
+    deck(cur).playing = false;
+    if (path != null) _markPlayed(path);
+    DebugLog.add('automix', 'you cut the playing track: next one starts now');
+    final ok = _automixDeckEnded(cur, 1 - cur);
+    notifyListeners();
+    return ok;
+  }
+
   bool _automixTick() {
     if (!automixOn || _automixDeck < 0) return false;
     if (automixPaused) return false;
