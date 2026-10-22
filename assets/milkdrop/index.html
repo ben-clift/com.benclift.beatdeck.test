@@ -1,0 +1,77 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<style>html,body{margin:0;height:100%;background:#000;overflow:hidden}canvas{width:100%;height:100%;display:block}</style>
+</head><body><canvas id="c"></canvas>
+<script src="butterchurn.min.js"></script>
+<script src="butterchurnPresets.min.js"></script>
+<script>
+(function () {
+  function say(m) { try { Md.postMessage(m); } catch (e) {} }
+  window.onerror = function () { say('fail'); };
+  try {
+    var canvas = document.getElementById('c');
+    var ratio = Math.min(window.devicePixelRatio || 1, 1.5);
+    var W = Math.max(64, Math.round(canvas.clientWidth * ratio));
+    var H = Math.max(64, Math.round(canvas.clientHeight * ratio));
+    canvas.width = W; canvas.height = H;
+    var AC = window.AudioContext || window.webkitAudioContext;
+    var ctx = new AC();
+    var bc = window.butterchurn.default || window.butterchurn;
+    var viz = bc.createVisualizer(ctx, canvas, { width: W, height: H, pixelRatio: 1, textureRatio: 1 });
+    var bp = window.butterchurnPresets.getPresets ? window.butterchurnPresets.getPresets() : window.butterchurnPresets;
+    var names = Object.keys(bp);
+    var order = names.slice().sort(function () { return Math.random() - 0.5; });
+    var idx = -1, lastSwitch = 0;
+    function next(blend) {
+      idx = (idx + 1) % order.length;
+      viz.loadPreset(bp[order[idx]], blend);
+      lastSwitch = performance.now();
+    }
+    next(0);
+    canvas.addEventListener('click', function () { next(1.5); });
+
+    // The app sends 14 band levels (0..1). Make a waveform whose spectrum has
+    // that shape so the presets react to bass, mids and treble.
+    var N = (viz.audio && viz.audio.fftSize) || 1024;
+    var nb = 14, levels = new Array(nb).fill(0), sm = new Array(nb).fill(0);
+    var bins = [], phase = [];
+    for (var k = 0; k < nb; k++) {
+      bins.push(Math.exp(Math.log(1.6) + (Math.log(300) - Math.log(1.6)) * k / (nb - 1)));
+      phase.push(Math.random() * 6.28);
+    }
+    window.setLevels = function (a) { for (var i = 0; i < nb && i < a.length; i++) levels[i] = a[i]; };
+    var tb = new Uint8Array(N), tl = new Uint8Array(N), tr = new Uint8Array(N);
+    var t0 = performance.now(), prev = t0, firstFrame = true;
+    function frame(now) {
+      var dt = (now - prev) / 1000; prev = now;
+      var buf = new Float32Array(N), bufR = new Float32Array(N);
+      for (var k = 0; k < nb; k++) {
+        sm[k] += (levels[k] - sm[k]) * 0.6;
+        var a = sm[k] * sm[k] * 11;
+        if (a < 0.05) continue;
+        phase[k] += dt * (2.0 + k);
+        for (var j = -1; j <= 1; j++) {
+          var f = bins[k] * (1 + j * 0.12);
+          var p = phase[k] + j * 1.7;
+          for (var i = 0; i < N; i++) {
+            var s = a * Math.sin(6.2831853 * f * i / N + p);
+            buf[i] += s;
+            bufR[i] += s * (0.9 + 0.1 * Math.sin(i * 0.01 + k));
+          }
+        }
+      }
+      for (var i = 0; i < N; i++) {
+        var v = Math.max(0, Math.min(255, 128 + buf[i]));
+        var w = Math.max(0, Math.min(255, 128 + bufR[i]));
+        tb[i] = v; tl[i] = v; tr[i] = w;
+      }
+      if (now - lastSwitch > 22000) next(2.7);
+      viz.render({ audioLevels: { timeByteArray: tb, timeByteArrayL: tl, timeByteArrayR: tr }, elapsedTime: (now - t0) / 1000 });
+      if (firstFrame) { firstFrame = false; say('ok'); }
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  } catch (e) { say('fail'); }
+})();
+</script></body></html>

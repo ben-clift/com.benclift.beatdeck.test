@@ -17,6 +17,7 @@ import 'package:sidedeck/suggest/auto_fetch.dart';
 import 'package:sidedeck/suggest/genres.dart';
 import 'package:sidedeck/suggest/shazam_watcher.dart';
 import 'package:sidedeck/suggest/suggest_service.dart';
+import 'package:sidedeck/ui/milkdrop_view.dart';
 import 'package:sidedeck/ui/screenshot_import.dart';
 import 'package:sidedeck/wishlist/wishlist.dart';
 import 'package:sidedeck/theme/sidedeck_theme.dart';
@@ -1064,11 +1065,21 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
               gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [c1, c2]),
             ),
             child: Stack(children: [
-              // Winamp-style analyser: real levels from the music playing.
+              // MilkDrop visuals reacting to the music; the Winamp-style bars
+              // show first, and when the phone is on Low brightness.
               Positioned.fill(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(18, 18, 18, 56),
-                  child: CustomPaint(painter: _WinampPainter(dj.spectrum, dj.spectrumPeak)),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: ValueListenableBuilder<bool>(
+                    valueListenable: ScreenBrightness.lowPower,
+                    builder: (context, low, _) {
+                      final bars = Padding(
+                        padding: const EdgeInsets.fromLTRB(18, 18, 18, 56),
+                        child: CustomPaint(painter: _WinampPainter(dj.spectrum, dj.spectrumPeak)),
+                      );
+                      return low ? bars : MilkdropView(levels: dj.spectrum, fallback: bars);
+                    },
+                  ),
                 ),
               ),
               Positioned(
