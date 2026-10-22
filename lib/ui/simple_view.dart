@@ -157,7 +157,11 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     if (local.isNotEmpty) {
       DebugLog.add('simple', 'nothing waiting: playing a library track in the style of your starred ones');
       dj.automixAllow(local.first.path);
-      dj.automixAppend(local.first.path);
+      if (force) {
+        dj.automixPlayTrack(local.first.path);
+      } else {
+        dj.automixAppend(local.first.path);
+      }
       return;
     }
     if (!st.download || !soulseek.online || AutoFetch.instance.running) return;
@@ -175,6 +179,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
       found = [...found.where((t) => artists.contains(t.artist.toLowerCase())), ...found];
     }
     if (found.isEmpty || !mounted) return;
+    if (force) dj.armPlayNext();
     AutoFetch.instance.enqueueTracks(found.take(3).toList(), widget.library);
   }
 
