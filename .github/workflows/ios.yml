@@ -26,7 +26,7 @@ jobs:
           cmake -S native/ios -B build/ios-engine \
             -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_SYSROOT=iphoneos \
             -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_DEPLOYMENT_TARGET=15.5 \
-            -DCMAKE_BUILD_TYPE=Release > cmake-config.txt 2>&1
+            -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 > cmake-config.txt 2>&1
           if [ "$?" != "0" ]; then
             echo "::error title=cmake configure failed::$(tail -n 30 cmake-config.txt | sed 's/%/%25/g' | awk 'BEGIN{ORS="%0A"}{print}')"
             exit 1
