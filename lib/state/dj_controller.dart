@@ -1562,6 +1562,8 @@ class DjController extends ChangeNotifier {
       _restoreMixEq(_automixDeck, 1 - _automixDeck);
     }
     automixOn = false;
+    automixPaused = false;
+    _pausedDecks.clear();
     _automixFading = false;
     _clearUpNext();
     _automixDeck = -1;
@@ -1690,8 +1692,47 @@ class DjController extends ChangeNotifier {
     return changed;
   }
 
+  /// Paused by the user (the Simple screen's pause button): the Auto DJ waits
+  /// instead of carrying on by itself.
+  bool automixPaused = false;
+  DateTime? _pausedAt;
+  final List<int> _pausedDecks = [];
+
+  void automixPauseToggle() {
+    if (!automixOn || _automixDeck < 0) return;
+    if (!automixPaused) {
+      _pausedDecks.clear();
+      for (final i in [0, 1]) {
+        if (deck(i).loaded && deck(i).playing) {
+          _pausedDecks.add(i);
+          _engine.play(i, false);
+          deck(i).playing = false;
+        }
+      }
+      _pausedAt = DateTime.now();
+      automixPaused = true;
+      DebugLog.add('automix', 'paused by you');
+    } else {
+      // A mix in progress carries on from where it stopped.
+      if (_automixFading && _pausedAt != null) {
+        _automixFadeStart = _automixFadeStart.add(DateTime.now().difference(_pausedAt!));
+      }
+      for (final i in _pausedDecks) {
+        _engine.play(i, true);
+        deck(i).playing = true;
+      }
+      _pausedDecks.clear();
+      _pausedAt = null;
+      automixPaused = false;
+      _silentSince = null;
+      DebugLog.add('automix', 'resumed by you');
+    }
+    notifyListeners();
+  }
+
   bool _automixTick() {
     if (!automixOn || _automixDeck < 0) return false;
+    if (automixPaused) return false;
     if (_automixBusy) {
       // A load that never finishes must not freeze automix: give it a minute.
       if (++_busyTicks > 400) {

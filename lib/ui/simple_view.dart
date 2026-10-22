@@ -984,6 +984,23 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
             Text(_mmss(d.duration), style: const TextStyle(fontSize: 12, color: _dim)),
           ]),
         ),
+        const SizedBox(height: 8),
+        Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Material(
+            color: Colors.white,
+            shape: const CircleBorder(),
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              onTap: dj.automixPauseToggle,
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Icon(dj.automixPaused ? Icons.play_arrow : Icons.pause, size: 38, color: Colors.black),
+              ),
+            ),
+          ),
+          const SizedBox(width: 20),
+          IconButton(iconSize: 40, onPressed: _skip, icon: const Icon(Icons.skip_next)),
+        ]),
         const SizedBox(height: 12),
         // Queue card, like the Spotify queue sheet.
         Container(
