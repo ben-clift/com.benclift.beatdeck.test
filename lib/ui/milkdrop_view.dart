@@ -14,6 +14,12 @@ class MilkdropSettings extends ChangeNotifier {
   /// 0 (very calm) .. 1 (wild).
   double intensity = 0.3;
 
+  /// Frames per second drawn (lower = slower, gentler motion).
+  int fps = 30;
+
+  /// Screen brightness of the picture, 0.1 .. 1.
+  double dim = 0.8;
+
   /// Seconds between automatic changes; 0 = never change.
   int autoSecs = 30;
 
@@ -28,6 +34,8 @@ class MilkdropSettings extends ChangeNotifier {
       final p = await SharedPreferences.getInstance();
       intensity = p.getDouble('md_intensity') ?? 0.3;
       autoSecs = p.getInt('md_auto') ?? 30;
+      fps = p.getInt('md_fps') ?? 30;
+      dim = p.getDouble('md_dim') ?? 0.8;
       preset = p.getString('md_preset');
       notifyListeners();
     } catch (_) {}
@@ -38,6 +46,8 @@ class MilkdropSettings extends ChangeNotifier {
       final p = await SharedPreferences.getInstance();
       await p.setDouble('md_intensity', intensity);
       await p.setInt('md_auto', autoSecs);
+      await p.setInt('md_fps', fps);
+      await p.setDouble('md_dim', dim);
       if (preset == null) {
         await p.remove('md_preset');
       } else {
@@ -46,9 +56,11 @@ class MilkdropSettings extends ChangeNotifier {
     } catch (_) {}
   }
 
-  void set({double? i, int? auto, String? pick, bool shuffle = false}) {
+  void set({double? i, int? fpsV, double? dimV, int? auto, String? pick, bool shuffle = false}) {
     if (i != null) intensity = i;
     if (auto != null) autoSecs = auto;
+    if (fpsV != null) fps = fpsV;
+    if (dimV != null) dim = dimV;
     if (pick != null) preset = pick;
     if (shuffle) preset = null;
     notifyListeners();
@@ -124,6 +136,8 @@ class _MilkdropViewState extends State<MilkdropView> {
     // Calm (0) .. wild (1) maps to a gentle .. strong picture.
     _c.runJavaScript('window.setGain&&window.setGain(${(0.15 + m.intensity * 1.1).toStringAsFixed(2)});'
         'window.setAuto&&window.setAuto(${m.autoSecs});'
+        'window.setFps&&window.setFps(${m.fps});'
+        'window.setDim&&window.setDim(${m.dim.toStringAsFixed(2)});'
         'window.loadName&&window.loadName(${jsonEncode(m.preset)});');
     if (m.poke != _seenPoke) {
       _seenPoke = m.poke;

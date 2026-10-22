@@ -25,6 +25,9 @@
     var idx = -1, lastSwitch = 0, gain = 0.5, autoSecs = 30, held = null;
     names.sort();
     window.setGain = function (g) { gain = Math.max(0.05, Math.min(1.6, g)); };
+    var fps = 30, lastDraw = 0;
+    window.setFps = function (f) { fps = Math.max(2, Math.min(60, f)); };
+    window.setDim = function (b) { canvas.style.filter = 'brightness(' + Math.max(0.05, Math.min(1, b)) + ')'; };
     window.setAuto = function (s) { autoSecs = s; lastSwitch = performance.now(); };
     window.loadName = function (n) {
       if (n && bp[n]) { held = n; viz.loadPreset(bp[n], 1.5); lastSwitch = performance.now(); } else { held = null; }
@@ -75,7 +78,8 @@
         tb[i] = v; tl[i] = v; tr[i] = w;
       }
       if (!held && autoSecs > 0 && now - lastSwitch > autoSecs * 1000) next(2.7);
-      if (!paused) viz.render({ audioLevels: { timeByteArray: tb, timeByteArrayL: tl, timeByteArrayR: tr }, elapsedTime: (now - t0) / 1000 });
+      var due = now - lastDraw >= 1000 / fps - 2;
+      if (!paused && due) { lastDraw = now; viz.render({ audioLevels: { timeByteArray: tb, timeByteArrayL: tl, timeByteArrayR: tr }, elapsedTime: (now - t0) / 1000 }); }
       if (firstFrame) { firstFrame = false; say('ok'); say('names:' + JSON.stringify(names)); }
       requestAnimationFrame(frame);
     }

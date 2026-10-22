@@ -1593,7 +1593,14 @@ class _VisualsBoxState extends State<_VisualsBox> {
           Text('Intensity: ${m.intensity < 0.2 ? 'very calm' : m.intensity < 0.45 ? 'calm' : m.intensity < 0.7 ? 'medium' : m.intensity < 0.9 ? 'high' : 'wild'}',
               style: const TextStyle(fontWeight: FontWeight.w700)),
           Slider(value: m.intensity, onChanged: (v) => m.set(i: v)),
-          const SizedBox(height: 4),
+          Text('Brightness: ${(m.dim * 100).round()}%', style: const TextStyle(fontWeight: FontWeight.w700)),
+          Slider(value: m.dim, min: 0.1, max: 1, onChanged: (v) => m.set(dimV: v)),
+          const Text('Speed (frames per second)', style: TextStyle(fontWeight: FontWeight.w700)),
+          Wrap(spacing: 8, children: [
+            for (final f in const [5, 10, 15, 20, 30, 45, 60])
+              ChoiceChip(label: Text('$f'), selected: m.fps == f, onSelected: (_) => m.set(fpsV: f)),
+          ]),
+          const SizedBox(height: 8),
           const Text('Change picture', style: TextStyle(fontWeight: FontWeight.w700)),
           Wrap(spacing: 8, children: [
             for (final s in secs)
