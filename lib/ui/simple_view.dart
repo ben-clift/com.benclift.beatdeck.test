@@ -15,6 +15,7 @@ import 'package:sidedeck/state/screen_brightness.dart';
 import 'package:sidedeck/suggest/auto_fetch.dart';
 import 'package:sidedeck/suggest/genres.dart';
 import 'package:sidedeck/suggest/suggest_service.dart';
+import 'package:sidedeck/ui/screenshot_import.dart';
 import 'package:sidedeck/wishlist/wishlist.dart';
 import 'package:sidedeck/theme/sidedeck_theme.dart';
 
@@ -221,6 +222,33 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     }
   }
 
+  Future<void> _importScreenshots() async {
+    if (_importing) return;
+    setState(() => _importing = true);
+    try {
+      final lines = await ScreenshotImport.pickAndRead();
+      if (!mounted) return;
+      if (lines.isEmpty) {
+        _toast('No song names found. Try a clearer screenshot of the playlist.');
+        return;
+      }
+      final text = await ScreenshotImport.review(context, lines);
+      if (text == null || text.trim().isEmpty || !mounted) return;
+      final ctl = WishListController();
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      if (!await ctl.importText('Screenshot playlist', text, source: 'Screenshot')) {
+        _toast(ctl.message ?? 'No songs found.');
+        return;
+      }
+      if (mounted) await _showPlaylist(ctl.lists.first);
+    } catch (e) {
+      DebugLog.add('simple', 'screenshot import failed: $e');
+      _toast('Could not read that screenshot.');
+    } finally {
+      if (mounted) setState(() => _importing = false);
+    }
+  }
+
   Future<void> _openSaved() async {
     final ctl = WishListController();
     await Future<void>.delayed(const Duration(milliseconds: 300));
@@ -306,6 +334,11 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                 'The playlist must be public.',
                 style: TextStyle(color: Color(0xFFB8B3AA))),
             SizedBox(height: 10),
+            Text('Easiest: a screenshot', style: TextStyle(fontWeight: FontWeight.w800)),
+            Text('Open the playlist in any app, take a screenshot (more than one if it is long), '
+                'come back, tap "From a screenshot" and choose them. Check the list it reads, then tap Import.',
+                style: TextStyle(color: Color(0xFFB8B3AA))),
+            SizedBox(height: 10),
             Text('Nothing happened?', style: TextStyle(fontWeight: FontWeight.w800)),
             Text('Tap "Paste a link", paste the link you copied, then Import. '
                 'SoundCloud only lets us read the first few tracks of a big playlist.',
@@ -330,6 +363,14 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
           ),
         ),
       ]),
+      SizedBox(
+        width: double.infinity,
+        child: FilledButton.tonalIcon(
+          onPressed: _importing ? null : _importScreenshots,
+          icon: const Icon(Icons.image_search),
+          label: const Text('From a screenshot'),
+        ),
+      ),
       Row(mainAxisAlignment: MainAxisAlignment.center, children: [
         TextButton(onPressed: _importing ? null : _pasteDialog, child: Text(_importing ? 'Importing…' : 'Paste a link')),
         TextButton(onPressed: _importing ? null : _openSaved, child: const Text('My playlists')),
