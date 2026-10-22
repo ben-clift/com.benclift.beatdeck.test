@@ -65,6 +65,7 @@ class _SimpleViewState extends State<SimpleView> {
   bool _starting = false;
   final _artist = TextEditingController();
   final _track = TextEditingController();
+  double _intensity = 0;
   bool _bpmAny = true;
   RangeValues _bpm = const RangeValues(120, 130);
   String _note = '';
@@ -195,7 +196,7 @@ class _SimpleViewState extends State<SimpleView> {
       af.genre = genres.first;
       af.pinned = true;
       af.mixKinds = false;
-      af.intensity = 0;
+      af.intensity = _intensity.round();
       af.endless = true;
       var lo = 999.0, hi = 0.0;
       for (final grp in genreGroups) {
@@ -387,7 +388,22 @@ class _SimpleViewState extends State<SimpleView> {
             labels: RangeLabels('${_bpm.start.round()}', '${_bpm.end.round()}'),
             onChanged: _starting ? null : (v) => setState(() => _bpm = v),
           ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 12),
+        Row(children: [
+          const Text('Intensity', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+          const Spacer(),
+          Text(const ['Any', 'Medium', 'High', 'Peak'][_intensity.round()],
+              style: const TextStyle(color: SideDeckTheme.accentA, fontWeight: FontWeight.w700)),
+        ]),
+        Slider(
+          value: _intensity,
+          min: 0,
+          max: 3,
+          divisions: 3,
+          label: const ['Any', 'Medium', 'High', 'Peak'][_intensity.round()],
+          onChanged: _starting ? null : (v) => setState(() => _intensity = v),
+        ),
+        const SizedBox(height: 8),
         _requestBox(running: false),
         const SizedBox(height: 20),
         SizedBox(
