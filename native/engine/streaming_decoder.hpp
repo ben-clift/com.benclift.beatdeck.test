@@ -302,7 +302,7 @@ struct StreamingDecoder {
 #endif
       case Kind::None:
         return false;
-#ifndef __ANDROID__
+#ifndef SD_HAVE_M4A
       case Kind::M4a:
         return false;
 #endif
