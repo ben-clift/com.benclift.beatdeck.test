@@ -61,7 +61,15 @@ class SimpleView extends StatefulWidget {
   State<SimpleView> createState() => _SimpleViewState();
 }
 
+const _firstTracks = 3;
+
 class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
+  bool _introLoaded = false;
+  bool _introDone = true;
+  final _slUser = TextEditingController();
+  final _slPass = TextEditingController();
+  bool _signing = false;
+  String _signNote = '';
   String? _awaiting; // 'soundcloud' or 'spotify': waiting for a copied link
   bool _importing = false;
   final Set<int> _picked = {0};
@@ -79,11 +87,14 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _restore();
+    _loadIntro();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _slUser.dispose();
+    _slPass.dispose();
     _artist.dispose();
     _track.dispose();
     super.dispose();
@@ -203,6 +214,133 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
         ),
       ]),
       TextButton(onPressed: _importing ? null : _pasteDialog, child: Text(_importing ? 'Importing…' : 'Paste a link instead')),
+    ]);
+  }
+
+  Future<void> _loadIntro() async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      _introDone = p.getBool('simple_intro_v1') ?? false;
+      _slUser.text = p.getString('slsk_user') ?? '';
+    } catch (_) {}
+    if (mounted) setState(() => _introLoaded = true);
+  }
+
+  Future<void> _finishIntro() async {
+    try {
+      await (await SharedPreferences.getInstance()).setBool('simple_intro_v1', true);
+    } catch (_) {}
+    if (mounted) setState(() => _introDone = true);
+  }
+
+  /// Sign in to Soulseek with the name and password typed (a new name is
+  /// created by the server the first time), or make a login for them.
+  Future<void> _signIn({required bool make}) async {
+    if (_signing) return;
+    if (make) {
+      try {
+        final p = await SharedPreferences.getInstance();
+        await p.remove('slsk_user');
+        await p.remove('slsk_pass');
+      } catch (_) {}
+      await _ensureAccount();
+      final p = await SharedPreferences.getInstance();
+      _slUser.text = p.getString('slsk_user') ?? '';
+      _slPass.text = p.getString('slsk_pass') ?? '';
+    }
+    final u = _slUser.text.trim(), pw = _slPass.text;
+    if (u.isEmpty || pw.isEmpty) {
+      setState(() => _signNote = 'Type a name and a password, or tap "Make one for me".');
+      return;
+    }
+    setState(() {
+      _signing = true;
+      _signNote = 'Signing in…';
+    });
+    try {
+      final p = await SharedPreferences.getInstance();
+      await p.setString('slsk_user', u);
+      await p.setString('slsk_pass', pw);
+      soulseek.manualDisconnect = false;
+      await SlskKeeper.instance.setEnabled(true);
+      await soulseek.connect(u, pw);
+      for (var i = 0; i < 30 && !soulseek.online && (soulseek.error ?? '').isEmpty; i++) {
+        await Future<void>.delayed(const Duration(seconds: 1));
+      }
+      if (soulseek.online) {
+        await _finishIntro();
+      } else {
+        setState(() => _signNote = (soulseek.error ?? '').isNotEmpty
+            ? '${soulseek.error}\nTry a different name, or tap "Make one for me".'
+            : 'Could not connect. Check your internet and try again.');
+      }
+    } finally {
+      if (mounted) setState(() => _signing = false);
+    }
+  }
+
+  Widget _intro() {
+    Widget step(IconData i, String t, String d) => Padding(
+          padding: const EdgeInsets.only(bottom: 14),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Icon(i, color: SideDeckTheme.accentA),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(t, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                Text(d, style: const TextStyle(color: Color(0xFFB8B3AA))),
+              ]),
+            ),
+          ]),
+        );
+    return ListView(children: [
+      const SizedBox(height: 12),
+      const Text('Welcome to BeatDeck', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800)),
+      const SizedBox(height: 6),
+      const Text('Your own DJ. It finds music, downloads it and mixes it for you.',
+          style: TextStyle(color: Color(0xFFB8B3AA))),
+      const SizedBox(height: 20),
+      step(Icons.public, 'Music comes from Soulseek',
+          'A free file-sharing network run by music fans. You need a Soulseek login to use it. It is free and takes seconds.'),
+      step(Icons.tune, 'Pick what you like',
+          'Choose genres, speed and intensity, or ask for a specific artist or track.'),
+      step(Icons.download, 'First time: 3 tracks download first',
+          'The first start waits until 3 tracks have arrived, so the mix never runs dry. Keep the app open.'),
+      step(Icons.skip_next, 'Skip and Stop',
+          'Skip moves to the next track. Stop ends the set. Tell Ben what you think.'),
+      const SizedBox(height: 8),
+      const Text('Soulseek login', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+      const SizedBox(height: 8),
+      TextField(
+        controller: _slUser,
+        autocorrect: false,
+        enabled: !_signing,
+        decoration: const InputDecoration(labelText: 'Username', border: OutlineInputBorder(), isDense: true),
+      ),
+      const SizedBox(height: 8),
+      TextField(
+        controller: _slPass,
+        obscureText: true,
+        enabled: !_signing,
+        decoration: const InputDecoration(labelText: 'Password', border: OutlineInputBorder(), isDense: true),
+      ),
+      const SizedBox(height: 4),
+      const Text('New name? Just choose one: it is created the first time you sign in.',
+          style: TextStyle(fontSize: 12, color: Color(0xFF8A857C))),
+      const SizedBox(height: 12),
+      SizedBox(
+        height: 52,
+        child: FilledButton(
+          onPressed: _signing ? null : () => _signIn(make: false),
+          child: Text(_signing ? 'Signing in…' : 'Sign in', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+        ),
+      ),
+      TextButton(
+        onPressed: _signing ? null : () => _signIn(make: true),
+        child: const Text('Make one for me'),
+      ),
+      if (_signNote.isNotEmpty)
+        Text(_signNote, textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFFE0A080))),
     ]);
   }
 
@@ -351,23 +489,26 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
 
       final req = _hasRequest;
       final reqArtist = _artist.text.trim(), reqTrack = _track.text.trim();
-      final hadMusic = paths().isNotEmpty;
+      final hadMusic = paths().length >= _firstTracks;
       if (req && !hadMusic) {
         af.enqueueTracks([Suggestion(reqArtist, reqTrack, 0, 'your request')], widget.library);
       }
-      if (paths().isEmpty) {
-        // Nothing on the phone yet: fetch the first track, then start.
+      if (!hadMusic) {
+        // First time: download a few tracks before anything plays.
         final started = DateTime.now();
         var asked = DateTime.fromMillisecondsSinceEpoch(0);
-        while (mounted && run == _run && paths().isEmpty) {
+        while (mounted && run == _run && paths().length < _firstTracks) {
           if (DateTime.now().difference(started).inMinutes >= 5) {
-            setState(() => _note = 'Could not find music. Check your internet and try again.');
-            return;
+            if (paths().isEmpty) {
+              setState(() => _note = 'Could not find music. Check your internet and try again.');
+              return;
+            }
+            break; // slow network: start with what has arrived
           }
           if (!soulseek.online) {
             setState(() => _note = 'Connecting…');
           } else {
-            setState(() => _note = af.status.isNotEmpty ? af.status : 'Finding your first track…');
+            setState(() => _note = 'Downloading your first tracks (${paths().length} of $_firstTracks)…${af.status.isNotEmpty ? '\n${af.status}' : ''}');
             final waitingForRequest = req && DateTime.now().difference(started).inSeconds < 90;
             if (!waitingForRequest && !af.running && af.manualPending == 0 && DateTime.now().difference(asked).inSeconds >= 8) {
               asked = DateTime.now();
@@ -454,7 +595,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                     ),
                   ]),
                   const SizedBox(height: 8),
-                  Expanded(child: on ? _playing(dj) : _chooser()),
+                  Expanded(child: !_introLoaded ? const SizedBox.shrink() : (!_introDone ? _intro() : (on ? _playing(dj) : _chooser()))),
                 ],
               ),
             ),
