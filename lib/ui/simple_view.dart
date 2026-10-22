@@ -861,7 +861,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
               child: OutlinedButton.icon(
                 onPressed: _stop,
                 icon: const Icon(Icons.stop, size: 28),
-                label: const Text('Stop', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+                label: const Text('Stop / Back', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
               ),
             ),
           ),
