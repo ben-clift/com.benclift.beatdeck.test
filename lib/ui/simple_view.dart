@@ -382,6 +382,22 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
           ],
         ),
       ),
+      ListenableBuilder(
+        listenable: widget.library,
+        builder: (_, __) {
+          final lib = widget.library;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: OutlinedButton.icon(
+              onPressed: lib.loading ? null : lib.pickFolder,
+              icon: const Icon(Icons.folder_open),
+              label: Text(lib.folderPath == null || lib.folderPath!.isEmpty
+                  ? 'Use my own music folder'
+                  : 'My music: ${lib.folderPath!.split('/').last} (${lib.tracks.length} tracks). Change'),
+            ),
+          );
+        },
+      ),
       Row(children: [
         Expanded(
           child: OutlinedButton.icon(

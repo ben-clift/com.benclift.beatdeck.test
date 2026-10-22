@@ -175,7 +175,8 @@ class SlskSetup {
     dj?.yearOf = lib.yearOf;
     dj?.allowBothKinds = () => AutoFetch.instance.mixKinds;
     dj?.rejectUnknownKind = () => AppMode.simple.value;
-    dj?.requestedPath = AutoFetch.instance.isRequested;
+    dj?.requestedPath = (path) =>
+        AutoFetch.instance.isRequested(path) || (lib.folderPath != null && lib.folderPath!.isNotEmpty && path.startsWith(lib.folderPath!));
     dj?.bandsMode = () => AutoFetch.instance.bandsPicked;
     dj?.genreOf = (path) {
       final g = lib.genreOf(path);
