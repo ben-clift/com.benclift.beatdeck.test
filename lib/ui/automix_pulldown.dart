@@ -1,0 +1,653 @@
+import 'dart:async';
+import 'dart:math' as math;
+
+import 'package:flutter/material.dart';
+import 'package:sidedeck/state/avoids.dart';
+import 'package:sidedeck/state/backup_tracks.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sidedeck/automix/transition_style.dart';
+import 'package:sidedeck/automix/set_flow.dart';
+import 'package:sidedeck/soulseek/slsk_keeper.dart';
+import 'package:sidedeck/soulseek/slsk_setup.dart';
+import 'package:sidedeck/soulseek/soulseek_client.dart';
+import 'package:sidedeck/suggest/auto_fetch.dart';
+import 'package:sidedeck/ui/genre_picker.dart';
+import 'package:sidedeck/ui/soulseek_page.dart';
+import 'package:sidedeck/state/dj_controller.dart';
+import 'package:sidedeck/state/library_controller.dart';
+import 'package:sidedeck/state/look_controller.dart';
+import 'package:sidedeck/state/playlist_controller.dart';
+import 'package:sidedeck/state/playlist_store.dart';
+import 'package:sidedeck/theme/sidedeck_theme.dart';
+
+/// Automix drawer that pulls down from the top of the controller screen.
+/// Drag the AUTOMIX tab down (or tap it) to open; drag up or tap to close.
+/// Must be a child of a [Stack].
+class AutomixPullDown extends StatefulWidget {
+  const AutomixPullDown({super.key, required this.dj, required this.library});
+
+  final DjController dj;
+  final LibraryController library;
+
+  @override
+  State<AutomixPullDown> createState() => _AutomixPullDownState();
+}
+
+class _AutomixPullDownState extends State<AutomixPullDown> {
+  double get _panelH => math.min(MediaQuery.of(context).size.height * 0.92, 560.0);
+  static const _tabH = 24.0;
+
+  final _playlists = PlaylistController();
+  bool _open = false;
+  // The big panel is only built while it is open or sliding away; building it
+  // behind the decks on every 50 ms update made the whole app stutter.
+  bool _showPanel = false;
+  Timer? _hideTimer;
+  late final Widget _picker = GenrePicker(library: widget.library);
+
+  void _setOpen(bool v) {
+    if (_open == v) return;
+    _hideTimer?.cancel();
+    setState(() {
+      _open = v;
+      if (v) _showPanel = true;
+    });
+    if (!v) {
+      _hideTimer = Timer(const Duration(milliseconds: 320), () {
+        if (mounted && !_open) setState(() => _showPanel = false);
+      });
+    }
+  }
+  double _fade = 120;
+  double _offset = 10;
+  FlowArc _arc = FlowArc.journey;
+  TransitionStyle _style = TransitionStyle.auto;
+  double _len = 60;
+  bool _decOn = false;
+  RangeValues _dec = const RangeValues(1990, 2020);
+
+  @override
+  void initState() {
+    super.initState();
+    SharedPreferences.getInstance().then((p) {
+      if (!mounted) return;
+      setState(() {
+        // One-time reset so everyone starts from 20 s and 10 s.
+        if (p.getBool('automix_times_v3') != true) {
+          p.setBool('automix_times_v3', true);
+          p.setDouble('automix_fade', 120);
+          p.setDouble('automix_offset', 10);
+        }
+        _fade = p.getDouble('automix_fade') ?? _fade;
+        _offset = p.getDouble('automix_offset') ?? _offset;
+        _arc = FlowArc.values[(p.getInt('automix_arc') ?? FlowArc.journey.index).clamp(0, FlowArc.values.length - 1)];
+        _len = p.getDouble('automix_len') ?? _len;
+        _decOn = p.getBool('automix_dec_on') ?? false;
+        _dec = RangeValues(
+          (p.getInt('automix_dec_from') ?? 1990).toDouble(),
+          (p.getInt('automix_dec_to') ?? 2020).toDouble(),
+        );
+        _applyDecades(save: false);
+        _style = TransitionStyle.values[(p.getInt('automix_style') ?? 0).clamp(0, TransitionStyle.values.length - 1)];
+      });
+    }).catchError((_) {});
+  }
+
+  /// Decades chosen in the start panel: library picks and fetched tracks stay inside them.
+  void _applyDecades({bool save = true}) {
+    final from = _dec.start.round(), to = _dec.end.round() + 9;
+    widget.dj.decadeRange = _decOn ? (from, to) : null;
+    final af = AutoFetch.instance;
+    af.useYearRange = _decOn;
+    if (_decOn) {
+      af.yearFrom = from;
+      af.yearTo = to;
+    }
+    if (save) {
+      af.save();
+      SharedPreferences.getInstance().then((p) {
+        p.setBool('automix_dec_on', _decOn);
+        p.setInt('automix_dec_from', from);
+        p.setInt('automix_dec_to', _dec.end.round());
+      }).catchError((_) {});
+    }
+  }
+
+  String get _decLabel {
+    String d(double v) => "${v.round() % 100 == 0 ? v.round() : v.round()}s";
+    return _dec.start == _dec.end ? d(_dec.start) : '${d(_dec.start)} to ${d(_dec.end)}';
+  }
+
+  void _saveTimes() {
+    widget.dj.automixLive(
+      fadeSeconds: _fade,
+      startOffsetSeconds: _offset,
+      arc: _arc,
+      lengthMinutes: _len,
+    );
+    SharedPreferences.getInstance().then((p) {
+      p.setDouble('automix_fade', _fade);
+      p.setDouble('automix_offset', _offset);
+      p.setInt('automix_arc', _arc.index);
+      p.setDouble('automix_len', _len);
+      p.setInt('automix_style', _style.index);
+    }).catchError((_) {});
+  }
+  String? _selectedId;
+  bool _wasOn = false;
+
+  @override
+  void dispose() {
+    _hideTimer?.cancel();
+    _playlists.dispose();
+    super.dispose();
+  }
+
+  void _toggle() => _setOpen(!_open);
+
+  static const _libShuffle = 'lib:shuffle';
+  static const _libTempo = 'lib:tempo';
+  static const _libAz = 'lib:az';
+
+  /// What automix will play: the chosen option, else the whole library shuffled.
+  String _choice(List<Playlist> lists) {
+    var id = _selectedId;
+    // Backup tracks is a one-off choice: once Auto DJ stops, the choice goes
+    // back to the whole library, shuffled.
+    final onNow = widget.dj.automixOn;
+    if (_wasOn && !onNow && id != null && lists.any((p) => p.id == id && p.name == BackupTracks.name)) {
+      _selectedId = id = null;
+    }
+    _wasOn = onNow;
+    if (id != null &&
+        (id.startsWith('lib:') || lists.any((p) => p.id == id))) {
+      return id;
+    }
+    return _libShuffle;
+  }
+
+  List<String> _pathsFor(String id, List<Playlist> lists) {
+    final away = BackupTracks.hidden.value;
+    final tracks = [for (final t in widget.library.tracks) if (!away.contains(t.path)) t];
+    switch (id) {
+      case _libShuffle:
+        tracks.shuffle();
+        return [for (final t in tracks) t.path];
+      case _libTempo:
+        final analysed = tracks.where((t) => t.hasAnalysis).toList()
+          ..sort((a, b) => a.bpm!.compareTo(b.bpm!));
+        return [for (final t in analysed) t.path];
+      case _libAz:
+        tracks.sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+        return [for (final t in tracks) t.path];
+    }
+    for (final p in lists) {
+      if (p.id == id) return List<String>.of(p.paths);
+    }
+    return const [];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedPositioned(
+      duration: const Duration(milliseconds: 240),
+      curve: Curves.easeOutCubic,
+      top: _open ? 0 : -_panelH,
+      left: 0,
+      right: 0,
+      height: _panelH + _tabH,
+      child: ListenableBuilder(
+        listenable: Listenable.merge([
+          widget.dj,
+          _playlists,
+          widget.library,
+          LookController.instance,
+          soulseek,
+          SlskKeeper.instance,
+          AutoFetch.instance,
+        ]),
+        builder: (context, _) {
+          return Column(
+            children: [
+              SizedBox(height: _panelH, child: _showPanel ? _panel() : const SizedBox.shrink()),
+              _tab(),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _tab() {
+    final dj = widget.dj;
+    final on = dj.automixOn;
+    final accent = LookController.instance.accent(0);
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: _toggle,
+        onVerticalDragEnd: (d) {
+          final v = d.primaryVelocity ?? 0;
+          if (v > 120 && !_open) _setOpen(true);
+          if (v < -120 && _open) _setOpen(false);
+        },
+        child: Container(
+          height: _tabH,
+          margin: const EdgeInsets.only(left: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: on ? accent : const Color(0xFF3A3834),
+            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(8)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                _open ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                size: 16,
+                color: on ? SideDeckTheme.bg : SideDeckTheme.text,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                on
+                    ? 'AUTOMIX ${dj.automixIndex + 1}/${dj.automixQueueLength}'
+                    : 'AUTOMIX',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.2,
+                  color: on ? SideDeckTheme.bg : SideDeckTheme.text,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _start(List<String> paths) async {
+    final dj = widget.dj;
+    // The Soulseek helper is part of Start: stay signed in, fetch matches.
+    if (_helper) {
+      SlskKeeper.instance.setEnabled(true);
+      SlskSetup.setAutoFetchForAutomix(true);
+    }
+    await dj.startAutomix(paths,
+        fadeSeconds: _fade,
+        startOffsetSeconds: _offset,
+        arc: _arc,
+        lengthMinutes: _len,
+        style: _style);
+    // Stay open when it could not start, so the reason stays visible.
+    if (mounted && dj.automixOn) _setOpen(false);
+  }
+
+  bool get _helper => SlskKeeper.instance.enabled && SlskSetup.autoFetchForAutomix;
+
+  Future<void> _setHelper(bool v) async {
+    await SlskKeeper.instance.setEnabled(v);
+    await SlskSetup.setAutoFetchForAutomix(v);
+    if (mounted) setState(() {});
+  }
+
+  String _soulseekLine() {
+    if (soulseek.online) {
+      final af = AutoFetch.instance;
+      if (af.running && af.status.isNotEmpty) return af.status;
+      return 'Connected to Soulseek';
+    }
+    if (soulseek.status == SlskStatus.connecting) return 'Connecting to Soulseek…';
+    final note = SlskKeeper.instance.note;
+    return note.isEmpty ? 'Not connected to Soulseek' : note;
+  }
+
+  Widget _step(String n, String title, String help, Widget child) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 11,
+                backgroundColor: SideDeckTheme.muted.withOpacity(0.35),
+                child: Text(n, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+              ),
+              const SizedBox(width: 8),
+              Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+            ],
+          ),
+          Padding(
+            padding: const EdgeInsets.only(left: 30, top: 2, bottom: 6),
+            child: Text(help, style: const TextStyle(fontSize: 12, color: SideDeckTheme.muted)),
+          ),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _panel() {
+    final dj = widget.dj;
+    final look = LookController.instance;
+    final lists = _playlists.playlists.where((p) => p.paths.isNotEmpty).toList();
+    final choice = _choice(lists);
+    final hasMusic = widget.library.tracks.isNotEmpty || lists.isNotEmpty;
+    final on = dj.automixOn;
+    final signedIn = soulseek.online || soulseek.status == SlskStatus.connecting;
+    return GestureDetector(
+      onVerticalDragEnd: (d) {
+        if ((d.primaryVelocity ?? 0) < -120) _setOpen(false);
+      },
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+        decoration: BoxDecoration(
+          color: Color.lerp(look.body, Colors.black, 0.15),
+          border: Border(bottom: BorderSide(color: look.accent(0), width: 3)),
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // The one thing most people need: a big start button.
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: on
+                    ? FilledButton.icon(
+                        onPressed: dj.stopAutomix,
+                        icon: const Icon(Icons.stop),
+                        label: Text(
+                          'Stop Auto DJ  ·  track ${dj.automixIndex + 1} of ${dj.automixQueueLength}',
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                      )
+                    : FilledButton.icon(
+                        onPressed: !hasMusic ? null : () => _start(_pathsFor(choice, lists)),
+                        icon: const Icon(Icons.auto_mode),
+                        label: const Text('Start Auto DJ', style: TextStyle(fontSize: 18)),
+                      ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: 6, bottom: 12),
+                child: Text(
+                  on
+                      ? (dj.automixStatus ?? 'Mixing for you. Deck 1 and 2 swap over automatically.')
+                      : !hasMusic
+                          ? 'Add music to your library first (folder icon in the Library), then come back.'
+                          : (dj.automixStatus ??
+                              'It plays your music and mixes each track into the next, all by itself.'),
+                  style: const TextStyle(fontSize: 12, color: SideDeckTheme.muted),
+                ),
+              ),
+              _step(
+                '1',
+                'Play from',
+                'Pick what it plays. You can change this while it is running.',
+                SizedBox(
+                  height: 40,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    children: [
+                      for (final (id, label) in [
+                        (_libShuffle, 'Whole library, shuffled'),
+                        (_libTempo, 'Slow to fast'),
+                        (_libAz, 'A to Z'),
+                      ])
+                        Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: ChoiceChip(
+                            label: Text(label),
+                            selected: choice == id,
+                            onSelected: (_) {
+                              setState(() => _selectedId = id);
+                              if (on) widget.dj.automixSwitchTo(_pathsFor(id, lists));
+                            },
+                          ),
+                        ),
+                      for (final pl in lists)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: ChoiceChip(
+                            label: Text('${pl.name} · ${pl.paths.length}'),
+                            selected: choice == pl.id,
+                            onSelected: (_) {
+                              setState(() => _selectedId = pl.id);
+                              if (on) widget.dj.automixSwitchTo(_pathsFor(pl.id, lists));
+                            },
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+              _step(
+                '2',
+                'Find new tracks for me',
+                'Stays signed in to Soulseek and downloads a matching track '
+                    'whenever nothing left in the list fits. Needs a free Soulseek account.',
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      dense: true,
+                      title: const Text('Keep me connected and fetch matches'),
+                      value: _helper,
+                      onChanged: _setHelper,
+                    ),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.circle,
+                          size: 10,
+                          color: soulseek.online
+                              ? Colors.greenAccent
+                              : (soulseek.status == SlskStatus.connecting
+                                  ? Colors.amber
+                                  : Colors.redAccent),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(_soulseekLine(),
+                              style: const TextStyle(fontSize: 12),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis),
+                        ),
+                        if (!signedIn)
+                          TextButton(
+                            onPressed: () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => SoulseekPage(library: widget.library),
+                              ),
+                            ),
+                            child: const Text('Sign in'),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            _step(
+              '3',
+              'Timing',
+              'When the blend starts, and where the next track begins.',
+              Column(
+                children: [
+                  _slider('Start blending this long before the end', _fade, 4, 180, 176,
+                      '${_fade.round()} s', on, (v) => setState(() => _fade = v)),
+                  _slider('Next track starts this far in', _offset, 0, 60, 60,
+                      '${_offset.round()} s', on, (v) => setState(() => _offset = v)),
+                ],
+              ),
+            ),
+              _step(
+                '3b',
+                'Decades',
+                'Only play and fetch music from the decades you pick (by release year; tracks with no year are let through).',
+                Column(
+                  children: [
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      dense: true,
+                      title: Text(_decOn ? _decLabel : 'Any decade'),
+                      value: _decOn,
+                      onChanged: (v) => setState(() {
+                        _decOn = v;
+                        _applyDecades();
+                      }),
+                    ),
+                    if (_decOn)
+                      RangeSlider(
+                        values: _dec,
+                        min: 1950,
+                        max: 2020,
+                        divisions: 7,
+                        labels: RangeLabels("${_dec.start.round()}s", "${_dec.end.round()}s"),
+                        onChanged: (v) => setState(() {
+                          _dec = v;
+                          _applyDecades();
+                        }),
+                      ),
+                  ],
+                ),
+              ),
+              _step(
+                '3c',
+                'Bands and electronic',
+                'Off: Auto DJ plays band music (rock, indie, punk, goth...) only when you pick a band genre, '
+                    'and electronic music otherwise, never both. On: they can mix.',
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                  title: const Text('Mix bands and electronic'),
+                  value: AutoFetch.instance.mixKinds,
+                  onChanged: (v) => setState(() {
+                    AutoFetch.instance.mixKinds = v;
+                    AutoFetch.instance.save();
+                    widget.dj.refresh();
+                  }),
+                ),
+              ),
+              _step(
+                '4',
+                'Pick a genre and shop',
+                'Choose a genre, tempo and where to look. The track is downloaded '
+                    'right away and plays next.',
+                _picker,
+              ),
+              Theme(
+                data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                child: ExpansionTile(
+                  tilePadding: EdgeInsets.zero,
+                  childrenPadding: EdgeInsets.zero,
+                  title: const Text('More options',
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                  subtitle: const Text('Optional. The defaults work well.',
+                      style: TextStyle(fontSize: 12, color: SideDeckTheme.muted)),
+                  children: [
+                    _step(
+                      '5',
+                      'How tracks blend',
+                      _style.blurb,
+                      Wrap(
+                        spacing: 6,
+                        children: [
+                          for (final t in TransitionStyle.values)
+                            ChoiceChip(
+                              label: Text(t == TransitionStyle.auto ? 'Auto (recommended)' : t.label,
+                                  style: const TextStyle(fontSize: 12)),
+                              selected: _style == t,
+                              onSelected: (_) {
+                                setState(() => _style = t);
+                                widget.dj.automixStyle = t;
+                                _saveTimes();
+                              },
+                            ),
+                        ],
+                      ),
+                    ),
+                    _step(
+                      '6',
+                      'Order of the set',
+                      _arc.blurb,
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Wrap(
+                            spacing: 6,
+                            children: [
+                              for (final a in FlowArc.values)
+                                ChoiceChip(
+                                  label: Text(a.label, style: const TextStyle(fontSize: 12)),
+                                  selected: _arc == a,
+                                  onSelected: (_) {
+                                    setState(() => _arc = a);
+                                    _saveTimes();
+                                  },
+                                ),
+                            ],
+                          ),
+                          if (_arc != FlowArc.off)
+                            _slider('Set length', _len, 20, 180, 32, '${_len.round()} min', on,
+                                (v) => setState(() => _len = v)),
+                        ],
+                      ),
+                    ),
+                    ListenableBuilder(
+                      listenable: Avoids.instance,
+                      builder: (context, _) => Avoids.instance.isEmpty
+                          ? const SizedBox.shrink()
+                          : Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: OutlinedButton.icon(
+                                icon: const Icon(Icons.restart_alt, size: 18),
+                                label: Text(
+                                  'Reset "Less of this" (${Avoids.instance.count})',
+                                  style: const TextStyle(fontSize: 12),
+                                ),
+                                onPressed: () {
+                                  Avoids.instance.clear();
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Less-of-this list cleared.')),
+                                  );
+                                },
+                              ),
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _slider(String label, double value, double min, double max, int divisions,
+      String shown, bool locked, ValueChanged<double> onChanged) {
+    return Row(
+      children: [
+        SizedBox(width: 130, child: Text(label, style: const TextStyle(fontSize: 12))),
+        Expanded(
+          child: Slider(
+            value: value,
+            min: min,
+            max: max,
+            divisions: divisions,
+            label: shown,
+            onChanged: (v) {
+              onChanged(v);
+              _saveTimes();
+            },
+          ),
+        ),
+        SizedBox(width: 46, child: Text(shown, style: const TextStyle(fontSize: 12))),
+      ],
+    );
+  }
+}

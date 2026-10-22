@@ -1,0 +1,101 @@
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef void* DjEngine;
+
+DjEngine dj_create(void);
+void dj_destroy(DjEngine engine);
+
+int dj_start(DjEngine engine);
+void dj_stop(DjEngine engine);
+
+/** Output mode: 0 = internal stereo (phone), 1 = external 4ch USB (deck A 1-2, B 3-4).
+ *  In mode 1 Oboe is stopped and the Java USB AudioTrack is the sink, so USB
+ *  device selection happens on the Java side, not here. */
+int dj_set_output_mode(DjEngine engine, int mode);
+int dj_get_output_mode(DjEngine engine);
+int dj_get_output_channels(DjEngine engine);
+
+int dj_load(DjEngine engine, int deck, const char* path);
+void dj_unload(DjEngine engine, int deck);
+
+void dj_play(DjEngine engine, int deck, int playing);
+void dj_seek(DjEngine engine, int deck, double seconds);
+void dj_set_cue(DjEngine engine, int deck);
+void dj_jump_cue(DjEngine engine, int deck);
+
+double dj_position(DjEngine engine, int deck);
+double dj_duration(DjEngine engine, int deck);
+int dj_playing(DjEngine engine, int deck);
+int dj_loaded(DjEngine engine, int deck);
+
+void dj_set_gain(DjEngine engine, int deck, float linear);
+void dj_set_eq(DjEngine engine, int deck, float low_db, float mid_db, float high_db);
+void dj_set_filter(DjEngine engine, int deck, float amount);
+void dj_set_fader(DjEngine engine, int deck, float linear);
+void dj_set_xfader(DjEngine engine, float x);
+void dj_set_master(DjEngine engine, float linear);
+void dj_set_rate(DjEngine engine, int deck, float rate);
+// Master graphic equaliser: band 0..9 (31 Hz to 16 kHz), gain -12..+12 dB.
+void dj_set_master_eq(DjEngine engine, int band, float db);
+// Master effect: type 0 off, 1 echo, 2 reverb, 3 flanger.
+// Records the master output to a WAV file. Returns 1 on success.
+int dj_record_start(DjEngine engine, const char* path);
+void dj_record_stop(DjEngine engine);
+double dj_record_seconds(DjEngine engine);
+void dj_set_fx(DjEngine engine, int type, float amount, float time_sec);
+// Effect pads on one deck: mask bits 0..7 = echo, reverb, flanger, phaser,
+// filter, crush, noise sweep, roll.
+void dj_set_deck_fx(DjEngine engine, int deck, int mask, float amount, float time_sec);
+// Fills out[0..n) with the level (linear amplitude) of 14 spectrum bands.
+void dj_get_spectrum(DjEngine engine, float* out, int n);
+// Sets the beat-grid tempo (the track's own BPM, before the rate is applied).
+void dj_set_bpm(DjEngine engine, int deck, float bpm);
+void dj_set_keylock(DjEngine engine, int deck, int enabled);
+int dj_sampler_load(DjEngine engine, int slot, const char* path);
+void dj_sampler_fire(DjEngine engine, int slot);
+void dj_sampler_stop(DjEngine engine, int slot);
+void dj_sampler_volume(DjEngine engine, float v);
+void dj_set_cue_deck(DjEngine engine, int deck, int on);
+void dj_set_cue_mode(DjEngine engine, int mode, float volume, float mix);
+void dj_set_key_shift(DjEngine engine, int deck, float semitones);
+
+float dj_get_bpm(DjEngine engine, int deck);
+int dj_get_key(DjEngine engine, int deck);
+float dj_get_beat_offset(DjEngine engine, int deck);
+void dj_nudge_grid(DjEngine engine, int deck, float seconds);
+
+void dj_set_loop(DjEngine engine, int deck, int enabled, float bars);
+double dj_loop_start(DjEngine engine, int deck);
+double dj_loop_end(DjEngine engine, int deck);
+void dj_set_hotcue(DjEngine engine, int deck, int index, double seconds);
+void dj_jump_hotcue(DjEngine engine, int deck, int index);
+double dj_get_hotcue(DjEngine engine, int deck, int index);
+void dj_clear_hotcue(DjEngine engine, int deck, int index);
+void dj_beat_jump(DjEngine engine, int deck, int beats);
+
+int dj_waveform_bins(void);
+int dj_waveform_copy(DjEngine engine, int deck, float* min_out, float* max_out, int bins);
+
+/** Decode a 60s prefix (22 kHz mono) + BPM/key/grid. Uses ID3 TBPM/TKEY when present. */
+int dj_analyze_file(const char* path, float* bpm, int* key, float* beat_offset);
+
+/** Length in seconds from the file header / decoder. Does not decode PCM. */
+double dj_file_duration(const char* path);
+
+/** Decodes the whole file and returns the seconds of audio that really decoded. */
+double dj_file_decoded_seconds(const char* path);
+
+/** Load PCM and apply previously cached analysis (skips BPM/key). bpm<=0 runs a full analyze. */
+int dj_load_with_analysis(DjEngine engine, int deck, const char* path, float bpm, int key,
+                          float beat_offset);
+
+/** Null-terminated reason for the last failed dj_load / open, or "". */
+const char* dj_last_error(void);
+
+#ifdef __cplusplus
+}
+#endif
