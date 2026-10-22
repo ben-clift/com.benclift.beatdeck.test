@@ -568,7 +568,7 @@ class _LibraryOverlayState extends State<LibraryOverlay> {
                               SuggestPage(dj: widget.dj, library: lib),
                         ),
                       ),
-                      icon: const Icon(Icons.auto_awesome, size: 22),
+                      icon: const Icon(Icons.insights, size: 22),
                     ),
                     IconButton(
                       tooltip: 'Free music (Jamendo, Internet Archive)',

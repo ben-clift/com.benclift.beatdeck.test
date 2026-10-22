@@ -282,7 +282,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                         visualDensity: VisualDensity.compact,
                         tooltip: 'Simple mode',
                         onPressed: () => AppMode.set(true),
-                        icon: const Icon(Icons.auto_awesome, size: 20),
+                        icon: const Icon(Icons.insights, size: 20),
                       ),
                       IconButton(
                         visualDensity: VisualDensity.compact,

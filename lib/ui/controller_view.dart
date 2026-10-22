@@ -762,7 +762,7 @@ class _DeckPanelState extends State<_DeckPanel> {
                   visualDensity: VisualDensity.compact,
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                  icon: const Icon(Icons.auto_awesome, size: 20),
+                  icon: const Icon(Icons.insights, size: 20),
                   onPressed: () {
                     final msg = widget.dj.automixMoreLike(widget.index);
                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));

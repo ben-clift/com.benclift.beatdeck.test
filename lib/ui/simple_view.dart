@@ -27,10 +27,10 @@ import 'package:sidedeck/ui/screenshot_import.dart';
 import 'package:sidedeck/wishlist/wishlist.dart';
 import 'package:sidedeck/theme/sidedeck_theme.dart';
 
-const _bg = Color(0xFF121212);
-const _panel = Color(0xFF1F1F1F);
-const _green = Color(0xFF1DB954);
-const _dim = Color(0xFFB3B3B3);
+const _bg = Color(0xFF0D0D0F);
+const _panel = Color(0xFF17171A);
+const _green = Color(0xFFFF5A2B);
+const _dim = Color(0xFF9C9A95);
 
 /// Kinds of vocal worth asking for in each genre (name, words to look for).
 const _vocalTypes = <String, List<(String, List<String>)>>{
@@ -602,9 +602,9 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
         );
     return ListView(children: [
       const SizedBox(height: 12),
-      const Text('Welcome to BeatDeck', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800)),
+      const Text('BEATDECK', style: TextStyle(fontFamily: SideDeckTheme.label, fontSize: 40, fontWeight: FontWeight.w700, letterSpacing: 3)),
       const SizedBox(height: 6),
-      const Text('Your own DJ. It finds music, downloads it and mixes it for you.',
+      const Text('Finds the music, fetches it, mixes it.',
           style: TextStyle(color: Color(0xFFB8B3AA))),
       const SizedBox(height: 20),
       step(Icons.public, 'Music comes from Soulseek',
@@ -1258,7 +1258,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                         onPressed: () => setState(() => _showChooser = true),
                       ),
                     Text(on && !_showChooser ? 'The Booth' : 'BeatDeck',
-                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, letterSpacing: 1)),
+                        style: const TextStyle(fontFamily: SideDeckTheme.label, fontSize: 26, fontWeight: FontWeight.w700, letterSpacing: 2.2)),
                     const Spacer(),
                     IconButton(
                       tooltip: 'Screen brightness',
@@ -1300,9 +1300,9 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     final d = dj.deck(dj.automixPlayingDeck.clamp(0, 1));
     return Material(
       color: _panel,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(5),
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(5),
         onTap: () => setState(() => _showChooser = false),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(14, 8, 6, 8),
@@ -1545,17 +1545,19 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4),
         child: Material(
-          color: const Color(0xFF2A2A2A),
-          borderRadius: BorderRadius.circular(12),
+          color: const Color(0xFF1E1E22),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(4), side: const BorderSide(color: Color(0xFF2E2E33))),
           child: InkWell(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(5),
             onTap: onTap,
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 12),
               child: Column(mainAxisSize: MainAxisSize.min, children: [
                 Icon(icon, size: 24),
                 const SizedBox(height: 4),
-                Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11)),
+                Text(label.toUpperCase(), maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontFamily: SideDeckTheme.label, fontWeight: FontWeight.w600, fontSize: 13, letterSpacing: 1)),
               ]),
             ),
           ),
@@ -1568,7 +1570,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     return
 Container(
           padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(16)),
+          decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(5)),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               const Text('Queue', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
@@ -1596,7 +1598,7 @@ Container(
                     maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _green, fontSize: 16, fontWeight: FontWeight.w700)),
               ),
             ]),
-            const Divider(height: 24, color: Color(0xFF333333)),
+            const Divider(height: 24, color: Color(0xFF2E2E33)),
             Row(children: [
               const Text('Next up', style: TextStyle(color: _dim)),
               const Spacer(),
@@ -1655,14 +1657,14 @@ Container(
           }),
           _action(Icons.search, 'Request', () => _sheet('Request a track', _requestBox(running: true))),
           _action(Icons.playlist_add, 'Import', () => _sheet('Import a playlist', _importBox())),
-          _action(Icons.auto_awesome, 'My style', () => _sheet('My style', _StyleBox(onPlayNow: () => _styleFallback(force: true)))),
+          _action(Icons.insights, 'My style', () => _sheet('My style', _StyleBox(onPlayNow: () => _styleFallback(force: true)))),
           _action(Icons.tune, 'Mixing', () => _sheet('Mixing', _MixBox(dj: widget.dj))),
           _action(Icons.fast_forward, 'Jump ahead', _cut),
           _action(Icons.stop_circle_outlined, 'End set', _stop),
         ]);
   }
 
-  Widget _glass(Widget child, {double r = 22, EdgeInsets pad = const EdgeInsets.all(14)}) => ClipRRect(
+  Widget _glass(Widget child, {double r = 5, EdgeInsets pad = const EdgeInsets.all(14)}) => ClipRRect(
         borderRadius: BorderRadius.circular(r),
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
@@ -1705,7 +1707,7 @@ Container(
               value: frac,
               strokeWidth: 5,
               backgroundColor: const Color(0x33FFFFFF),
-              valueColor: const AlwaysStoppedAnimation(Color(0xFF35E0C2)),
+              valueColor: const AlwaysStoppedAnimation(Color(0xFFE9DCB5)),
             ),
           ),
           InkWell(
@@ -1714,7 +1716,7 @@ Container(
             child: Container(
               width: size - 18,
               height: size - 18,
-              decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFF35E0C2)),
+              decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFFE9DCB5)),
               child: Icon(dj.automixPaused ? Icons.play_arrow : Icons.pause, size: size * 0.45, color: Colors.black),
             ),
           ),
@@ -1764,7 +1766,7 @@ Container(
       if (land) {
         // Landscape: the visuals fill the whole page, controls float on a glass bar.
         return Stack(fit: StackFit.expand, children: [
-          ClipRRect(borderRadius: BorderRadius.circular(14), child: visuals),
+          ClipRRect(borderRadius: BorderRadius.circular(5), child: visuals),
           Positioned(left: 12, top: 12, child: chips),
           Positioned(right: 8, top: 8, child: tune),
           Positioned(
@@ -1794,7 +1796,7 @@ Container(
       }
       // Portrait: visuals behind everything; a glass drawer slides up over them.
       return Stack(fit: StackFit.expand, children: [
-        ClipRRect(borderRadius: BorderRadius.circular(14), child: visuals),
+        ClipRRect(borderRadius: BorderRadius.circular(5), child: visuals),
         Positioned(left: 12, top: 12, child: chips),
         Positioned(right: 8, top: 8, child: tune),
         DraggableScrollableSheet(
@@ -1802,7 +1804,7 @@ Container(
           minChildSize: 0.26,
           maxChildSize: 0.94,
           builder: (context, sc) => ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
               child: Container(
@@ -1833,7 +1835,7 @@ Container(
 
   Widget _chip(String t) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(20)),
+        decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(5)),
         child: Text(t, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.8)),
       );
 }
@@ -1862,7 +1864,7 @@ class _WinampPainter extends CustomPainter {
         final f = j / (segs - 1);
         final on = j < lit;
         final base = f < 0.55
-            ? const Color(0xFF3DDC4A)
+            ? const Color(0xFF7BC96F)
             : (f < 0.82 ? const Color(0xFFE8D840) : const Color(0xFFE5483C));
         paint.color = on ? base : base.withValues(alpha: 0.10);
         final y = size.height - (j + 1) * segH;
@@ -1985,7 +1987,7 @@ class _VisualsBoxState extends State<_VisualsBox> {
                 ListTile(
                   dense: true,
                   title: Text(n, maxLines: 1, overflow: TextOverflow.ellipsis),
-                  trailing: m.preset == n ? const Icon(Icons.check, color: Color(0xFF1DB954)) : null,
+                  trailing: m.preset == n ? const Icon(Icons.check, color: Color(0xFFFF5A2B)) : null,
                   onTap: () => m.set(pick: n),
                 ),
             ]),
@@ -2092,7 +2094,7 @@ class _MixPainter extends CustomPainter {
     final outEnd = 240.0;
     final inStart = outEnd - fade;
     final paintOut = Paint()..color = const Color(0xFF6B6558);
-    final paintMix = Paint()..color = const Color(0xFF35E0C2);
+    final paintMix = Paint()..color = const Color(0xFFE9DCB5);
     final paintIn = Paint()..color = const Color(0xFFFFC83D);
     final r = Radius.circular(6);
     c.drawRRect(RRect.fromLTRBR(0, 4, x(outEnd), 26, r), paintOut);
@@ -2306,7 +2308,7 @@ class _StyleBoxState extends State<_StyleBox> {
                 Navigator.pop(context);
                 widget.onPlayNow();
               },
-        icon: const Icon(Icons.auto_awesome),
+        icon: const Icon(Icons.insights),
         label: const Text('Play something in my style now'),
       ),
     ]);
