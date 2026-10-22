@@ -26,11 +26,25 @@ class _Vibe {
 const _vibes = <_Vibe>[
   _Vibe('House', ['house', 'deep house', 'tech house']),
   _Vibe('Techno', ['techno', 'minimal techno']),
+  _Vibe('Hard techno', ['hard techno', 'hardcore']),
   _Vibe('Trance', ['trance', 'progressive trance']),
+  _Vibe('Psytrance', ['psytrance', 'goa trance']),
   _Vibe('Drum & bass', ['drum and bass', 'liquid drum and bass']),
+  _Vibe('Jungle', ['jungle']),
   _Vibe('Breaks', ['breakbeat', 'big beat']),
-  _Vibe('Disco & funk', ['disco', 'nu disco']),
-  _Vibe('Rock & indie', ['indie rock', 'rock', 'post punk'], bands: true),
+  _Vibe('UK garage', ['uk garage', '2-step']),
+  _Vibe('Dubstep & grime', ['dubstep', 'grime']),
+  _Vibe('Electro', ['electro']),
+  _Vibe('Disco & funk', ['disco', 'nu disco', 'funk']),
+  _Vibe('Hip hop', ['hip hop', 'boom bap']),
+  _Vibe('Soul & R&B', ['soul', 'r&b']),
+  _Vibe('Reggae & dub', ['reggae', 'dub']),
+  _Vibe('Afrobeats', ['afrobeats', 'amapiano']),
+  _Vibe('Chill & ambient', ['downtempo', 'chillout', 'ambient']),
+  _Vibe('Jazz', ['jazz', 'acid jazz']),
+  _Vibe('Rock & indie', ['indie rock', 'rock', 'alternative'], bands: true),
+  _Vibe('Punk & metal', ['punk', 'metal'], bands: true),
+  _Vibe('Goth & post-punk', ['post punk', 'goth', 'new wave'], bands: true),
 ];
 
 /// The whole app for someone who has never used it: pick what you like, tap
