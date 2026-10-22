@@ -25,6 +25,7 @@ class _Vibe {
 
 const _vibes = <_Vibe>[
   _Vibe('House', ['house', 'deep house', 'tech house']),
+  _Vibe('Garage', ['uk garage', 'speed garage', '2-step', 'garage house']),
   _Vibe('Techno', ['techno', 'minimal techno']),
   _Vibe('Hard techno', ['hard techno', 'hardcore']),
   _Vibe('Trance', ['trance', 'progressive trance']),
@@ -32,7 +33,6 @@ const _vibes = <_Vibe>[
   _Vibe('Drum & bass', ['drum and bass', 'liquid drum and bass']),
   _Vibe('Jungle', ['jungle']),
   _Vibe('Breaks', ['breakbeat', 'big beat']),
-  _Vibe('UK garage', ['uk garage', '2-step']),
   _Vibe('Dubstep & grime', ['dubstep', 'grime']),
   _Vibe('Electro', ['electro']),
   _Vibe('Disco & funk', ['disco', 'nu disco', 'funk']),
