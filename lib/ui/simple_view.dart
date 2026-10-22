@@ -282,7 +282,37 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
       const SizedBox(height: 4),
       const Text('Open it, tap Share, Copy link, then come back. Then pick a track to play.',
           style: TextStyle(fontSize: 12, color: Color(0xFF8A857C))),
-      const SizedBox(height: 8),
+      Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: const ExpansionTile(
+          tilePadding: EdgeInsets.zero,
+          childrenPadding: EdgeInsets.only(bottom: 8),
+          title: Text('How do I import a playlist?', style: TextStyle(fontSize: 14, color: SideDeckTheme.accentB)),
+          expandedCrossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('SoundCloud', style: TextStyle(fontWeight: FontWeight.w800)),
+            Text('1. Tap the SoundCloud button below. It opens SoundCloud.\n'
+                '2. Open a playlist (sign in if it asks).\n'
+                '3. Tap the Share button on the playlist.\n'
+                '4. Tap Copy link.\n'
+                '5. Come back to BeatDeck. It asks "Import this playlist?". Tap Import.\n'
+                '6. Your tracks appear in a list. Tap one to play it, or tap Download all.',
+                style: TextStyle(color: Color(0xFFB8B3AA))),
+            SizedBox(height: 10),
+            Text('Spotify', style: TextStyle(fontWeight: FontWeight.w800)),
+            Text('1. Tap the Spotify button below.\n'
+                '2. Open a playlist, tap the three dots, then Share, then Copy link.\n'
+                '3. Come back to BeatDeck and tap Import.\n'
+                'The playlist must be public.',
+                style: TextStyle(color: Color(0xFFB8B3AA))),
+            SizedBox(height: 10),
+            Text('Nothing happened?', style: TextStyle(fontWeight: FontWeight.w800)),
+            Text('Tap "Paste a link", paste the link you copied, then Import. '
+                'SoundCloud only lets us read the first few tracks of a big playlist.',
+                style: TextStyle(color: Color(0xFFB8B3AA))),
+          ],
+        ),
+      ),
       Row(children: [
         Expanded(
           child: OutlinedButton.icon(
