@@ -52,6 +52,15 @@ class AutoFetch extends ChangeNotifier {
   /// 0 any, 1 vocals, 2 instrumental (judged from artist, title and file names).
   int vocal = 0;
 
+  /// Words for the vocal styles asked for (MC, diva, soulful...). Tracks whose
+  /// artist or title match are fetched first.
+  List<String> vocalTerms = [];
+  int _typeScore(Suggestion s) {
+    if (vocalTerms.isEmpty) return 0;
+    final n = '${s.artist} ${s.title}'.toLowerCase();
+    return vocalTerms.any((t) => RegExp('\\b$t').hasMatch(n)) ? 1 : 0;
+  }
+
   /// Use the tempo range below for every search, whatever genre is playing.
   bool tempoPinned = false;
 
@@ -1194,7 +1203,8 @@ class AutoFetch extends ChangeNotifier {
       while (!_stop && (endless || fetched < limit)) {
         _say('Looking for $genre at ${bpmMin.round()}-${bpmMax.round()} BPM');
         final found = await _service.byGenre(genre, bpmMin, bpmMax, skip: tried);
-        final queue = found.where((c) => !_inLibrary(library, c) && _yearOk(c) && !vocalClash('${c.artist} ${c.title}', vocal)).toList();
+        final queue = found.where((c) => !_inLibrary(library, c) && _yearOk(c) && !vocalClash('${c.artist} ${c.title}', vocal)).toList()
+          ..sort((a, b) => _typeScore(b).compareTo(_typeScore(a)));
         if (queue.isEmpty) {
           if (++empties >= 3) {
             _say('Could not find more $genre in that tempo range');

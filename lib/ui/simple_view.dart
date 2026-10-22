@@ -32,6 +32,21 @@ const _panel = Color(0xFF1F1F1F);
 const _green = Color(0xFF1DB954);
 const _dim = Color(0xFFB3B3B3);
 
+/// Kinds of vocal worth asking for in each genre (name, words to look for).
+const _vocalTypes = <String, List<(String, List<String>)>>{
+  'House': [('Diva / female', ['diva', 'female', 'feat']), ('Soulful / gospel', ['soul', 'gospel', 'choir']), ('Chopped vocal', ['chop', 'sample', 'edit']), ('Male', ['male', 'vs'])],
+  'Garage': [('MC', ['mc', 'vs']), ('Female R&B vocal', ['female', 'r&b', 'feat']), ('Vocal VIP', ['vip', 'vocal', 'vox'])],
+  'Drum & bass': [('MC', ['mc']), ('Soulful', ['soul', 'feat']), ('Ragga', ['ragga', 'dancehall'])],
+  'Jungle': [('MC', ['mc']), ('Ragga', ['ragga', 'dancehall', 'reggae'])],
+  'Techno': [('Spoken / chant', ['spoken', 'chant', 'voice']), ('Sampled', ['sample', 'vocal'])],
+  'Trance': [('Female trance vocal', ['feat', 'female', 'vocal']), ('Uplifting anthem', ['anthem', 'uplifting'])],
+  'Hip hop': [('Rap', ['rap', 'mc']), ('Sung hooks', ['feat', 'ft'])],
+  'Soul & R&B': [('Female', ['female', 'feat']), ('Male', ['male']), ('Gospel / choir', ['gospel', 'choir'])],
+  'Disco & funk': [('Diva', ['diva', 'feat']), ('Group vocals', ['band', 'group'])],
+  'Reggae & dub': [('Toasting / MC', ['mc', 'toast']), ('Roots singing', ['roots', 'feat'])],
+};
+const _vocalDefault = <(String, List<String>)>[('Female', ['female', 'feat']), ('Male', ['male']), ('Choir / gospel', ['choir', 'gospel']), ('Spoken', ['spoken', 'voice'])];
+
 class _Vibe {
   const _Vibe(this.label, this.genres, {this.bands = false});
   final String label;
@@ -96,6 +111,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
   final _track = TextEditingController();
   double _intensity = 0;
   int _vocal = 0; // 0 any, 1 vocals, 2 instrumental
+  final Set<String> _typesOn = {}; // vocal types chosen ("Genre|Type")
   final Set<String> _subOff = {}; // sub-genres switched off
   int _decade = 0; // 0 = any year, else the first year of the decade
   bool _bpmAny = true;
@@ -740,6 +756,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
       final p = await SharedPreferences.getInstance();
       _vocal = p.getInt('simple_vocal') ?? 0;
       _subOff.addAll(p.getStringList('simple_suboff') ?? const []);
+      _typesOn.addAll(p.getStringList('simple_types') ?? const []);
       final s = p.getStringList('simple_vibes');
       if (s != null && s.isNotEmpty) {
         _picked
@@ -791,10 +808,17 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
         genres.addAll(on.isEmpty ? v.genres : on);
       }
       af.vocal = _vocal;
+      af.vocalTerms = [
+        if (_vocal != 2)
+          for (final v in vibes)
+            for (final t in (_vocalTypes[v.label] ?? _vocalDefault))
+              if (_typesOn.contains('${v.label}|${t.$1}')) ...t.$2,
+      ];
       widget.dj.vocalMode = () => AutoFetch.instance.vocal;
       SharedPreferences.getInstance().then((p) {
         p.setInt('simple_vocal', _vocal);
         p.setStringList('simple_suboff', _subOff.toList());
+        p.setStringList('simple_types', _typesOn.toList());
       }).catchError((_) {});
       af.genres = genres;
       af.genre = genres.first;
@@ -1360,6 +1384,23 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
             onSelectionChanged: _starting ? null : (v) => setState(() => _vocal = v.first),
           ),
         ]),
+        if (_vocal != 2)
+          for (final i in _picked)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Wrap(spacing: 8, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                Text('${_vibes[i].label} vocals:', style: const TextStyle(color: Color(0xFFB8B3AA))),
+                for (final t in (_vocalTypes[_vibes[i].label] ?? _vocalDefault))
+                  FilterChip(
+                    visualDensity: VisualDensity.compact,
+                    label: Text(t.$1),
+                    selected: _typesOn.contains('${_vibes[i].label}|${t.$1}'),
+                    onSelected: _starting
+                        ? null
+                        : (v) => setState(() => v ? _typesOn.add('${_vibes[i].label}|${t.$1}') : _typesOn.remove('${_vibes[i].label}|${t.$1}')),
+                  ),
+              ]),
+            ),
         const SizedBox(height: 20),
         Row(children: [
           const Text('Speed (BPM)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
