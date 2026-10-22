@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -647,7 +648,12 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
       await SlskKeeper.instance.setEnabled(true);
 
       final dj = widget.dj;
-      List<String> paths() => [for (final t in widget.library.tracks) t.path];
+      // Only tracks that can really play now: the file is there and it was not
+      // played in the last 24 hours (the player skips those).
+      List<String> paths() => [
+            for (final t in widget.library.tracks)
+              if (File(t.path).existsSync() && !dj.playedRecently(t.path)) t.path,
+          ];
 
       final req = _hasRequest;
       final reqArtist = _artist.text.trim(), reqTrack = _track.text.trim();
