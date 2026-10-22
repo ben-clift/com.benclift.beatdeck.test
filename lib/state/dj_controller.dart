@@ -1035,6 +1035,9 @@ class DjController extends ChangeNotifier {
 
   bool playedRecently(String path) => _wasPlayed(path);
 
+  /// Lets a library track through the genre filter (it was chosen on purpose).
+  void automixAllow(String path) => _userOk.add(path);
+
   /// Plays any library track now (even one played earlier), mixing it in.
   String? automixPlayTrack(String path) {
     if (!automixOn) return 'Start a set first.';

@@ -59,6 +59,29 @@ class SuggestService {
     return jsonDecode(utf8.decode(r.bodyBytes));
   }
 
+  /// Tracks by artists that Deezer lists as related to [artist] (their top
+  /// tracks), used to play "in the style of" what the user starred.
+  Future<List<Suggestion>> relatedTracks(String artist) async {
+    final out = <Suggestion>[];
+    try {
+      final s = await _get('https://api.deezer.com/search/artist?q=${Uri.encodeQueryComponent(artist)}&limit=1');
+      final data = (s['data'] as List?) ?? const [];
+      if (data.isEmpty) return out;
+      final id = (data.first as Map)['id'];
+      final rel = await _get('https://api.deezer.com/artist/$id/related?limit=12');
+      final list = ((rel['data'] as List?) ?? const []).cast<Map>().toList()..shuffle();
+      for (final a in list.take(4)) {
+        final top = await _get('https://api.deezer.com/artist/${a['id']}/top?limit=6');
+        final tracks = ((top['data'] as List?) ?? const []).cast<Map>().toList()..shuffle();
+        for (final t in tracks.take(2)) {
+          final name = (t['artist'] as Map?)?['name']?.toString() ?? a['name'].toString();
+          out.add(Suggestion(name, t['title_short']?.toString() ?? t['title'].toString(), 0, 'Like $artist'));
+        }
+      }
+    } catch (_) {}
+    return out;
+  }
+
   Future<SeedInfo> lookupSeed(String artist, String title) async {
     final genres = <String>{};
     double bpm = 0;

@@ -108,7 +108,51 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     _restore();
     Starred.instance.load();
     _loadIntro();
-    _keepAhead = Timer.periodic(const Duration(seconds: 8), (_) => _refill());
+    _keepAhead = Timer.periodic(const Duration(seconds: 8), (_) {
+      _refill();
+      _styleFallback();
+    });
+  }
+
+  DateTime _lastStyle = DateTime.fromMillisecondsSinceEpoch(0);
+
+  /// When there is nothing else to play next, play music in the style of the
+  /// starred tracks: first from the library, else related artists from Deezer.
+  Future<void> _styleFallback() async {
+    final dj = widget.dj;
+    final stars = Starred.instance.items;
+    if (!mounted || !dj.automixOn || stars.isEmpty) return;
+    if (dj.automixUpcoming.isNotEmpty) return;
+    final d = dj.deck(dj.automixPlayingDeck.clamp(0, 1));
+    final left = d.duration - d.position;
+    if (d.duration <= 0 || left > 60) return; // only when the end is near and nothing is waiting
+    if (DateTime.now().difference(_lastStyle).inSeconds < 40) return;
+    _lastStyle = DateTime.now();
+    final genres = {for (final t in stars) if (t.genre.isNotEmpty) t.genre.toLowerCase()};
+    final artists = {for (final t in stars) t.artist.toLowerCase()};
+    final bpms = [for (final t in stars) if (t.bpm > 0) t.bpm]..sort();
+    final mid = bpms.isEmpty ? 0 : bpms[bpms.length ~/ 2];
+    final local = <LibraryTrack>[
+      for (final t in widget.library.tracks)
+        if (!dj.playedRecently(t.path) &&
+            File(t.path).existsSync() &&
+            (genres.contains((t.genre.isNotEmpty ? t.genre : (dj.genreOf?.call(t.path) ?? '')).toLowerCase()) ||
+                artists.contains(t.artist.toLowerCase())) &&
+            (mid == 0 || t.bpm == null || t.bpm! <= 0 || (t.bpm! - mid).abs() <= mid * 0.12))
+          t,
+    ]..shuffle();
+    if (local.isNotEmpty) {
+      DebugLog.add('simple', 'nothing waiting: playing a library track in the style of your starred ones');
+      dj.automixAllow(local.first.path);
+      dj.automixAppend(local.first.path);
+      return;
+    }
+    if (!soulseek.online || AutoFetch.instance.running) return;
+    final seed = stars[math.Random().nextInt(stars.length)];
+    DebugLog.add('simple', 'nothing waiting: looking for artists like ${seed.artist}');
+    final found = await SuggestService().relatedTracks(seed.artist);
+    if (found.isEmpty || !mounted) return;
+    AutoFetch.instance.enqueueTracks(found.take(3).toList(), widget.library);
   }
 
   /// Keeps 3 tracks waiting after the one playing, whatever happens: when
