@@ -95,6 +95,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
   final _artist = TextEditingController();
   final _track = TextEditingController();
   double _intensity = 0;
+  int _decade = 0; // 0 = any year, else the first year of the decade
   bool _bpmAny = true;
   RangeValues _bpm = const RangeValues(120, 130);
   String _note = '';
@@ -712,6 +713,12 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
       af.pinned = true;
       af.mixKinds = false;
       af.intensity = _intensity.round();
+      af.useYearRange = _decade != 0;
+      if (_decade != 0) {
+        af.yearFrom = _decade;
+        af.yearTo = _decade + 9;
+      }
+      widget.dj.decadeRange = _decade == 0 ? null : (_decade, _decade + 9);
       af.endless = true;
       af.buffer = 4; // keep fetching until 4 tracks are waiting, so it never runs dry
       var lo = 999.0, hi = 0.0;
@@ -1141,6 +1148,22 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
           label: const ['Any', 'Medium', 'High', 'Peak'][_intensity.round()],
           onChanged: _starting ? null : (v) => setState(() => _intensity = v),
         ),
+        const SizedBox(height: 8),
+        Row(children: [
+          const Text('Year', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+          const Spacer(),
+          DropdownButton<int>(
+            value: _decade,
+            underline: const SizedBox.shrink(),
+            dropdownColor: _panel,
+            items: [
+              const DropdownMenuItem(value: 0, child: Text('Any year')),
+              for (final y in const [2020, 2010, 2000, 1990, 1980, 1970, 1960])
+                DropdownMenuItem(value: y, child: Text(y >= 2000 ? 'The ${y}s' : "The ${y.toString().substring(2)}s")),
+            ],
+            onChanged: _starting ? null : (v) => setState(() => _decade = v ?? 0),
+          ),
+        ]),
         const SizedBox(height: 8),
         _requestBox(running: false),
         const SizedBox(height: 16),
