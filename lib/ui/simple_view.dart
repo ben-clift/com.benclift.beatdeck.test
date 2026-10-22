@@ -17,6 +17,7 @@ import 'package:sidedeck/suggest/auto_fetch.dart';
 import 'package:sidedeck/suggest/genres.dart';
 import 'package:sidedeck/suggest/shazam_watcher.dart';
 import 'package:sidedeck/suggest/suggest_service.dart';
+import 'package:sidedeck/ui/equaliser_view.dart';
 import 'package:sidedeck/ui/milkdrop_view.dart';
 import 'package:sidedeck/ui/screenshot_import.dart';
 import 'package:sidedeck/wishlist/wishlist.dart';
@@ -787,6 +788,12 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     });
   }
 
+  /// The full equaliser (presets, ten sliders, your own saved settings) on its
+  /// own screen, turned sideways so the sliders have room.
+  void _openEq() {
+    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => _EqPage(dj: widget.dj)));
+  }
+
   void _cut() {
     if (!widget.dj.automixCut()) _toast('No next track is ready yet. Try Skip in a moment.');
   }
@@ -1035,7 +1042,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
               child: Column(mainAxisSize: MainAxisSize.min, children: [
                 Icon(icon, size: 24),
                 const SizedBox(height: 4),
-                Text(label, style: const TextStyle(fontSize: 12)),
+                Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11)),
               ]),
             ),
           ),
@@ -1197,6 +1204,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
         ),
         const SizedBox(height: 14),
         Row(children: [
+          _action(Icons.equalizer, 'EQ', _openEq),
           _action(Icons.search, 'Play next', () => _sheet('Play something next', _requestBox(running: true))),
           _action(Icons.playlist_add, 'Import', () => _sheet('Import a playlist', _importBox())),
           _action(Icons.fast_forward, 'Stop track', _cut),
@@ -1251,4 +1259,39 @@ class _WinampPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _WinampPainter old) => true;
+}
+
+class _EqPage extends StatefulWidget {
+  const _EqPage({required this.dj});
+  final DjController dj;
+
+  @override
+  State<_EqPage> createState() => _EqPageState();
+}
+
+class _EqPageState extends State<_EqPage> {
+  @override
+  void initState() {
+    super.initState();
+    SystemChrome.setPreferredOrientations(const [DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]);
+  }
+
+  @override
+  void dispose() {
+    AppMode.applyOrientation();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: _bg,
+      appBar: AppBar(
+        backgroundColor: _bg,
+        toolbarHeight: 40,
+        title: const Text('Equaliser', style: TextStyle(fontSize: 16)),
+      ),
+      body: EqualiserView(dj: widget.dj),
+    );
+  }
 }
