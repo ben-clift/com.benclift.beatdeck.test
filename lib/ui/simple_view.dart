@@ -788,7 +788,9 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
         }
         if (!mounted || run != _run) return;
       }
-      await dj.startAutomix(paths(), fadeSeconds: 24, startOffsetSeconds: 10);
+      await MixSettings.instance.load();
+      await dj.startAutomix(paths(), fadeSeconds: MixSettings.instance.fade, startOffsetSeconds: MixSettings.instance.offset);
+      MixSettings.instance.apply(dj);
       if (!dj.automixOn) {
         setState(() => _note = dj.automixStatus ?? '');
       } else if (mounted) {
@@ -1337,6 +1339,7 @@ Container(
           }),
           _action(Icons.search, 'Request', () => _sheet('Request a track', _requestBox(running: true))),
           _action(Icons.playlist_add, 'Import', () => _sheet('Import a playlist', _importBox())),
+          _action(Icons.tune, 'Mixing', () => _sheet('Mixing', _MixBox(dj: widget.dj))),
           _action(Icons.fast_forward, 'Jump ahead', _cut),
           _action(Icons.stop_circle_outlined, 'End set', _stop),
         ]);
@@ -1674,4 +1677,129 @@ class _VisualsBoxState extends State<_VisualsBox> {
       },
     );
   }
+}
+
+
+/// How tracks are mixed: when the mix out starts, where the next track comes
+/// in, and whether a track may be changed early. Saved on the phone.
+class MixSettings {
+  MixSettings._();
+  static final MixSettings instance = MixSettings._();
+  double fade = 24; // seconds of blend, starting this long before the end
+  double offset = 10; // seconds into the next track
+  double early = 0; // 0 = full tracks, else minimum seconds before an early change
+  bool _loaded = false;
+
+  Future<void> load() async {
+    if (_loaded) return;
+    try {
+      final p = await SharedPreferences.getInstance();
+      fade = p.getDouble('mix_fade') ?? 24;
+      offset = p.getDouble('mix_offset') ?? 10;
+      early = p.getDouble('mix_early') ?? 0;
+      _loaded = true;
+    } catch (_) {}
+  }
+
+  Future<void> save() async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      await p.setDouble('mix_fade', fade);
+      await p.setDouble('mix_offset', offset);
+      await p.setDouble('mix_early', early);
+    } catch (_) {}
+  }
+
+  void apply(DjController dj) {
+    if (dj.automixOn) dj.setMixTiming(fade: fade, startOffset: offset, earlyAfter: early);
+    dj.earlyEndAfter = early;
+    save();
+  }
+}
+
+class _MixBox extends StatefulWidget {
+  const _MixBox({required this.dj});
+  final DjController dj;
+  @override
+  State<_MixBox> createState() => _MixBoxState();
+}
+
+class _MixBoxState extends State<_MixBox> {
+  final m = MixSettings.instance;
+  @override
+  void initState() {
+    super.initState();
+    m.load().then((_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  void _chg(VoidCallback f) {
+    setState(f);
+    m.apply(widget.dj);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      SizedBox(height: 70, child: CustomPaint(painter: _MixPainter(m.fade, m.offset))),
+      const SizedBox(height: 8),
+      Text('Mix out: starts ${m.fade.round()} s before the end', style: const TextStyle(fontWeight: FontWeight.w700)),
+      Slider(value: m.fade, min: 4, max: 60, divisions: 28, label: '${m.fade.round()} s', onChanged: (v) => _chg(() => m.fade = v)),
+      Text('Mix in: next track comes in ${m.offset.round()} s from its start', style: const TextStyle(fontWeight: FontWeight.w700)),
+      Slider(value: m.offset, min: 0, max: 60, divisions: 30, label: '${m.offset.round()} s', onChanged: (v) => _chg(() => m.offset = v)),
+      const SizedBox(height: 4),
+      const Text('Change track', style: TextStyle(fontWeight: FontWeight.w700)),
+      const SizedBox(height: 4),
+      Wrap(spacing: 8, children: [
+        for (final e in const [(0.0, 'Full tracks'), (180.0, 'After 3 min'), (240.0, 'After 4 min'), (120.0, 'After 2 min')])
+          ChoiceChip(label: Text(e.$2), selected: m.early == e.$1, onSelected: (_) => _chg(() => m.early = e.$1)),
+      ]),
+      const SizedBox(height: 4),
+      const Text('Full tracks plays each one to its mix point. The others let it change early at a quiet spot once the track has played that long.',
+          style: TextStyle(fontSize: 12, color: Color(0xFF8A857C))),
+    ]);
+  }
+}
+
+/// Two bars: the track going out (its last seconds marked) and the next one
+/// coming in, lined up so the overlap is the mix.
+class _MixPainter extends CustomPainter {
+  _MixPainter(this.fade, this.offset);
+  final double fade, offset;
+  @override
+  void paint(Canvas c, Size s) {
+    const total = 300.0; // a 5-minute window
+    final w = s.width;
+    double x(double sec) => w * (sec / total);
+    final outEnd = 240.0;
+    final inStart = outEnd - fade;
+    final paintOut = Paint()..color = const Color(0xFF6B6558);
+    final paintMix = Paint()..color = const Color(0xFF35E0C2);
+    final paintIn = Paint()..color = const Color(0xFFFFC83D);
+    final r = Radius.circular(6);
+    c.drawRRect(RRect.fromLTRBR(0, 4, x(outEnd), 26, r), paintOut);
+    c.drawRRect(RRect.fromLTRBR(x(inStart), 4, x(outEnd), 26, r), paintMix);
+    c.drawRRect(RRect.fromLTRBR(x(inStart), 40, w, 62, r), paintIn);
+    // Where the music of the new track really starts (its own offset).
+    c.drawRect(Rect.fromLTWH(x(inStart), 40, math.max(2, x(0)), 22), Paint()..color = const Color(0x00000000));
+    final tp = TextPainter(
+      text: TextSpan(text: 'out', style: const TextStyle(color: Colors.white, fontSize: 11)),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    tp.paint(c, const Offset(8, 9));
+    final tp2 = TextPainter(
+      text: TextSpan(text: 'mix ${fade.round()} s', style: const TextStyle(color: Colors.black, fontSize: 11, fontWeight: FontWeight.w700)),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    if (x(fade) > tp2.width + 8) tp2.paint(c, Offset(x(inStart) + 6, 9));
+    final tp3 = TextPainter(
+      text: TextSpan(text: 'next track (in at ${offset.round()} s)', style: const TextStyle(color: Colors.black, fontSize: 11, fontWeight: FontWeight.w700)),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    tp3.paint(c, Offset(x(inStart) + 6, 45));
+  }
+
+  @override
+  bool shouldRepaint(_MixPainter o) => o.fade != fade || o.offset != offset;
 }

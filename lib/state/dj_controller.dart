@@ -949,6 +949,20 @@ class DjController extends ChangeNotifier {
 
   /// How far into the next track it starts playing, rounded to whole bars.
   double automixStartOffset = 10;
+
+  /// Seconds a track must play before automix may end it early at a quiet
+  /// spot; 0 = always play tracks to their normal mix point.
+  double earlyEndAfter = 0;
+
+  /// Mix timing while automix runs: [fade] = seconds the blend lasts (starts
+  /// that long before the end), [startOffset] = seconds into the next track.
+  void setMixTiming({required double fade, required double startOffset, required double earlyAfter}) {
+    automixFadeSeconds = fade.clamp(4.0, 90.0).toDouble();
+    _baseFade = automixFadeSeconds;
+    automixStartOffset = startOffset.clamp(0.0, 90.0).toDouble();
+    earlyEndAfter = earlyAfter;
+    notifyListeners();
+  }
   String? automixStatus;
   List<String> _automixQueue = [];
   int _automixIndex = -1; // queue index of the track on the current deck
@@ -1991,7 +2005,7 @@ class DjController extends ChangeNotifier {
     if (d.bpm <= 1 || d.duration <= 0) return false;
     final rate = d.rate <= 0 ? 1.0 : d.rate;
     final pos = _engine.position(cur);
-    if (pos / rate < 150) return false; // always give a track 2.5 minutes
+    if (earlyEndAfter <= 0 || pos / rate < earlyEndAfter) return false;
     if (!nearBarLine(pos, d.bpm, d.beatOffset)) return false;
     final n = math.min(d.waveMax.length, d.waveMin.length);
     if (n < 64) return false;
