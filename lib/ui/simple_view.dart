@@ -122,8 +122,8 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
   /// starred tracks: first from the library, else related artists from Deezer.
   Future<void> _styleFallback({bool force = false}) async {
     final dj = widget.dj;
-    final stars = Starred.instance.items;
     final st = StyleSettings.instance;
+    final stars = st.chosen();
     if (!mounted || !dj.automixOn || stars.isEmpty) return;
     if (!force && st.mode == 0) return; // off
     final d = dj.deck(dj.automixPlayingDeck.clamp(0, 1));
@@ -143,7 +143,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     final genres = {for (final t in stars) if (t.genre.isNotEmpty) t.genre.toLowerCase()};
     final artists = {for (final t in stars) t.artist.toLowerCase()};
     final bpms = [for (final t in stars) if (t.bpm > 0) t.bpm]..sort();
-    final mid = bpms.isEmpty ? 0 : bpms[bpms.length ~/ 2];
+    final mid = st.bpmFrom > 0 ? (st.bpmFrom + st.bpmTo) ~/ 2 : (bpms.isEmpty ? 0 : bpms[bpms.length ~/ 2]);
     final local = <LibraryTrack>[
       for (final t in widget.library.tracks)
         if (!dj.playedRecently(t.path) &&
@@ -151,7 +151,9 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
             (!st.matchGenre ||
                 genres.contains((t.genre.isNotEmpty ? t.genre : (dj.genreOf?.call(t.path) ?? '')).toLowerCase()) ||
                 artists.contains(t.artist.toLowerCase())) &&
-            (mid == 0 || t.bpm == null || t.bpm! <= 0 || (t.bpm! - mid).abs() <= mid * st.bpmTol / 100))
+            (st.bpmFrom > 0
+                ? (t.bpm == null || t.bpm! <= 0 || (t.bpm! >= st.bpmFrom && t.bpm! <= st.bpmTo))
+                : (mid == 0 || t.bpm == null || t.bpm! <= 0 || (t.bpm! - mid).abs() <= mid * st.bpmTol / 100)))
           t,
     ]..shuffle();
     if (local.isNotEmpty) {
@@ -2021,12 +2023,23 @@ class StyleSettings {
   double bpmTol = 12; // % either side of the starred tempo for library picks
   bool matchGenre = true;
   bool download = true; // may fetch new tracks (else library only)
+  final Set<String> excluded = {}; // starred tracks left out (by key)
+  double bpmFrom = 0; // 0 = automatic from the starred tracks
+  double bpmTo = 0;
   bool _loaded = false;
+
+  /// The starred tracks that define the style.
+  List<StarredTrack> chosen() => [for (final t in Starred.instance.items) if (!excluded.contains(t.key)) t];
 
   Future<void> load() async {
     if (_loaded) return;
     try {
       final p = await SharedPreferences.getInstance();
+      excluded
+        ..clear()
+        ..addAll(p.getStringList('style_excl') ?? const []);
+      bpmFrom = p.getDouble('style_bpm_from') ?? 0;
+      bpmTo = p.getDouble('style_bpm_to') ?? 0;
       mode = p.getInt('style_mode') ?? 1;
       everyMin = p.getInt('style_every') ?? 6;
       adventure = p.getInt('style_adv') ?? 1;
@@ -2040,6 +2053,9 @@ class StyleSettings {
   Future<void> save() async {
     try {
       final p = await SharedPreferences.getInstance();
+      await p.setStringList('style_excl', excluded.toList());
+      await p.setDouble('style_bpm_from', bpmFrom);
+      await p.setDouble('style_bpm_to', bpmTo);
       await p.setInt('style_mode', mode);
       await p.setInt('style_every', everyMin);
       await p.setInt('style_adv', adventure);
@@ -2074,13 +2090,77 @@ class _StyleBoxState extends State<_StyleBox> {
 
   @override
   Widget build(BuildContext context) {
-    final n = Starred.instance.items.length;
+    final n = st.chosen().length;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Text(n == 0
           ? 'Star some tracks first. This uses their genre, tempo and artists.'
           : 'Music chosen from the style of your $n starred track${n == 1 ? '' : 's'}.',
           style: const TextStyle(color: Color(0xFF8A857C))),
       const SizedBox(height: 10),
+      const Text('Starred tracks to use', style: TextStyle(fontWeight: FontWeight.w700)),
+      Wrap(spacing: 8, children: [
+        for (final g in {for (final t in Starred.instance.items) if (t.genre.isNotEmpty) t.genre}.toList()..sort())
+          ActionChip(
+            avatar: Icon(
+              Starred.instance.items.where((t) => t.genre == g).every((t) => !st.excluded.contains(t.key))
+                  ? Icons.check_box
+                  : Icons.check_box_outline_blank,
+              size: 18,
+            ),
+            label: Text(g),
+            onPressed: () => _chg(() {
+              final of = Starred.instance.items.where((t) => t.genre == g).toList();
+              final allOn = of.every((t) => !st.excluded.contains(t.key));
+              for (final t in of) {
+                allOn ? st.excluded.add(t.key) : st.excluded.remove(t.key);
+              }
+            }),
+          ),
+      ]),
+      SizedBox(
+        height: math.min(200, 56.0 * Starred.instance.items.length),
+        child: ListView(children: [
+          for (final t in Starred.instance.items)
+            CheckboxListTile(
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              value: !st.excluded.contains(t.key),
+              onChanged: (v) => _chg(() => v == true ? st.excluded.remove(t.key) : st.excluded.add(t.key)),
+              title: Text('${t.artist.isEmpty ? '' : '${t.artist} - '}${t.title}', maxLines: 1, overflow: TextOverflow.ellipsis),
+              subtitle: Text([if (t.genre.isNotEmpty) t.genre, if (t.bpm > 0) '${t.bpm} BPM'].join('  ·  ')),
+            ),
+        ]),
+      ),
+      const SizedBox(height: 8),
+      Row(children: [
+        Expanded(
+          child: Text(st.bpmFrom > 0 ? 'Tempo range: ${st.bpmFrom.round()} to ${st.bpmTo.round()} BPM' : 'Tempo range: automatic',
+              style: const TextStyle(fontWeight: FontWeight.w700)),
+        ),
+        Switch(
+          value: st.bpmFrom > 0,
+          onChanged: (v) => _chg(() {
+            if (v) {
+              st.bpmFrom = 120;
+              st.bpmTo = 130;
+            } else {
+              st.bpmFrom = st.bpmTo = 0;
+            }
+          }),
+        ),
+      ]),
+      if (st.bpmFrom > 0)
+        RangeSlider(
+          values: RangeValues(st.bpmFrom, st.bpmTo),
+          min: 60,
+          max: 200,
+          labels: RangeLabels('${st.bpmFrom.round()}', '${st.bpmTo.round()}'),
+          onChanged: (v) => _chg(() {
+            st.bpmFrom = v.start.roundToDouble();
+            st.bpmTo = v.end.roundToDouble();
+          }),
+        ),
+      const SizedBox(height: 8),
       const Text('When to use it', style: TextStyle(fontWeight: FontWeight.w700)),
       Wrap(spacing: 8, children: [
         for (final e in const [(0, 'Off'), (1, 'When nothing else is waiting'), (2, 'Mixed in regularly')])
