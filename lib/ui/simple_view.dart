@@ -145,17 +145,104 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
         return;
       }
       final l = ctl.lists.first;
-      final tracks = [for (final i in l.items) Suggestion(i.artist, i.title, 0, 'Your playlist')];
-      AutoFetch.instance.enqueueTracks(tracks, widget.library);
-      SlskKeeper.instance.setEnabled(true);
-      await SlskSetup.setAutoFetchForAutomix(true);
-      _toast('Imported ${tracks.length} tracks from "${l.name}". Finding them now.${ctl.message != null ? ' ${ctl.message}' : ''}');
+      if (ctl.message != null) _toast(ctl.message!);
+      if (mounted) await _showPlaylist(l);
     } catch (e) {
       DebugLog.add('simple', 'import failed: $e');
       _toast('Could not import that link.');
     } finally {
       if (mounted) setState(() => _importing = false);
     }
+  }
+
+  /// Tracks of an imported playlist: tap one to play it, or fetch them all.
+  Future<void> _showPlaylist(WishList l) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: SideDeckTheme.panel,
+      builder: (ctx) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.8,
+        builder: (ctx, scroll) => Column(children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+            child: Text(l.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+          ),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: Text('Tap a track to play it.', style: TextStyle(color: Color(0xFF8A857C))),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(8),
+            child: TextButton.icon(
+              icon: const Icon(Icons.download),
+              label: Text('Download all ${l.items.length}'),
+              onPressed: () {
+                AutoFetch.instance.enqueueTracks(
+                    [for (final i in l.items) Suggestion(i.artist, i.title, 0, 'Your playlist')], widget.library);
+                SlskKeeper.instance.setEnabled(true);
+                SlskSetup.setAutoFetchForAutomix(true);
+                Navigator.pop(ctx);
+                _toast('Finding all ${l.items.length} tracks, one after another.');
+              },
+            ),
+          ),
+          Expanded(
+            child: ListView.builder(
+              controller: scroll,
+              itemCount: l.items.length,
+              itemBuilder: (_, i) {
+                final it = l.items[i];
+                return ListTile(
+                  title: Text(it.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  subtitle: it.artist.isEmpty ? null : Text(it.artist, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  trailing: const Icon(Icons.play_arrow),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _playFromList(it);
+                  },
+                );
+              },
+            ),
+          ),
+        ]),
+      ),
+    );
+  }
+
+  void _playFromList(WishItem it) {
+    _artist.text = it.artist;
+    _track.text = it.title;
+    if (widget.dj.automixOn) {
+      _requestNow();
+    } else {
+      _start();
+    }
+  }
+
+  Future<void> _openSaved() async {
+    final ctl = WishListController();
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    if (!mounted) return;
+    if (ctl.lists.isEmpty) {
+      _toast('No imported playlists yet.');
+      return;
+    }
+    final l = await showDialog<WishList>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: const Text('Imported playlists'),
+        children: [
+          for (final x in ctl.lists)
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(ctx, x),
+              child: Text('${x.name} (${x.items.length})'),
+            ),
+        ],
+      ),
+    );
+    if (l != null && mounted) await _showPlaylist(l);
   }
 
   Future<void> _openAndWait(String kind) async {
@@ -193,7 +280,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       const Text('Import a playlist', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
       const SizedBox(height: 4),
-      const Text('Open it, tap Share, Copy link, then come back. We find every track.',
+      const Text('Open it, tap Share, Copy link, then come back. Then pick a track to play.',
           style: TextStyle(fontSize: 12, color: Color(0xFF8A857C))),
       const SizedBox(height: 8),
       Row(children: [
@@ -213,7 +300,10 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
           ),
         ),
       ]),
-      TextButton(onPressed: _importing ? null : _pasteDialog, child: Text(_importing ? 'Importing…' : 'Paste a link instead')),
+      Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+        TextButton(onPressed: _importing ? null : _pasteDialog, child: Text(_importing ? 'Importing…' : 'Paste a link')),
+        TextButton(onPressed: _importing ? null : _openSaved, child: const Text('My playlists')),
+      ]),
     ]);
   }
 
