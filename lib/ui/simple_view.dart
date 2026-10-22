@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -1227,130 +1228,9 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     );
   }
 
-  Widget _playing(DjController dj) {
-    final d = dj.deck(dj.automixPlayingDeck.clamp(0, 1));
-    final af = AutoFetch.instance;
-    final genre = d.path == null ? '' : (dj.genreOf?.call(d.path!) ?? '');
-    final status = af.running && af.status.isNotEmpty ? af.status : (dj.automixStatus ?? '');
-    final upcoming = dj.automixUpcoming;
-    final hue = (genre.isEmpty ? d.title : genre).codeUnits.fold<int>(7, (a, c) => (a * 31 + c) % 360).toDouble();
-    final c1 = HSLColor.fromAHSL(1, hue, 0.55, 0.38).toColor();
-    final c2 = HSLColor.fromAHSL(1, (hue + 40) % 360, 0.6, 0.12).toColor();
-    final frac = d.duration > 0 ? (d.position / d.duration).clamp(0.0, 1.0) : 0.0;
-    return ListView(
-      children: [
-        // Big "cover": colour comes from the genre, like an album picture.
-        AspectRatio(
-          aspectRatio: 1.15,
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
-              gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [c1, c2]),
-            ),
-            child: Stack(children: [
-              // MilkDrop visuals reacting to the music; the Winamp-style bars
-              // show first, and when the phone is on Low brightness.
-              Positioned.fill(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(14),
-                  child: ValueListenableBuilder<bool>(
-                    valueListenable: ScreenBrightness.lowPower,
-                    builder: (context, low, _) {
-                      final bars = Padding(
-                        padding: const EdgeInsets.fromLTRB(18, 18, 18, 56),
-                        child: CustomPaint(painter: _WinampPainter(dj.spectrum, dj.spectrumPeak)),
-                      );
-                      return low ? bars : MilkdropView(levels: dj.spectrum, fallback: bars);
-                    },
-                  ),
-                ),
-              ),
-              Positioned(
-                right: 4,
-                top: 4,
-                child: IconButton(
-                  tooltip: 'Visuals settings',
-                  icon: const Icon(Icons.tune, color: Colors.white70),
-                  onPressed: () => _sheet('Visuals', const _VisualsBox()),
-                ),
-              ),
-              Positioned(
-                left: 12,
-                bottom: 12,
-                child: Wrap(spacing: 8, children: [
-                  if (genre.isNotEmpty) _chip(genre.toUpperCase()),
-                  if (d.bpm > 1) _chip('${(d.bpm * d.rate).round()} BPM'),
-                ]),
-              ),
-            ]),
-          ),
-        ),
-        const SizedBox(height: 16),
-        Text(d.loaded ? d.title : '…',
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
-        if (d.artist.isNotEmpty)
-          Text(d.artist, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16, color: _dim)),
-        const SizedBox(height: 12),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: LinearProgressIndicator(
-            value: frac,
-            minHeight: 4,
-            backgroundColor: const Color(0xFF404040),
-            valueColor: const AlwaysStoppedAnimation(Colors.white),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.only(top: 4),
-          child: Row(children: [
-            Text(_mmss(d.position), style: const TextStyle(fontSize: 12, color: _dim)),
-            const Spacer(),
-            Text(_mmss(d.duration), style: const TextStyle(fontSize: 12, color: _dim)),
-          ]),
-        ),
-        const SizedBox(height: 8),
-        Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          IconButton(
-            iconSize: 34,
-            tooltip: 'Back to genres',
-            onPressed: () => setState(() => _showChooser = true),
-            icon: const Icon(Icons.arrow_back),
-          ),
-          const SizedBox(width: 16),
-          Material(
-            color: Colors.white,
-            shape: const CircleBorder(),
-            child: InkWell(
-              customBorder: const CircleBorder(),
-              onTap: dj.automixPauseToggle,
-              child: Padding(
-                padding: const EdgeInsets.all(14),
-                child: Icon(dj.automixPaused ? Icons.play_arrow : Icons.pause, size: 38, color: Colors.black),
-              ),
-            ),
-          ),
-          const SizedBox(width: 20),
-          IconButton(iconSize: 40, onPressed: _skip, icon: const Icon(Icons.skip_next)),
-          const SizedBox(width: 8),
-          ListenableBuilder(
-            listenable: Starred.instance,
-            builder: (_, __) {
-              final n = _cleanNames(d);
-              final on = Starred.instance.has(n.artist, n.title);
-              return IconButton(
-                iconSize: 34,
-                tooltip: on ? 'Remove star' : 'Star this track',
-                onPressed: () => _toggleStar(dj),
-                icon: Icon(on ? Icons.star : Icons.star_border, color: on ? const Color(0xFFFFC83D) : null),
-              );
-            },
-          ),
-        ]),
-        const SizedBox(height: 12),
-        // Queue card, like the Spotify queue sheet.
-        Container(
+  Widget _queueCard(DjController dj, DeckState d, List<String> upcoming, String status) {
+    return
+Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(16)),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -1419,9 +1299,11 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                       ]),
               ),
           ]),
-        ),
-        const SizedBox(height: 14),
-        Row(children: [
+        );
+  }
+
+  Widget _actionRow() {
+    return Row(children: [
           _action(Icons.equalizer, 'EQ', _openEq),
           _action(Icons.skip_next, 'Play next', () {
             if (widget.dj.automixUpcoming.isNotEmpty) {
@@ -1434,9 +1316,176 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
           _action(Icons.playlist_add, 'Import', () => _sheet('Import a playlist', _importBox())),
           _action(Icons.fast_forward, 'Jump ahead', _cut),
           _action(Icons.stop_circle_outlined, 'End set', _stop),
+        ]);
+  }
+
+  Widget _glass(Widget child, {double r = 22, EdgeInsets pad = const EdgeInsets.all(14)}) => ClipRRect(
+        borderRadius: BorderRadius.circular(r),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+          child: Container(
+            padding: pad,
+            decoration: BoxDecoration(
+              color: const Color(0xB30B0B10),
+              borderRadius: BorderRadius.circular(r),
+              border: Border.all(color: const Color(0x33FFFFFF)),
+            ),
+            child: child,
+          ),
+        ),
+      );
+
+  /// Round glass button.
+  Widget _orb(IconData icon, VoidCallback onTap, {String? tip, Color? color, double size = 46}) => Tooltip(
+        message: tip ?? '',
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onTap,
+          child: Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: const Color(0x44FFFFFF))),
+            child: Icon(icon, size: size * 0.5, color: color ?? Colors.white),
+          ),
+        ),
+      );
+
+  /// The dial: a ring that fills as the track plays, with play/pause inside.
+  Widget _dial(DjController dj, double frac, double size) => SizedBox(
+        width: size,
+        height: size,
+        child: Stack(alignment: Alignment.center, children: [
+          SizedBox(
+            width: size,
+            height: size,
+            child: CircularProgressIndicator(
+              value: frac,
+              strokeWidth: 5,
+              backgroundColor: const Color(0x33FFFFFF),
+              valueColor: const AlwaysStoppedAnimation(Color(0xFF35E0C2)),
+            ),
+          ),
+          InkWell(
+            customBorder: const CircleBorder(),
+            onTap: dj.automixPauseToggle,
+            child: Container(
+              width: size - 18,
+              height: size - 18,
+              decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFF35E0C2)),
+              child: Icon(dj.automixPaused ? Icons.play_arrow : Icons.pause, size: size * 0.45, color: Colors.black),
+            ),
+          ),
         ]),
-      ],
+      );
+
+  Widget _starOrb(DjController dj, DeckState d) => ListenableBuilder(
+        listenable: Starred.instance,
+        builder: (_, __) {
+          final n = _cleanNames(d);
+          final on = Starred.instance.has(n.artist, n.title);
+          return _orb(on ? Icons.star : Icons.star_border, () => _toggleStar(dj),
+              tip: on ? 'Remove star' : 'Star this track', color: on ? const Color(0xFFFFC83D) : null);
+        },
+      );
+
+  Widget _playing(DjController dj) {
+    final d = dj.deck(dj.automixPlayingDeck.clamp(0, 1));
+    final af = AutoFetch.instance;
+    final genre = d.path == null ? '' : (dj.genreOf?.call(d.path!) ?? '');
+    final status = af.running && af.status.isNotEmpty ? af.status : (dj.automixStatus ?? '');
+    final upcoming = dj.automixUpcoming;
+    final frac = d.duration > 0 ? (d.position / d.duration).clamp(0.0, 1.0) : 0.0;
+    final visuals = ValueListenableBuilder<bool>(
+      valueListenable: ScreenBrightness.lowPower,
+      builder: (context, low, _) {
+        final bars = Padding(
+          padding: const EdgeInsets.fromLTRB(18, 18, 18, 56),
+          child: CustomPaint(painter: _WinampPainter(dj.spectrum, dj.spectrumPeak)),
+        );
+        return low ? bars : MilkdropView(levels: dj.spectrum, fallback: bars);
+      },
     );
+    final chips = Wrap(spacing: 8, children: [
+      if (genre.isNotEmpty) _chip(genre.toUpperCase()),
+      if (d.bpm > 1) _chip('${(d.bpm * d.rate).round()} BPM'),
+    ]);
+    final tune = _orb(Icons.tune, () => _sheet('Visuals', const _VisualsBox()), tip: 'Visuals settings', size: 40);
+    final title = Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+      Text(d.loaded ? d.title : '…', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+      if (d.artist.isNotEmpty) Text(d.artist, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, color: _dim)),
+      Text('${_mmss(d.position)} / ${_mmss(d.duration)}', style: const TextStyle(fontSize: 12, color: _dim)),
+    ]);
+
+    return LayoutBuilder(builder: (context, box) {
+      final land = box.maxWidth > box.maxHeight;
+      if (land) {
+        // Landscape: the visuals fill the whole page, controls float on a glass bar.
+        return Stack(fit: StackFit.expand, children: [
+          ClipRRect(borderRadius: BorderRadius.circular(14), child: visuals),
+          Positioned(left: 12, top: 12, child: chips),
+          Positioned(right: 8, top: 8, child: tune),
+          Positioned(
+            left: 12,
+            right: 12,
+            bottom: 10,
+            child: _glass(
+              Row(children: [
+                Expanded(child: title),
+                const SizedBox(width: 12),
+                _orb(Icons.arrow_back, () => setState(() => _showChooser = true), tip: 'Back to genres'),
+                const SizedBox(width: 10),
+                _dial(dj, frac, 64),
+                const SizedBox(width: 10),
+                _orb(Icons.skip_next, _skip, tip: 'Next track'),
+                const SizedBox(width: 10),
+                _starOrb(dj, d),
+                const SizedBox(width: 10),
+                _orb(Icons.queue_music, () => _sheet('Queue', _queueCard(dj, d, upcoming, status)), tip: 'Queue'),
+                const SizedBox(width: 10),
+                _orb(Icons.more_horiz, () => _sheet('More', _actionRow()), tip: 'More'),
+              ]),
+              pad: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            ),
+          ),
+        ]);
+      }
+      // Portrait: visuals behind everything; a glass drawer slides up over them.
+      return Stack(fit: StackFit.expand, children: [
+        ClipRRect(borderRadius: BorderRadius.circular(14), child: visuals),
+        Positioned(left: 12, top: 12, child: chips),
+        Positioned(right: 8, top: 8, child: tune),
+        DraggableScrollableSheet(
+          initialChildSize: 0.44,
+          minChildSize: 0.26,
+          maxChildSize: 0.94,
+          builder: (context, sc) => ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+              child: Container(
+                color: const Color(0xCC0B0B10),
+                child: ListView(controller: sc, padding: const EdgeInsets.fromLTRB(16, 8, 16, 16), children: [
+                  Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)))),
+                  const SizedBox(height: 12),
+                  title,
+                  const SizedBox(height: 14),
+                  Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
+                    _orb(Icons.arrow_back, () => setState(() => _showChooser = true), tip: 'Back to genres'),
+                    _dial(dj, frac, 84),
+                    _orb(Icons.skip_next, _skip, tip: 'Next track'),
+                    _starOrb(dj, d),
+                  ]),
+                  const SizedBox(height: 16),
+                  _actionRow(),
+                  const SizedBox(height: 14),
+                  _queueCard(dj, d, upcoming, status),
+                ]),
+              ),
+            ),
+          ),
+        ),
+      ]);
+    });
   }
 
   Widget _chip(String t) => Container(
