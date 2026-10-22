@@ -70,8 +70,11 @@ class SimpleView extends StatefulWidget {
 }
 
 const _firstTracks = 3;
+const _ahead = 3; // tracks kept waiting after the one playing
 
 class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
+  Timer? _keepAhead;
+  DateTime _lastAsk = DateTime.fromMillisecondsSinceEpoch(0);
   bool _showChooser = false; // on the genre screen while music plays
   bool _introLoaded = false;
   bool _introDone = true;
@@ -97,10 +100,28 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     _restore();
     _loadIntro();
+    _keepAhead = Timer.periodic(const Duration(seconds: 8), (_) => _refill());
+  }
+
+  /// Keeps 3 tracks waiting after the one playing, whatever happens: when
+  /// fewer are ready and nothing is being fetched, ask for another.
+  void _refill() {
+    final dj = widget.dj;
+    final af = AutoFetch.instance;
+    if (!mounted || !dj.automixOn) return;
+    if (dj.automixUpcoming.length >= _ahead) return;
+    if (af.running || af.manualPending > 0 || !soulseek.online) return;
+    if (DateTime.now().difference(_lastAsk).inSeconds < 7) return;
+    _lastAsk = DateTime.now();
+    final pool = af.genres.isNotEmpty ? af.genres : [af.genre];
+    final g = pool[math.Random().nextInt(pool.length)];
+    DebugLog.add('simple', 'only ${dj.automixUpcoming.length} of $_ahead tracks waiting: fetching another ($g)');
+    dj.onNeedTrack?.call('', 0, null, '', g);
   }
 
   @override
   void dispose() {
+    _keepAhead?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _slUser.dispose();
     _slPass.dispose();
@@ -805,8 +826,8 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                         icon: const Icon(Icons.keyboard_arrow_down, size: 30),
                         onPressed: () => setState(() => _showChooser = true),
                       ),
-                    const Text('BeatDeck',
-                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, letterSpacing: 1)),
+                    Text(on && !_showChooser ? 'The Booth' : 'BeatDeck',
+                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, letterSpacing: 1)),
                     const Spacer(),
                     IconButton(
                       tooltip: 'Screen brightness',
@@ -1116,36 +1137,40 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
               ),
             ]),
             const Divider(height: 24, color: Color(0xFF333333)),
-            const Text('Next up', style: TextStyle(color: _dim)),
+            Row(children: [
+              const Text('Next up', style: TextStyle(color: _dim)),
+              const Spacer(),
+              Text('${upcoming.length.clamp(0, _ahead)} of $_ahead ready',
+                  style: TextStyle(color: upcoming.length >= _ahead ? _green : _dim, fontWeight: FontWeight.w700)),
+            ]),
             const SizedBox(height: 6),
-            if (upcoming.isEmpty)
+            for (var i = 0; i < math.max(_ahead, math.min(upcoming.length, 5)); i++)
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                child: Row(children: [
-                  const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(status.isNotEmpty ? status : 'Finding the next track…',
-                        maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _dim)),
-                  ),
-                ]),
-              )
-            else
-              for (final p in upcoming.take(5))
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 6),
-                  child: Row(children: [
-                    const Icon(Icons.music_note, color: _dim),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text(_nameOf(p).title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16)),
-                        if (_nameOf(p).artist.isNotEmpty)
-                          Text(_nameOf(p).artist, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _dim, fontSize: 13)),
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: i < upcoming.length
+                    ? Row(children: [
+                        const Icon(Icons.check_circle, color: _green, size: 22),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            Text(_nameOf(upcoming[i]).title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16)),
+                            if (_nameOf(upcoming[i]).artist.isNotEmpty)
+                              Text(_nameOf(upcoming[i]).artist, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _dim, fontSize: 13)),
+                          ]),
+                        ),
+                      ])
+                    : Row(children: [
+                        const SizedBox(width: 22, height: 22, child: Padding(padding: EdgeInsets.all(3), child: CircularProgressIndicator(strokeWidth: 2))),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                              i == upcoming.length && status.isNotEmpty ? status : 'Finding track ${i + 1}…',
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(color: _dim)),
+                        ),
                       ]),
-                    ),
-                  ]),
-                ),
+              ),
           ]),
         ),
         const SizedBox(height: 14),
