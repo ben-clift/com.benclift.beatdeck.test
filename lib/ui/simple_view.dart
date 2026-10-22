@@ -122,6 +122,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
   @override
   void dispose() {
     _keepAhead?.cancel();
+    widget.dj.setSpectrumOn(false);
     WidgetsBinding.instance.removeObserver(this);
     _slUser.dispose();
     _slPass.dispose();
@@ -811,6 +812,10 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
       listenable: Listenable.merge([dj, AutoFetch.instance, soulseek]),
       builder: (context, _) {
         final on = dj.automixOn;
+        final viz = on && !_showChooser && _introDone;
+        if (dj.spectrumOn != viz) {
+          WidgetsBinding.instance.addPostFrameCallback((_) => dj.setSpectrumOn(viz));
+        }
         return Scaffold(
           backgroundColor: _bg,
           body: SafeArea(
@@ -1059,7 +1064,13 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
               gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [c1, c2]),
             ),
             child: Stack(children: [
-              const Center(child: Icon(Icons.graphic_eq, size: 96, color: Colors.white24)),
+              // Winamp-style analyser: real levels from the music playing.
+              Positioned.fill(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 18, 18, 56),
+                  child: CustomPaint(painter: _WinampPainter(dj.spectrum, dj.spectrumPeak)),
+                ),
+              ),
               Positioned(
                 left: 12,
                 bottom: 12,
@@ -1189,4 +1200,44 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
         decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(20)),
         child: Text(t, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.8)),
       );
+}
+
+/// Bars made of small blocks, green at the bottom to red at the top, with a
+/// falling cap on each: the old Winamp look.
+class _WinampPainter extends CustomPainter {
+  _WinampPainter(this.levels, this.peaks);
+
+  final List<double> levels;
+  final List<double> peaks;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final n = levels.length;
+    if (n == 0 || size.width <= 0 || size.height <= 0) return;
+    const gap = 4.0;
+    final barW = (size.width - gap * (n - 1)) / n;
+    const segs = 16;
+    final segH = size.height / segs;
+    final paint = Paint();
+    for (var i = 0; i < n; i++) {
+      final x = i * (barW + gap);
+      final lit = (levels[i].clamp(0.0, 1.0) * segs).round();
+      for (var j = 0; j < segs; j++) {
+        final f = j / (segs - 1);
+        final on = j < lit;
+        final base = f < 0.55
+            ? const Color(0xFF3DDC4A)
+            : (f < 0.82 ? const Color(0xFFE8D840) : const Color(0xFFE5483C));
+        paint.color = on ? base : base.withValues(alpha: 0.10);
+        final y = size.height - (j + 1) * segH;
+        canvas.drawRect(Rect.fromLTWH(x, y + 1, barW, segH - 2), paint);
+      }
+      final pk = (peaks[i].clamp(0.0, 1.0) * segs).round().clamp(1, segs);
+      paint.color = Colors.white70;
+      canvas.drawRect(Rect.fromLTWH(x, size.height - pk * segH + 1, barW, 2), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _WinampPainter old) => true;
 }
