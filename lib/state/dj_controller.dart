@@ -1035,6 +1035,17 @@ class DjController extends ChangeNotifier {
 
   bool playedRecently(String path) => _wasPlayed(path);
 
+  /// Plays any library track now (even one played earlier), mixing it in.
+  String? automixPlayTrack(String path) {
+    if (!automixOn) return 'Start a set first.';
+    final k = _trackKey(path);
+    _automixPlayed.remove(k);
+    _recentPlayed.remove(k);
+    final upcoming = _automixIndex + 1 < _automixQueue.length ? _automixQueue.sublist(_automixIndex + 1) : const <String>[];
+    if (!upcoming.contains(path)) _automixQueue.add(path);
+    return automixSkip(automixPlayingDeck, prefer: path);
+  }
+
   // Tracks left out of the queue because they played in the last 24 hours.
   // Used only as a last resort so the music never stops.
   final List<String> _replayPool = [];

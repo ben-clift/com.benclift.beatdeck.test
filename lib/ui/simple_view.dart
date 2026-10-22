@@ -851,6 +851,134 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
   }
 
   /// Your starred tracks with filters: search, genre, artist and BPM.
+  void _showLibrary() {
+    final lib = widget.library;
+    final dj = widget.dj;
+    String q = '', genre = '';
+    int decade = 0;
+    RangeValues? bpm;
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: _panel,
+      builder: (ctx) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.9,
+        builder: (ctx, scroll) => StatefulBuilder(
+          builder: (ctx, setS) {
+            String gOf(LibraryTrack t) => t.genre.isNotEmpty ? t.genre : (dj.genreOf?.call(t.path) ?? '');
+            final all = lib.tracks.toList();
+            final genres = {for (final t in all) if (gOf(t).isNotEmpty) gOf(t)}.toList()..sort();
+            final bpms = [for (final t in all) if ((t.bpm ?? 0) > 0) t.bpm!];
+            final lo = bpms.isEmpty ? 60.0 : bpms.reduce(math.min).floorToDouble();
+            final hi = bpms.isEmpty ? 200.0 : math.max(bpms.reduce(math.max).ceilToDouble(), lo + 1);
+            final range = bpm == null ? null : RangeValues(bpm!.start.clamp(lo, hi), bpm!.end.clamp(lo, hi));
+            final shown = [
+              for (final t in all)
+                if ((q.isEmpty || '${t.artist} ${t.title}'.toLowerCase().contains(q.toLowerCase())) &&
+                    (genre.isEmpty || gOf(t) == genre) &&
+                    (decade == 0 || (t.year >= decade && t.year <= decade + 9)) &&
+                    (range == null || ((t.bpm ?? 0) >= range.start && (t.bpm ?? 0) <= range.end)))
+                  t,
+            ]..sort((a, b) => '${a.artist} ${a.title}'.toLowerCase().compareTo('${b.artist} ${b.title}'.toLowerCase()));
+            return Column(children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+                child: Row(children: [
+                  const Icon(Icons.library_music),
+                  const SizedBox(width: 8),
+                  Text('Library (${shown.length}${shown.length == all.length ? '' : ' of ${all.length}'})',
+                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+                ]),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+                child: TextField(
+                  decoration: const InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'Search artist or track', isDense: true, border: OutlineInputBorder()),
+                  onChanged: (v) => setS(() => q = v),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(children: [
+                  Expanded(
+                    child: DropdownButton<String>(
+                      isExpanded: true,
+                      value: genres.contains(genre) ? genre : '',
+                      dropdownColor: _panel,
+                      underline: const SizedBox.shrink(),
+                      items: [
+                        const DropdownMenuItem(value: '', child: Text('Any genre')),
+                        for (final g in genres) DropdownMenuItem(value: g, child: Text(g, overflow: TextOverflow.ellipsis)),
+                      ],
+                      onChanged: (v) => setS(() => genre = v ?? ''),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  DropdownButton<int>(
+                    value: decade,
+                    dropdownColor: _panel,
+                    underline: const SizedBox.shrink(),
+                    items: [
+                      const DropdownMenuItem(value: 0, child: Text('Any year')),
+                      for (final y in const [2020, 2010, 2000, 1990, 1980, 1970, 1960])
+                        DropdownMenuItem(value: y, child: Text(y >= 2000 ? 'The ${y}s' : 'The ${y.toString().substring(2)}s')),
+                    ],
+                    onChanged: (v) => setS(() => decade = v ?? 0),
+                  ),
+                ]),
+              ),
+              if (bpms.length > 1)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Row(children: [
+                    Text(range == null ? 'BPM any' : 'BPM ${range.start.round()}-${range.end.round()}', style: const TextStyle(color: _dim)),
+                    Expanded(
+                      child: RangeSlider(
+                        values: range ?? RangeValues(lo, hi),
+                        min: lo,
+                        max: hi,
+                        onChanged: (v) => setS(() => bpm = (v.start <= lo && v.end >= hi) ? null : v),
+                      ),
+                    ),
+                  ]),
+                ),
+              const Divider(height: 8),
+              Expanded(
+                child: shown.isEmpty
+                    ? const Center(child: Text('No tracks match those filters.', style: TextStyle(color: _dim)))
+                    : ListView.builder(
+                        controller: scroll,
+                        itemCount: shown.length,
+                        itemBuilder: (_, i) {
+                          final t = shown[i];
+                          final sub = [
+                            if (t.artist.isNotEmpty) t.artist,
+                            if (gOf(t).isNotEmpty) gOf(t),
+                            if ((t.bpm ?? 0) > 0) '${t.bpm!.round()} BPM',
+                            if (t.year > 0) '${t.year}',
+                          ].join('  ·  ');
+                          return ListTile(
+                            dense: true,
+                            leading: Icon(dj.playedRecently(t.path) ? Icons.check_circle_outline : Icons.play_arrow),
+                            title: Text(t.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+                            subtitle: sub.isEmpty ? null : Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis),
+                            onTap: () {
+                              Navigator.pop(ctx);
+                              final msg = dj.automixPlayTrack(t.path);
+                              if (msg != null) _toast(msg);
+                            },
+                          );
+                        },
+                      ),
+              ),
+            ]);
+          },
+        ),
+      ),
+    );
+  }
+
   void _showStarred() {
     String q = '', genre = '', artist = '';
     RangeValues? bpm;
@@ -1262,6 +1390,11 @@ Container(
             Row(children: [
               const Text('Queue', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
               const Spacer(),
+              TextButton.icon(
+                onPressed: _showLibrary,
+                icon: const Icon(Icons.library_music, size: 18),
+                label: ListenableBuilder(listenable: widget.library, builder: (_, __) => Text('Library (${widget.library.tracks.length})')),
+              ),
               ListenableBuilder(
                 listenable: Starred.instance,
                 builder: (_, __) => TextButton.icon(

@@ -71,6 +71,7 @@ class SlskSetup {
   /// Removes a track automix has finished with, but only a file this app
   /// downloaded (never one from your own music folder).
   static Future<void> discardPlayed(LibraryController lib, String path) async {
+    if (AppMode.simple.value) return; // Simple mode keeps everything for the Library view
     final own = fallback.isNotEmpty && path.startsWith(fallback);
     if (!own && !AutoFetch.instance.wasFetched(path)) return;
     if ((await BackupTracks.paths()).contains(path)) return; // kept for another day
