@@ -1449,7 +1449,10 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
             return ListenableBuilder(listenable: dj, builder: (_, __) => Column(children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-                child: Row(children: [
+                child: Wrap(crossAxisAlignment: WrapCrossAlignment.center, spacing: 6, runSpacing: 2, children: [
+                  SizedBox(
+                    width: double.infinity,
+                    child: Row(children: [
                   const Icon(Ph.libraryMusic),
                   const SizedBox(width: 8),
                   Expanded(
@@ -1457,6 +1460,8 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                       Text('Library (${shown.length}${shown.length == all.length ? '' : ' of ${all.length}'})',
                           style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
                       Text('swipe right to delete · hold to cue next', style: TextStyle(fontSize: 11, color: _dim)),
+                    ]),
+                  ),
                     ]),
                   ),
                   FilterChip(
