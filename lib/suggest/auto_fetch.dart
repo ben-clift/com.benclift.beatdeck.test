@@ -619,6 +619,7 @@ class AutoFetch extends ChangeNotifier {
   bool _manualRun = false;
 
   int get manualPending => _manual.length;
+  bool get manualBusy => _manual.isNotEmpty || _manualRun;
 
   void enqueueTracks(List<Suggestion> tracks, LibraryController library, {bool style = false}) {
     if (style) _styleRun = true;
@@ -787,6 +788,7 @@ class AutoFetch extends ChangeNotifier {
   /// Tracks picked by "My style" (library picks and downloads).
   final Set<String> _style = {};
   bool _styleRun = false;
+  bool get isStyleRun => _styleRun;
   bool isStyle(String path) => _style.contains(path);
   void markStyle(String path) {
     if (_style.add(path)) _saveStyle();

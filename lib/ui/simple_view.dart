@@ -98,6 +98,43 @@ const _firstTracks = 3;
 const _ahead = 3; // tracks kept waiting after the one playing
 
 class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
+  // Which Booth button is selected (sheet open or just pressed), and how long
+  // fetches usually take, for the wait estimate shown on the buttons.
+  String? _sel;
+  DateTime? _flashUntil;
+  Timer? _btnTick;
+  DateTime? _busySince;
+  double _avgWait = 45;
+
+  String? _waitText() {
+    final since = _busySince;
+    if (since == null) return null;
+    final left = _avgWait - DateTime.now().difference(since).inSeconds;
+    return left > 3 ? '~${left.round()}s' : 'soon';
+  }
+
+  /// Highlight a button while its sheet is open.
+  Future<void> _selSheet(String label, String title, Widget body) async {
+    setState(() => _sel = label);
+    await _sheet(title, body);
+    if (mounted) setState(() => _sel = null);
+  }
+
+  /// Flash a button for a moment after a one-shot press.
+  void _flash(String label, VoidCallback f) {
+    f();
+    setState(() {
+      _sel = label;
+      _flashUntil = DateTime.now().add(const Duration(milliseconds: 1500));
+    });
+    Future<void>.delayed(const Duration(milliseconds: 1500), () {
+      if (mounted && _sel == label) setState(() {
+            _sel = null;
+            _flashUntil = null;
+          });
+    });
+  }
+
   Timer? _keepAhead;
   DateTime _lastAsk = DateTime.fromMillisecondsSinceEpoch(0);
   bool _showChooser = false; // on the genre screen while music plays
@@ -131,6 +168,16 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _btnTick = Timer.periodic(const Duration(seconds: 1), (_) {
+      final busy = AutoFetch.instance.manualBusy;
+      if (busy && _busySince == null) _busySince = DateTime.now();
+      if (!busy && _busySince != null) {
+        final el = DateTime.now().difference(_busySince!).inSeconds;
+        if (el >= 5 && el <= 300) _avgWait = _avgWait * 0.6 + el * 0.4;
+        _busySince = null;
+      }
+      if (mounted && (busy || _flashUntil != null)) setState(() {});
+    });
     _restore();
     Starred.instance.load();
     StyleSettings.instance.load();
@@ -393,6 +440,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _btnTick?.cancel();
     _keepAhead?.cancel();
     widget.dj.setSpectrumOn(false);
     WidgetsBinding.instance.removeObserver(this);
@@ -1108,8 +1156,8 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
 
   /// The full equaliser (presets, ten sliders, your own saved settings) on its
   /// own screen, turned sideways so the sliders have room.
-  void _openEq() {
-    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => _EqPage(dj: widget.dj)));
+  Future<void> _openEq() {
+    return Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => _EqPage(dj: widget.dj)));
   }
 
   /// Artist and title of what is on the deck, cleaned of track numbers and
@@ -1893,8 +1941,8 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     return (title: f, artist: '');
   }
 
-  void _sheet(String title, Widget body) {
-    showModalBottomSheet<void>(
+  Future<void> _sheet(String title, Widget body) {
+    return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: _panel,
@@ -1911,27 +1959,35 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     );
   }
 
-  Widget _action(IconData icon, String label, VoidCallback onTap) {
+  Widget _action(IconData icon, String label, VoidCallback onTap, {bool sel = false, String? sub}) {
     return Expanded(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4),
         child: Material(
-          color: const Color(0xFF1E1E22),
+          color: sel ? const Color(0xFF3A2218) : const Color(0xFF1E1E22),
           shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(4), side: const BorderSide(color: Color(0xFF2E2E33))),
+              borderRadius: BorderRadius.circular(4),
+              side: BorderSide(color: sel ? SideDeckTheme.accentA : const Color(0xFF2E2E33), width: sel ? 1.5 : 1)),
           child: InkWell(
             borderRadius: BorderRadius.circular(5),
             onTap: onTap,
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 2),
               child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Icon(icon, size: 24),
+                Icon(icon, size: 24, color: sel ? SideDeckTheme.accentA : null),
                 const SizedBox(height: 4),
                 FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(label.toUpperCase(), maxLines: 1,
-                      style: const TextStyle(fontFamily: SideDeckTheme.label, fontWeight: FontWeight.w600, fontSize: 13, letterSpacing: .6)),
+                      style: TextStyle(fontFamily: SideDeckTheme.label, fontWeight: FontWeight.w600, fontSize: 13, letterSpacing: .6,
+                          color: sel ? SideDeckTheme.accentA : null)),
                 ),
+                if (sub != null)
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(sub, maxLines: 1,
+                        style: const TextStyle(fontFamily: SideDeckTheme.mono, fontSize: 11, color: SideDeckTheme.accentB)),
+                  ),
               ]),
             ),
           ),
@@ -2093,22 +2149,35 @@ Container(
   }
 
   Widget _actionRow() {
+    final busy = AutoFetch.instance.manualBusy;
+    final wait = _waitText();
     return Row(children: [
-          _action(Ph.equalizer, 'EQ', _openEq),
-          _action(Ph.skipNext, 'Play next', () {
+          _action(Ph.equalizer, 'EQ', () => _selSheetEq(), sel: _sel == 'EQ'),
+          _action(Ph.skipNext, 'Play next', () => _flash('Play next', () {
             if (widget.dj.automixUpcoming.isNotEmpty) {
               _skip();
             } else {
-              _sheet('Play something next', _requestBox(running: true));
+              _selSheet('Play next', 'Play something next', _requestBox(running: true));
             }
-          }),
-          _action(Ph.search, 'Request', () => _sheet('Request a track', _requestBox(running: true))),
-          _action(Ph.playlistAdd, 'Import', () => _sheet('Import a playlist', _importBox())),
-          _action(Ph.insights, 'My style', () => _sheet('My style', _StyleBox(onPlayNow: () => _styleFallback(force: true)))),
-          _action(Ph.tune, 'Mixing', () => _sheet('Mixing', _MixBox(dj: widget.dj))),
-          _action(Ph.fastForward, 'Jump ahead', _cut),
-          _action(Ph.stopCircleOutlined, 'End set', _stop),
+          }), sel: _sel == 'Play next'),
+          _action(Ph.search, 'Request', () => _selSheet('Request', 'Request a track', _requestBox(running: true)),
+              sel: _sel == 'Request' || busy, sub: busy ? wait : null),
+          _action(Ph.playlistAdd, 'Import', () => _selSheet('Import', 'Import a playlist', _importBox()), sel: _sel == 'Import'),
+          _action(Ph.insights, 'My style', () => _selSheet('My style', 'My style', _StyleBox(onPlayNow: () => _styleFallback(force: true))),
+              sel: _sel == 'My style' || (busy && AutoFetch.instance.isStyleRun), sub: (busy && AutoFetch.instance.isStyleRun) ? wait : null),
+          _action(Ph.tune, 'Mixing', () => _selSheet('Mixing', 'Mixing', _MixBox(dj: widget.dj)), sel: _sel == 'Mixing'),
+          _action(Ph.fastForward, 'Jump ahead', () => _flash('Jump ahead', _cut), sel: _sel == 'Jump ahead'),
+          _action(Ph.stopCircleOutlined, 'End set', () => _flash('End set', _stop), sel: _sel == 'End set'),
         ]);
+  }
+
+  Future<void> _selSheetEq() async {
+    setState(() => _sel = 'EQ');
+    try {
+      await Future.sync(_openEq);
+    } finally {
+      if (mounted) setState(() => _sel = null);
+    }
   }
 
   Widget _glass(Widget child, {double r = 5, EdgeInsets pad = const EdgeInsets.all(14)}) => ClipRRect(
