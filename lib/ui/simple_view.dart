@@ -10,6 +10,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sidedeck/automix/genre_family.dart';
 import 'package:sidedeck/debug/debug_log.dart';
+import 'package:sidedeck/debug/log_upload.dart';
 import 'package:sidedeck/soulseek/slsk_keeper.dart';
 import 'package:sidedeck/soulseek/slsk_setup.dart';
 import 'package:sidedeck/soulseek/soulseek_client.dart';
@@ -208,6 +209,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _np.setMethodCallHandler(_npAction);
+    LogUpload.watchPlay(() => widget.dj.automixOn && !widget.dj.automixPaused);
     milkdropArtSink = (b) {
       if (widget.dj.automixOn) _np.invokeMethod<void>('art', b).catchError((_) {});
     };
@@ -1735,6 +1737,54 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
   }
 
+  /// Token for the automatic log upload, and a send-now button.
+  Future<void> _logSettings() async {
+    await LogUpload.load();
+    if (!mounted) return;
+    final c = TextEditingController(text: LogUpload.token);
+    await showDialog<void>(
+      context: context,
+      builder: (dc) => StatefulBuilder(
+        builder: (dc, setD) => AlertDialog(
+          title: const Text('Send logs automatically'),
+          content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('Every 15 minutes of play, and after a failure, the log is sent so problems can be fixed without copying and pasting.'),
+            const SizedBox(height: 10),
+            TextField(
+              controller: c,
+              obscureText: true,
+              decoration: const InputDecoration(labelText: 'GitHub token', isDense: true),
+              onChanged: (v) {
+                LogUpload.token = v;
+                LogUpload.save();
+              },
+            ),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Send automatically'),
+              subtitle: Text(LogUpload.status.isEmpty ? (LogUpload.token.trim().isEmpty ? 'Off until a token is set' : 'On') : LogUpload.status),
+              value: LogUpload.auto,
+              onChanged: (v) {
+                setD(() => LogUpload.auto = v);
+                LogUpload.save();
+              },
+            ),
+          ]),
+          actions: [
+            TextButton(
+              onPressed: () async {
+                await LogUpload.send(reason: 'manual');
+                setD(() {});
+              },
+              child: const Text('Send now'),
+            ),
+            FilledButton(onPressed: () => Navigator.pop(dc), child: const Text('Done')),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _copyLog() {
     Clipboard.setData(ClipboardData(text: DebugLog.instance.lines.join("\n")));
     _toast('Copied. Paste it into a message to Ben.');
@@ -1780,6 +1830,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                     PopupMenuButton<String>(
                       onSelected: (v) {
                         if (v == 'log') _copyLog();
+                        if (v == 'send') _logSettings();
                         if (v == 'pro') AppMode.set(false);
                       },
                       itemBuilder: (_) => [
@@ -1791,6 +1842,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                               builder: (_, snap) => Text('Test version: ${snap.data ?? '…'}'),
                             ),
                           ),
+                        const PopupMenuItem(value: 'send', child: Text('Send logs to Ben automatically')),
                         const PopupMenuItem(value: 'log', child: Text('Report a problem (copy log)')),
                         const PopupMenuItem(value: 'pro', child: Text('Switch to Pro mode')),
                       ],

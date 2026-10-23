@@ -18,11 +18,30 @@ class LogUpload {
   static String status = '';
   static DateTime _last = DateTime.fromMillisecondsSinceEpoch(0);
   static Timer? _timer;
+  static Timer? _playTimer;
+  static int _playMin = 0;
+  static DateTime _lastSent = DateTime.now();
+
+  /// Every 15 minutes of music actually playing, send the log since the last
+  /// send (mix reports included). [playing] says whether music is on now.
+  static void watchPlay(bool Function() playing) {
+    _playTimer?.cancel();
+    _playTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (!playing()) return;
+      _playMin++;
+      if (_playMin >= 15) {
+        _playMin = 0;
+        if (auto && token.trim().isNotEmpty) send(reason: '15 min of play');
+      }
+    });
+  }
 
   static Future<void> load() async {
     try {
       final p = await SharedPreferences.getInstance();
       token = p.getString('gh_token') ?? '';
+      // A token built into the app (from the build secret) when none was typed.
+      if (token.trim().isEmpty) token = const String.fromEnvironment('LOG_TOKEN');
       auto = p.getBool('gh_auto') ?? true;
     } catch (_) {}
     // Failures are sent a little later, together, so one problem is one post.
@@ -85,8 +104,10 @@ class LogUpload {
           '${e.value.lastFail.isEmpty ? '' : '  last: ${e.value.lastFail}'}');
     }
     b.writeln();
-    final lines = log.lines;
-    final tail = lines.length > 120 ? lines.sublist(lines.length - 120) : lines;
+    final since = _lastSent;
+    var lines = [for (final e in log.entries) if (e.time.isAfter(since)) e.text];
+    if (lines.length < 40) lines = log.lines; // little new: show recent context
+    final tail = lines.length > 400 ? lines.sublist(lines.length - 400) : lines;
     b.writeln('```');
     b.writeln(tail.join('\n'));
     b.writeln('```');
@@ -108,6 +129,7 @@ class LogUpload {
           )
           .timeout(const Duration(seconds: 20));
       _last = DateTime.now();
+      if (r.statusCode == 201) _lastSent = _last;
       status = r.statusCode == 201
           ? 'Sent at ${DateTime.now().hour}:${DateTime.now().minute.toString().padLeft(2, '0')}'
           : 'GitHub said ${r.statusCode}';
