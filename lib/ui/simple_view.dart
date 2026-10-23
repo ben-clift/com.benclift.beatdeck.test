@@ -177,6 +177,58 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     });
   }
 
+  String? _note;
+  DateTime? _noteUntil;
+
+  /// A one-shot orb press: highlight it and show a countdown on the visuals.
+  void _press(String label, String? note, VoidCallback f, {int secs = 3}) {
+    f();
+    final until = DateTime.now().add(Duration(seconds: secs));
+    setState(() {
+      _sel = label;
+      _note = note;
+      _noteUntil = note == null ? null : until;
+      _flashUntil = until;
+    });
+    Future<void>.delayed(Duration(seconds: secs), () {
+      if (mounted && _sel == label) {
+        setState(() {
+          _sel = null;
+          _flashUntil = null;
+          _note = null;
+          _noteUntil = null;
+        });
+      }
+    });
+  }
+
+  Widget _noteBadge() {
+    String? t;
+    final until = _noteUntil;
+    if (_note != null && until != null) {
+      final left = until.difference(DateTime.now()).inSeconds + 1;
+      t = '$_note  ${left < 0 ? 0 : left}s';
+    }
+    if (AutoFetch.instance.manualBusy) {
+      t = 'Finding a track  ${_waitText() ?? ''}';
+    }
+    if (t == null) return const SizedBox.shrink();
+    return Positioned(
+      top: 10,
+      left: 0,
+      right: 0,
+      child: IgnorePointer(
+        child: Center(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(color: const Color(0xCC000000), borderRadius: BorderRadius.circular(20), border: Border.all(color: SideDeckTheme.accentA)),
+            child: Text(t, style: TextStyle(color: SideDeckTheme.accentA, fontWeight: FontWeight.w800, fontSize: 16)),
+          ),
+        ),
+      ),
+    );
+  }
+
   Timer? _keepAhead;
   DateTime _lastAsk = DateTime.fromMillisecondsSinceEpoch(0);
   bool _showChooser = false; // on the genre screen while music plays
@@ -2442,7 +2494,7 @@ Container(
       );
 
   /// Round glass button.
-  Widget _orb(IconData icon, VoidCallback onTap, {String? tip, Color? color, double size = 46}) => Tooltip(
+  Widget _orb(IconData icon, VoidCallback onTap, {String? tip, Color? color, double size = 46, bool sel = false}) => Tooltip(
         message: tip ?? '',
         child: InkWell(
           customBorder: ThemeSettings.instance.shapeBorder(size: size),
@@ -2450,8 +2502,8 @@ Container(
           child: Container(
             width: size,
             height: size,
-            decoration: ThemeSettings.instance.box(color: Colors.black.withValues(alpha: 0.25), size: size),
-            child: Icon(icon, size: size * 0.5, color: color ?? Colors.white),
+            decoration: ThemeSettings.instance.box(color: sel ? Color.lerp(Colors.black, SideDeckTheme.accentA, 0.45)! : Colors.black.withValues(alpha: 0.25), hot: sel, size: size),
+            child: Icon(icon, size: size * 0.5, color: sel ? SideDeckTheme.accentA : (color ?? Colors.white)),
           ),
         ),
       );
@@ -2489,7 +2541,7 @@ Container(
         builder: (_, __) {
           final n = _cleanNames(d);
           final on = Starred.instance.has(n.artist, n.title);
-          return _orb(on ? Ph.star : Ph.starBorder, () => _toggleStar(dj),
+          return _orb(on ? Ph.star : Ph.starBorder, () => _press('star', null, () => _toggleStar(dj), secs: 1), sel: _sel == 'star',
               tip: on ? 'Remove star' : 'Star this track', color: on ? const Color(0xFFFFC83D) : null);
         },
       );
@@ -2508,7 +2560,7 @@ Container(
           padding: const EdgeInsets.fromLTRB(18, 18, 18, 56),
           child: CustomPaint(painter: _WinampPainter(dj.spectrum, dj.spectrumPeak)),
         );
-        return low ? bars : MilkdropView(levels: dj.spectrum, fallback: bars);
+        return Stack(fit: StackFit.expand, children: [low ? bars : MilkdropView(levels: dj.spectrum, fallback: bars), _noteBadge()]);
       },
     );
     final chips = Wrap(spacing: 8, children: [
@@ -2593,19 +2645,18 @@ Container(
                     ),
                   const SizedBox(height: 14),
                   Wrap(alignment: WrapAlignment.spaceEvenly, crossAxisAlignment: WrapCrossAlignment.center, spacing: 6, runSpacing: 10, children: [
-                    _orb(Ph.arrowBack, () => setState(() => _showChooser = true), tip: 'Back to genres'),
+                    _orb(Ph.arrowBack, () => _press('back', null, () => setState(() => _showChooser = true), secs: 1), tip: 'Back to genres', sel: _sel == 'back'),
                     _dial(dj, frac, 84),
-                    _orb(Ph.skipNext, _skip, tip: 'Next track'),
+                    _orb(Ph.skipNext, () => _press('skip', 'Mixing to next track', _skip, secs: 8), tip: 'Next track', sel: _sel == 'skip'),
                     _starOrb(dj, d),
-                    _orb(Ph.close, _dislikeNow, tip: "Don't like it: swap it now", color: const Color(0xFFB05A4A)),
+                    _orb(Ph.close, () => _press('swap', 'Swapping this track', _dislikeNow, secs: 8), tip: "Don't like it: swap it now", color: const Color(0xFFB05A4A), sel: _sel == 'swap'),
                     _orb(Ph.insights, () {
                       if (StyleSettings.instance.chosen().isEmpty) {
                         _toast('Star some tracks first. My style copies their sound.');
                       } else {
-                        _toast('Finding something in your style...');
-                        _styleFallback(force: true);
+                        _press('style', 'Finding something in your style', () => _styleFallback(force: true), secs: 5);
                       }
-                    }, tip: 'Play My style now', color: SideDeckTheme.accentA),
+                    }, tip: 'Play My style now', color: SideDeckTheme.accentA, sel: _sel == 'style' || AutoFetch.instance.manualBusy),
                   ]),
                   const SizedBox(height: 16),
                   _actionRow(),
