@@ -2149,6 +2149,13 @@ class DjController extends ChangeNotifier {
           !nearBarLine(_engine.position(cur), d.bpm, d.beatOffset)) {
         return false;
       }
+      // Start long blends on a phrase (every 8 bars) so the swap lands on a
+      // section change, as a DJ counts it. Waits at most one phrase.
+      if (!skipping && !mixNow && dropLeft <= 0 && plan.seconds >= 16 && d.bpm > 1 && remaining > 9 * bar + 8) {
+        final phrase = bar * 8;
+        final into = (_engine.position(cur) - d.beatOffset) % phrase;
+        if (into > 0.07) return false;
+      }
       _plan = plan;
       _mixNow = false;
       _skipAt = null;
