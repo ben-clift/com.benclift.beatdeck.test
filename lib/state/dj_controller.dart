@@ -1016,6 +1016,22 @@ class DjController extends ChangeNotifier {
       _loadHold = DateTime(2000);
       _userOk.add(prefer);
     }
+    if (prefer == null && _upNext == null && automixUpcoming.isEmpty) {
+      // Nothing downloaded yet: use the library track closest in tempo.
+      final pd = deck(_automixDeck);
+      final heard = pd.bpm > 1 ? pd.bpm * pd.rate : 0.0;
+      final best = _closestTempoPick(heard, exclude: {if (pd.path != null) pd.path!});
+      if (best != null && File(best).existsSync()) {
+        _clearUpNext();
+        _forcePath = best;
+        _forceAnyTempo = true;
+        _upNext = best;
+        _automixPreloaded = false;
+        _flowNext = null;
+        _rejected.remove(best);
+        _loadHold = DateTime(2000);
+      }
+    }
     _manualStart = true;
     _manualAsked = DateTime.now();
     return true;
