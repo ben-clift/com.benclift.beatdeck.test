@@ -354,7 +354,7 @@ class _ImportSheetState extends State<_ImportSheet> {
   Widget _spotifyTab() => ListView(
         padding: const EdgeInsets.all(14),
         children: [
-          const Text(
+          Text(
             'Spotify needs a free developer app of your own: create one at '
             'developer.spotify.com, then paste its client id and secret here. '
             'Spotify sometimes refuses playlists it does not own; if so, use '
