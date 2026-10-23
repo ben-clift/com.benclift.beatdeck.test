@@ -26,6 +26,9 @@ class MacSync extends ChangeNotifier {
   String stoppedFor = '';
   bool running = false;
   bool _cancel = false;
+  /// While this returns true (a playlist is playing) the background sync waits.
+  bool Function()? hold;
+  final Set<String> _fetching = {};
   int total = 0;
   int done = 0;
   int failed = 0;
@@ -119,6 +122,16 @@ class MacSync extends ChangeNotifier {
       status = 'Cannot reach the Mac to play this track. Is the Terminal window still open?';
       notifyListeners();
       return false;
+    }
+  }
+
+  /// Fetches a track from the Mac ahead of time (once at a time per track).
+  Future<void> prefetch(String path) async {
+    if (!_stubs.contains(path) || !_fetching.add(path)) return;
+    try {
+      await ensure(path);
+    } finally {
+      _fetching.remove(path);
     }
   }
 
@@ -264,6 +277,10 @@ class MacSync extends ChangeNotifier {
         final got = <String>[];
         for (final e in batch) {
           if (_cancel) break;
+          while (!_cancel && (hold?.call() ?? false)) {
+            _set('Paused while your playlist plays…');
+            await Future<void>.delayed(const Duration(seconds: 2));
+          }
           // Keep the phone's free space (your Auto DJ setting) untouched.
           final free = StorageGuard.freeBytes(root.path);
           if (free != null && free - (e['s'] as num).toInt() < StorageGuard.reserveGb * 1024 * 1024 * 1024) {
@@ -295,6 +312,10 @@ class MacSync extends ChangeNotifier {
         // Add the batch, then work out genre and BPM for these ten.
         for (final path in got) {
           await lib.addFile(path);
+        }
+        while (!_cancel && (hold?.call() ?? false)) {
+          _set('Paused while your playlist plays…');
+          await Future<void>.delayed(const Duration(seconds: 2));
         }
         _set('Analysing genre and BPM for ${got.length} tracks…');
         while (lib.analyzing) {

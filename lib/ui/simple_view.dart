@@ -285,7 +285,14 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     _loadIntro();
     _keepAhead = Timer.periodic(const Duration(seconds: 8), (_) {
       _flushDeletes();
-      if (widget.dj.playlistActive) return;
+      if (widget.dj.playlistActive) {
+        // Playing a list: only the next three tracks are made ready.
+        final up = widget.dj.automixUpcoming;
+        for (final q in up.take(3)) {
+          MacSync.instance.prefetch(q);
+        }
+        return;
+      }
       _styleFallback();
       _refill();
       _libraryFallback();

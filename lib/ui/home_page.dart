@@ -73,6 +73,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     _dj.loadAutoFx();
     _dj.loadAutoSync();
     MacSync.instance.init();
+    MacSync.instance.hold = () => _dj.playlistActive;
     ShazamWatcher.instance.start(_library);
     ScreenBrightness.load();
     AppMode.load();
