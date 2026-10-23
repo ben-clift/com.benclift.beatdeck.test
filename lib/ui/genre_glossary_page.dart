@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:sidedeck/theme/ph.dart';
 import 'package:sidedeck/suggest/genre_glossary.dart';
 import 'package:sidedeck/suggest/genres.dart';
 import 'package:sidedeck/theme/sidedeck_theme.dart';
@@ -34,7 +35,7 @@ class _GenreGlossaryPageState extends State<GenreGlossaryPage> {
             padding: const EdgeInsets.fromLTRB(14, 10, 14, 4),
             child: TextField(
               decoration: const InputDecoration(
-                prefixIcon: Icon(Icons.search),
+                prefixIcon: Icon(Ph.search),
                 hintText: 'Search genres',
                 isDense: true,
               ),

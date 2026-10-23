@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:sidedeck/theme/ph.dart';
 
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
@@ -426,7 +427,7 @@ class _LibraryOverlayState extends State<LibraryOverlay> {
                                   : 'Search server, or browse playlists',
                           isDense: true,
                           contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                          prefixIcon: const Icon(Icons.search, size: 18),
+                          prefixIcon: const Icon(Ph.search, size: 18),
                           prefixIconConstraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
@@ -447,7 +448,7 @@ class _LibraryOverlayState extends State<LibraryOverlay> {
                   PopupMenuButton<TrackSort>(
                     tooltip: 'Sort',
                     padding: EdgeInsets.zero,
-                    icon: const Icon(Icons.sort, size: 22),
+                    icon: const Icon(Ph.sort, size: 22),
                     onSelected: widget.library.setSort,
                     itemBuilder: (context) => [
                       _sortItem(TrackSort.name, 'Name'),
@@ -467,7 +468,7 @@ class _LibraryOverlayState extends State<LibraryOverlay> {
                       visualDensity: VisualDensity.compact,
                       onPressed: () => lib.setSortDesc(!lib.sortDesc),
                       icon: Icon(
-                        lib.sortDesc ? Icons.arrow_downward : Icons.arrow_upward,
+                        lib.sortDesc ? Ph.arrowDownward : Ph.arrowUpward,
                         size: 20,
                       ),
                     ),
@@ -477,14 +478,14 @@ class _LibraryOverlayState extends State<LibraryOverlay> {
                       onPressed: lib.filtered.isEmpty
                           ? null
                           : () => showExportSheet(context, lib.filtered),
-                      icon: const Icon(Icons.cloud_upload_outlined, size: 22),
+                      icon: const Icon(Ph.cloudUploadOutlined, size: 22),
                     ),
                     IconButton(
                       tooltip: 'Filters',
                       visualDensity: VisualDensity.compact,
                       onPressed: _openFilters,
                       icon: Icon(
-                        lib.hasFilters ? Icons.filter_alt : Icons.filter_alt_outlined,
+                        lib.hasFilters ? Ph.filterAlt : Ph.filterAltOutlined,
                         size: 22,
                         color: lib.hasFilters ? SideDeckTheme.accentA : null,
                       ),
@@ -496,14 +497,14 @@ class _LibraryOverlayState extends State<LibraryOverlay> {
                         tooltip: 'Stop analysis',
                         visualDensity: VisualDensity.compact,
                         onPressed: lib.cancelAnalyze,
-                        icon: const Icon(Icons.stop, size: 22),
+                        icon: const Icon(Ph.stop, size: 22),
                       )
                     else
                       PopupMenuButton<String>(
                         tooltip: 'Analyze BPM / grid',
                         enabled: lib.tracks.isNotEmpty,
                         padding: EdgeInsets.zero,
-                        icon: const Icon(Icons.graphic_eq, size: 22),
+                        icon: const Icon(Ph.graphicEq, size: 22),
                         onSelected: (v) async {
                           if (v == 'missing') {
                             await _reloadAnalyzedDecks(await lib.analyzeMissing());
@@ -541,7 +542,7 @@ class _LibraryOverlayState extends State<LibraryOverlay> {
                                     : 'No new tracks'),
                               ));
                             },
-                      icon: const Icon(Icons.refresh, size: 22),
+                      icon: const Icon(Ph.refresh, size: 22),
                     ),
                     IconButton(
                       tooltip: 'Song wish lists (from Spotify, Deezer and more)',
@@ -551,13 +552,13 @@ class _LibraryOverlayState extends State<LibraryOverlay> {
                           builder: (_) => WishListPage(library: lib),
                         ),
                       ),
-                      icon: const Icon(Icons.playlist_add_check, size: 22),
+                      icon: const Icon(Ph.playlistAddCheck, size: 22),
                     ),
                     IconButton(
                       tooltip: 'Find and delete duplicate tracks',
                       visualDensity: VisualDensity.compact,
                       onPressed: () => _duplicates(lib),
-                      icon: const Icon(Icons.content_copy, size: 22),
+                      icon: const Icon(Ph.contentCopy, size: 22),
                     ),
                     IconButton(
                       tooltip: 'Suggest what mixes with the playing track',
@@ -568,7 +569,7 @@ class _LibraryOverlayState extends State<LibraryOverlay> {
                               SuggestPage(dj: widget.dj, library: lib),
                         ),
                       ),
-                      icon: const Icon(Icons.insights, size: 22),
+                      icon: const Icon(Ph.insights, size: 22),
                     ),
                     IconButton(
                       tooltip: 'Free music (Jamendo, Internet Archive)',
@@ -578,7 +579,7 @@ class _LibraryOverlayState extends State<LibraryOverlay> {
                           builder: (_) => FreeMusicPage(library: lib),
                         ),
                       ),
-                      icon: const Icon(Icons.library_music, size: 22),
+                      icon: const Icon(Ph.libraryMusic, size: 22),
                     ),
                     IconButton(
                       tooltip: 'Search Soulseek',
@@ -588,7 +589,7 @@ class _LibraryOverlayState extends State<LibraryOverlay> {
                           builder: (_) => SoulseekPage(library: lib),
                         ),
                       ),
-                      icon: const Icon(Icons.travel_explore, size: 22),
+                      icon: const Icon(Ph.travelExplore, size: 22),
                     ),
                     IconButton(
                       tooltip: 'Open Seeker (Soulseek)',
@@ -602,26 +603,26 @@ class _LibraryOverlayState extends State<LibraryOverlay> {
                           ));
                         }
                       },
-                      icon: const Icon(Icons.cloud_download, size: 22),
+                      icon: const Icon(Ph.cloudDownload, size: 22),
                     ),
                     IconButton(
                       tooltip: 'Add files (phone, Drive or other cloud)',
                       visualDensity: VisualDensity.compact,
                       onPressed: lib.loading || lib.analyzing ? null : lib.pickFiles,
-                      icon: const Icon(Icons.audio_file, size: 22),
+                      icon: const Icon(Ph.audioFile, size: 22),
                     ),
                     IconButton(
                       tooltip: 'Pick folder',
                       visualDensity: VisualDensity.compact,
                       onPressed: lib.loading || lib.analyzing ? null : lib.pickFolder,
-                      icon: const Icon(Icons.folder_open, size: 22),
+                      icon: const Icon(Ph.folderOpen, size: 22),
                     ),
                   ],
                   if (!widget.embedded)
                     IconButton(
                       visualDensity: VisualDensity.compact,
                       onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.close, size: 22),
+                      icon: const Icon(Ph.close, size: 22),
                     ),
                 ],
               ),
@@ -932,7 +933,7 @@ class _LibraryOverlayState extends State<LibraryOverlay> {
                     const SnackBar(content: Text('Saved in the playlist "Backup tracks".')),
                   );
                 },
-                icon: const Icon(Icons.bookmark_add_outlined),
+                icon: const Icon(Ph.bookmarkAddOutlined),
                 label: const Text('Backup: keep it and come back to it another time'),
               ),
               const SizedBox(height: 4),
@@ -947,7 +948,7 @@ class _LibraryOverlayState extends State<LibraryOverlay> {
                   Navigator.pop(ctx);
                   _deleteTrack(t);
                 },
-                icon: const Icon(Icons.delete_outline),
+                icon: const Icon(Ph.deleteOutline),
                 label: const Text('Delete and never play or search for it again'),
               ),
               const SizedBox(height: 4),
@@ -1199,7 +1200,7 @@ class _LibraryOverlayState extends State<LibraryOverlay> {
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints.tightFor(width: 32, height: 32),
                     onPressed: onAnalyze,
-                    icon: const Icon(Icons.graphic_eq, size: 20),
+                    icon: const Icon(Ph.graphicEq, size: 20),
                   ),
           ),
           const SizedBox(width: 4),
@@ -1221,7 +1222,7 @@ class _LibraryOverlayState extends State<LibraryOverlay> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             for (var i = 1; i <= 3; i++)
-                              Icon(i <= stars ? Icons.star : Icons.star_border,
+                              Icon(i <= stars ? Ph.star : Ph.starBorder,
                                   size: 15,
                                   color: i <= stars ? const Color(0xFFFFC107) : SideDeckTheme.muted),
                           ],
@@ -1248,7 +1249,7 @@ class _LibraryOverlayState extends State<LibraryOverlay> {
                                       color: (genre ?? '').isEmpty
                                           ? SideDeckTheme.muted
                                           : const Color(0xFFFF9F1C))),
-                              const Icon(Icons.arrow_drop_down, size: 14),
+                              const Icon(Ph.arrowDropDown, size: 14),
                             ],
                           ),
                         ),
@@ -1354,7 +1355,7 @@ class _LibraryOverlayState extends State<LibraryOverlay> {
             tooltip: 'Playlists',
             visualDensity: VisualDensity.compact,
             onPressed: _loadPlaylists,
-            icon: const Icon(Icons.arrow_back, size: 20),
+            icon: const Icon(Ph.arrowBack, size: 20),
           ),
           Expanded(
             child: Text(
@@ -1395,7 +1396,7 @@ class _LibraryOverlayState extends State<LibraryOverlay> {
         ].join(' · ');
         return ListTile(
           dense: true,
-          leading: const Icon(Icons.queue_music, size: 22),
+          leading: const Icon(Ph.queueMusic, size: 22),
           title: Text(pl.name, maxLines: 1, overflow: TextOverflow.ellipsis),
           subtitle: subtitle.isEmpty
               ? null
@@ -1405,7 +1406,7 @@ class _LibraryOverlayState extends State<LibraryOverlay> {
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(color: SideDeckTheme.muted, fontSize: 12),
                 ),
-          trailing: const Icon(Icons.chevron_right, size: 20, color: SideDeckTheme.muted),
+          trailing: const Icon(Ph.chevronRight, size: 20, color: SideDeckTheme.muted),
           onTap: () => _openRemotePlaylist(pl),
         );
       },

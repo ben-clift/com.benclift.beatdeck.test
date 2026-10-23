@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:sidedeck/theme/ph.dart';
 import 'package:sidedeck/state/dj_controller.dart';
 import 'package:sidedeck/state/library_controller.dart';
 import 'package:sidedeck/theme/sidedeck_theme.dart';
@@ -89,13 +90,13 @@ class _TrackPickerState extends State<_TrackPicker> {
                       onChanged: (v) => setState(() => _q = v),
                       decoration: const InputDecoration(
                         hintText: 'Search your library',
-                        prefixIcon: Icon(Icons.search),
+                        prefixIcon: Icon(Ph.search),
                         isDense: true,
                       ),
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close),
+                    icon: const Icon(Ph.close),
                     onPressed: () => Navigator.pop(context),
                   ),
                 ],

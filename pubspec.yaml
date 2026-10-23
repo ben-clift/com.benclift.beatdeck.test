@@ -46,6 +46,12 @@ flutter:
           weight: 600
         - asset: assets/fonts/BarlowCondensed-Bold.ttf
           weight: 700
+    - family: Phosphor
+      fonts:
+        - asset: assets/fonts/Phosphor.ttf
+    - family: PhosphorFill
+      fonts:
+        - asset: assets/fonts/PhosphorFill.ttf
     - family: JetBrainsMono
       fonts:
         - asset: assets/fonts/JetBrainsMono.ttf

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:sidedeck/theme/ph.dart';
 import 'package:sidedeck/state/screen_brightness.dart';
 import 'package:sidedeck/state/app_mode.dart';
 import 'package:sidedeck/state/expiry.dart';
@@ -210,7 +211,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             child: Padding(
               padding: const EdgeInsets.all(32),
               child: Column(mainAxisSize: MainAxisSize.min, children: [
-                const Icon(Icons.timer_off, size: 64),
+                const Icon(Ph.timerOff, size: 64),
                 const SizedBox(height: 16),
                 const Text('This test version has expired',
                     textAlign: TextAlign.center, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
@@ -282,20 +283,20 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                         visualDensity: VisualDensity.compact,
                         tooltip: 'Simple mode',
                         onPressed: () => AppMode.set(true),
-                        icon: const Icon(Icons.insights, size: 20),
+                        icon: const Icon(Ph.insights, size: 20),
                       ),
                       IconButton(
                         visualDensity: VisualDensity.compact,
                         tooltip: 'Settings and debug log',
                         onPressed: _openSettings,
-                        icon: const Icon(Icons.settings, size: 20),
+                        icon: const Icon(Ph.settings, size: 20),
                       ),
                       if (_controllerMode)
                         IconButton(
                           visualDensity: VisualDensity.compact,
                           tooltip: 'Customise look',
                           onPressed: () => showLookSheet(context),
-                          icon: const Icon(Icons.palette, size: 20),
+                          icon: const Icon(Ph.palette, size: 20),
                         ),
                       IconButton(
                         visualDensity: VisualDensity.compact,
@@ -305,7 +306,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                         onPressed: () =>
                             setState(() => _controllerMode = !_controllerMode),
                         icon: Icon(
-                          _controllerMode ? Icons.view_agenda : Icons.album,
+                          _controllerMode ? Ph.viewAgenda : Ph.album,
                           size: 20,
                         ),
                       ),
@@ -364,7 +365,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         padding: const EdgeInsets.symmetric(horizontal: 8),
         child: Row(
           children: [
-            const Icon(Icons.error_outline, size: 16, color: Color(0xFFFF8A80)),
+            const Icon(Ph.errorOutline, size: 16, color: Color(0xFFFF8A80)),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
@@ -378,7 +379,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               visualDensity: VisualDensity.compact,
               tooltip: 'Dismiss',
               onPressed: _dj.clearError,
-              icon: const Icon(Icons.close, size: 16),
+              icon: const Icon(Ph.close, size: 16),
             ),
           ],
         ),
@@ -546,7 +547,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           width: size,
           height: size,
           child: Icon(
-            playing ? Icons.pause : Icons.play_arrow,
+            playing ? Ph.pause : Ph.playArrow,
             color: Colors.white.withValues(alpha: 0.9),
             size: size * 0.55,
           ),
@@ -899,7 +900,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              faster ? Icons.arrow_forward : Icons.arrow_back,
+              faster ? Ph.arrowForward : Ph.arrowBack,
               size: 22,
               color: color,
             ),

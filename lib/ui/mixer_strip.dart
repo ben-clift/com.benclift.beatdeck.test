@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:sidedeck/theme/ph.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -55,8 +56,8 @@ class MixerStrip extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _iconBtn(Icons.library_music, 'Library', onLibrary),
-            _iconBtn(Icons.settings_outlined, 'Settings', onSettings),
+            _iconBtn(Ph.libraryMusic, 'Library', onLibrary),
+            _iconBtn(Ph.settingsOutlined, 'Settings', onSettings),
           ],
         ),
         const Text(
@@ -93,8 +94,8 @@ class MixerStrip extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _iconBtn(Icons.library_music, 'Library', onLibrary),
-              _iconBtn(Icons.settings_outlined, 'Settings', onSettings),
+              _iconBtn(Ph.libraryMusic, 'Library', onLibrary),
+              _iconBtn(Ph.settingsOutlined, 'Settings', onSettings),
             ],
           ),
           const Text(

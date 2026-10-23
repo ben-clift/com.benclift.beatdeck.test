@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:sidedeck/theme/ph.dart';
 import 'dart:io';
 import 'dart:math' as math;
 import 'dart:ui' show ImageFilter;
@@ -307,7 +308,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
           Padding(
             padding: const EdgeInsets.all(8),
             child: TextButton.icon(
-              icon: const Icon(Icons.download),
+              icon: const Icon(Ph.download),
               label: Text('Download all ${l.items.length}'),
               onPressed: () {
                 AutoFetch.instance.enqueueTracks(
@@ -328,7 +329,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                 return ListTile(
                   title: Text(it.title, maxLines: 1, overflow: TextOverflow.ellipsis),
                   subtitle: it.artist.isEmpty ? null : Text(it.artist, maxLines: 1, overflow: TextOverflow.ellipsis),
-                  trailing: const Icon(Icons.play_arrow),
+                  trailing: const Icon(Ph.playArrow),
                   onTap: () {
                     Navigator.pop(ctx);
                     _playFromList(it);
@@ -484,7 +485,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
             padding: const EdgeInsets.only(bottom: 10),
             child: OutlinedButton.icon(
               onPressed: lib.loading ? null : lib.pickFolder,
-              icon: const Icon(Icons.folder_open),
+              icon: const Icon(Ph.folderOpen),
               label: Text(lib.folderPath == null || lib.folderPath!.isEmpty
                   ? 'Use my own music folder'
                   : 'My music: ${lib.folderPath!.split('/').last} (${lib.tracks.length} tracks). Change'),
@@ -496,7 +497,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
         Expanded(
           child: OutlinedButton.icon(
             onPressed: _importing ? null : () => _openAndWait('soundcloud'),
-            icon: const Icon(Icons.cloud),
+            icon: const Icon(Ph.cloud),
             label: const Text('SoundCloud'),
           ),
         ),
@@ -504,7 +505,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
         Expanded(
           child: OutlinedButton.icon(
             onPressed: _importing ? null : () => _openAndWait('spotify'),
-            icon: const Icon(Icons.library_music),
+            icon: const Icon(Ph.libraryMusic),
             label: const Text('Spotify'),
           ),
         ),
@@ -513,7 +514,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
         width: double.infinity,
         child: FilledButton.tonalIcon(
           onPressed: _importing ? null : _importScreenshots,
-          icon: const Icon(Icons.image_search),
+          icon: const Icon(Ph.imageSearch),
           label: const Text('From a screenshot'),
         ),
       ),
@@ -607,13 +608,13 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
       const Text('Finds the music, fetches it, mixes it.',
           style: TextStyle(color: Color(0xFFB8B3AA))),
       const SizedBox(height: 20),
-      step(Icons.public, 'Music comes from Soulseek',
+      step(Ph.public, 'Music comes from Soulseek',
           'A free file-sharing network run by music fans. You need a Soulseek login to use it. It is free and takes seconds.'),
-      step(Icons.tune, 'Pick what you like',
+      step(Ph.tune, 'Pick what you like',
           'Choose genres, speed and intensity, or ask for a specific artist or track.'),
-      step(Icons.download, 'First time: 3 tracks download first',
+      step(Ph.download, 'First time: 3 tracks download first',
           'The first start waits until 3 tracks have arrived, so the mix never runs dry. Keep the app open.'),
-      step(Icons.skip_next, 'Skip and Stop',
+      step(Ph.skipNext, 'Skip and Stop',
           'Skip moves to the next track. Stop ends the set. Tell Ben what you think.'),
       const SizedBox(height: 8),
       const Text('Soulseek login', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
@@ -727,7 +728,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
           Expanded(
             child: FilledButton.tonalIcon(
               onPressed: _requestNow,
-              icon: const Icon(Icons.search),
+              icon: const Icon(Ph.search),
               label: const Text('Play this next'),
             ),
           ),
@@ -735,7 +736,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
         Expanded(
           child: OutlinedButton.icon(
             onPressed: _soundCloud,
-            icon: const Icon(Icons.cloud),
+            icon: const Icon(Ph.cloud),
             label: const Text('SoundCloud'),
           ),
         ),
@@ -743,7 +744,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
         Expanded(
           child: OutlinedButton.icon(
             onPressed: _shazam,
-            icon: const Icon(Icons.hearing),
+            icon: const Icon(Ph.hearing),
             label: const Text('Shazam'),
           ),
         ),
@@ -997,7 +998,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
                 child: Row(children: [
-                  const Icon(Icons.library_music),
+                  const Icon(Ph.libraryMusic),
                   const SizedBox(width: 8),
                   Text('Library (${shown.length}${shown.length == all.length ? '' : ' of ${all.length}'})',
                       style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
@@ -1006,7 +1007,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
                 child: TextField(
-                  decoration: const InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'Search artist or track', isDense: true, border: OutlineInputBorder()),
+                  decoration: const InputDecoration(prefixIcon: Icon(Ph.search), hintText: 'Search artist or track', isDense: true, border: OutlineInputBorder()),
                   onChanged: (v) => setS(() => q = v),
                 ),
               ),
@@ -1072,7 +1073,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                           ].join('  ·  ');
                           return ListTile(
                             dense: true,
-                            leading: Icon(dj.playedRecently(t.path) ? Icons.check_circle_outline : Icons.play_arrow),
+                            leading: Icon(dj.playedRecently(t.path) ? Ph.checkCircleOutline : Ph.playArrow),
                             title: Text(t.title, maxLines: 1, overflow: TextOverflow.ellipsis),
                             subtitle: sub.isEmpty ? null : Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis),
                             onTap: () {
@@ -1134,7 +1135,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
                   child: Row(children: [
-                    const Icon(Icons.star, color: Color(0xFFFFC83D)),
+                    const Icon(Ph.star, color: Color(0xFFFFC83D)),
                     const SizedBox(width: 8),
                     Text('Starred (${shown.length}${shown.length == all.length ? '' : ' of ${all.length}'})',
                         style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
@@ -1143,7 +1144,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
                   child: TextField(
-                    decoration: const InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'Search artist or track', isDense: true, border: OutlineInputBorder()),
+                    decoration: const InputDecoration(prefixIcon: Icon(Ph.search), hintText: 'Search artist or track', isDense: true, border: OutlineInputBorder()),
                     onChanged: (v) => setS(() => q = v),
                   ),
                 ),
@@ -1186,10 +1187,10 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                             return ListTile(
                               title: Text(t.title, maxLines: 1, overflow: TextOverflow.ellipsis),
                               subtitle: sub.isEmpty ? null : Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis),
-                              leading: const Icon(Icons.play_arrow),
+                              leading: const Icon(Ph.playArrow),
                               trailing: IconButton(
                                 tooltip: 'Remove star',
-                                icon: const Icon(Icons.star, color: Color(0xFFFFC83D)),
+                                icon: const Icon(Ph.star, color: Color(0xFFFFC83D)),
                                 onPressed: () => Starred.instance.toggle(t.artist, t.title, t.genre, t.bpm),
                               ),
                               onTap: () {
@@ -1254,7 +1255,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                     if (on && !_showChooser)
                       IconButton(
                         tooltip: 'Back',
-                        icon: const Icon(Icons.keyboard_arrow_down, size: 30),
+                        icon: const Icon(Ph.keyboardArrowDown, size: 30),
                         onPressed: () => setState(() => _showChooser = true),
                       ),
                     Text(on && !_showChooser ? 'The Booth' : 'BeatDeck',
@@ -1262,7 +1263,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                     const Spacer(),
                     IconButton(
                       tooltip: 'Screen brightness',
-                      icon: const Icon(Icons.brightness_6),
+                      icon: const Icon(Ph.brightness6),
                       onPressed: () => ScreenBrightness.set((ScreenBrightness.level + 1) % 4),
                     ),
                     PopupMenuButton<String>(
@@ -1307,7 +1308,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(14, 8, 6, 8),
           child: Row(children: [
-            const Icon(Icons.equalizer, color: _green),
+            const Icon(Ph.equalizer, color: _green),
             const SizedBox(width: 10),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -1317,10 +1318,10 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
             ),
             IconButton(
               tooltip: dj.automixPaused ? 'Play' : 'Pause',
-              icon: Icon(dj.automixPaused ? Icons.play_arrow : Icons.pause),
+              icon: Icon(dj.automixPaused ? Ph.playArrow : Ph.pause),
               onPressed: dj.automixPauseToggle,
             ),
-            const Icon(Icons.keyboard_arrow_up),
+            const Icon(Ph.keyboardArrowUp),
             const SizedBox(width: 4),
           ]),
         ),
@@ -1486,7 +1487,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
           height: 64,
           child: FilledButton.icon(
             onPressed: _starting ? null : _start,
-            icon: const Icon(Icons.play_arrow, size: 30),
+            icon: const Icon(Ph.playArrow, size: 30),
             label: Text(_starting ? 'Starting…' : 'Start',
                 style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
           ),
@@ -1577,21 +1578,21 @@ Container(
               const Spacer(),
               TextButton.icon(
                 onPressed: _showLibrary,
-                icon: const Icon(Icons.library_music, size: 18),
+                icon: const Icon(Ph.libraryMusic, size: 18),
                 label: ListenableBuilder(listenable: widget.library, builder: (_, __) => Text('Library (${widget.library.tracks.length})')),
               ),
               ListenableBuilder(
                 listenable: Starred.instance,
                 builder: (_, __) => TextButton.icon(
                   onPressed: _showStarred,
-                  icon: const Icon(Icons.star, size: 18, color: Color(0xFFFFC83D)),
+                  icon: const Icon(Ph.star, size: 18, color: Color(0xFFFFC83D)),
                   label: Text('Starred (${Starred.instance.items.length})'),
                 ),
               ),
             ]),
             const SizedBox(height: 10),
             Row(children: [
-              const Icon(Icons.equalizer, color: _green),
+              const Icon(Ph.equalizer, color: _green),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(d.loaded ? d.title : '…',
@@ -1616,7 +1617,7 @@ Container(
                           if (msg != null) _toast(msg);
                         },
                         child: Row(children: [
-                        Icon(_unknownKind(dj, upcoming[i]) ? Icons.help_outline : Icons.check_circle,
+                        Icon(_unknownKind(dj, upcoming[i]) ? Ph.helpOutline : Ph.checkCircle,
                             color: _unknownKind(dj, upcoming[i]) ? const Color(0xFFFFC83D) : _green, size: 22),
                         const SizedBox(width: 10),
                         Expanded(
@@ -1647,20 +1648,20 @@ Container(
 
   Widget _actionRow() {
     return Row(children: [
-          _action(Icons.equalizer, 'EQ', _openEq),
-          _action(Icons.skip_next, 'Play next', () {
+          _action(Ph.equalizer, 'EQ', _openEq),
+          _action(Ph.skipNext, 'Play next', () {
             if (widget.dj.automixUpcoming.isNotEmpty) {
               _skip();
             } else {
               _sheet('Play something next', _requestBox(running: true));
             }
           }),
-          _action(Icons.search, 'Request', () => _sheet('Request a track', _requestBox(running: true))),
-          _action(Icons.playlist_add, 'Import', () => _sheet('Import a playlist', _importBox())),
-          _action(Icons.insights, 'My style', () => _sheet('My style', _StyleBox(onPlayNow: () => _styleFallback(force: true)))),
-          _action(Icons.tune, 'Mixing', () => _sheet('Mixing', _MixBox(dj: widget.dj))),
-          _action(Icons.fast_forward, 'Jump ahead', _cut),
-          _action(Icons.stop_circle_outlined, 'End set', _stop),
+          _action(Ph.search, 'Request', () => _sheet('Request a track', _requestBox(running: true))),
+          _action(Ph.playlistAdd, 'Import', () => _sheet('Import a playlist', _importBox())),
+          _action(Ph.insights, 'My style', () => _sheet('My style', _StyleBox(onPlayNow: () => _styleFallback(force: true)))),
+          _action(Ph.tune, 'Mixing', () => _sheet('Mixing', _MixBox(dj: widget.dj))),
+          _action(Ph.fastForward, 'Jump ahead', _cut),
+          _action(Ph.stopCircleOutlined, 'End set', _stop),
         ]);
   }
 
@@ -1717,7 +1718,7 @@ Container(
               width: size - 18,
               height: size - 18,
               decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFFE9DCB5)),
-              child: Icon(dj.automixPaused ? Icons.play_arrow : Icons.pause, size: size * 0.45, color: Colors.black),
+              child: Icon(dj.automixPaused ? Ph.playArrow : Ph.pause, size: size * 0.45, color: Colors.black),
             ),
           ),
         ]),
@@ -1728,7 +1729,7 @@ Container(
         builder: (_, __) {
           final n = _cleanNames(d);
           final on = Starred.instance.has(n.artist, n.title);
-          return _orb(on ? Icons.star : Icons.star_border, () => _toggleStar(dj),
+          return _orb(on ? Ph.star : Ph.starBorder, () => _toggleStar(dj),
               tip: on ? 'Remove star' : 'Star this track', color: on ? const Color(0xFFFFC83D) : null);
         },
       );
@@ -1754,7 +1755,7 @@ Container(
       if (genre.isNotEmpty) _chip(genre.toUpperCase()),
       if (d.bpm > 1) _chip('${(d.bpm * d.rate).round()} BPM'),
     ]);
-    final tune = _orb(Icons.tune, () => _sheet('Visuals', const _VisualsBox()), tip: 'Visuals settings', size: 40);
+    final tune = _orb(Ph.tune, () => _sheet('Visuals', const _VisualsBox()), tip: 'Visuals settings', size: 40);
     final title = Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
       Text(d.loaded ? d.title : '…', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
       if (d.artist.isNotEmpty) Text(d.artist, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, color: _dim)),
@@ -1777,17 +1778,17 @@ Container(
               Row(children: [
                 Expanded(child: title),
                 const SizedBox(width: 12),
-                _orb(Icons.arrow_back, () => setState(() => _showChooser = true), tip: 'Back to genres'),
+                _orb(Ph.arrowBack, () => setState(() => _showChooser = true), tip: 'Back to genres'),
                 const SizedBox(width: 10),
                 _dial(dj, frac, 64),
                 const SizedBox(width: 10),
-                _orb(Icons.skip_next, _skip, tip: 'Next track'),
+                _orb(Ph.skipNext, _skip, tip: 'Next track'),
                 const SizedBox(width: 10),
                 _starOrb(dj, d),
                 const SizedBox(width: 10),
-                _orb(Icons.queue_music, () => _sheet('Queue', _queueCard(dj, d, upcoming, status)), tip: 'Queue'),
+                _orb(Ph.queueMusic, () => _sheet('Queue', _queueCard(dj, d, upcoming, status)), tip: 'Queue'),
                 const SizedBox(width: 10),
-                _orb(Icons.more_horiz, () => _sheet('More', _actionRow()), tip: 'More'),
+                _orb(Ph.moreHoriz, () => _sheet('More', _actionRow()), tip: 'More'),
               ]),
               pad: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             ),
@@ -1815,9 +1816,9 @@ Container(
                   title,
                   const SizedBox(height: 14),
                   Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
-                    _orb(Icons.arrow_back, () => setState(() => _showChooser = true), tip: 'Back to genres'),
+                    _orb(Ph.arrowBack, () => setState(() => _showChooser = true), tip: 'Back to genres'),
                     _dial(dj, frac, 84),
-                    _orb(Icons.skip_next, _skip, tip: 'Next track'),
+                    _orb(Ph.skipNext, _skip, tip: 'Next track'),
                     _starOrb(dj, d),
                   ]),
                   const SizedBox(height: 16),
@@ -1960,7 +1961,7 @@ class _VisualsBoxState extends State<_VisualsBox> {
             Expanded(
               child: OutlinedButton.icon(
                 onPressed: m.next,
-                icon: const Icon(Icons.skip_next),
+                icon: const Icon(Ph.skipNext),
                 label: const Text('Next picture'),
               ),
             ),
@@ -1968,7 +1969,7 @@ class _VisualsBoxState extends State<_VisualsBox> {
             Expanded(
               child: OutlinedButton.icon(
                 onPressed: m.preset == null ? null : () => m.set(shuffle: true),
-                icon: const Icon(Icons.shuffle),
+                icon: const Icon(Ph.shuffle),
                 label: Text(m.preset == null ? 'Shuffling' : 'Back to shuffle'),
               ),
             ),
@@ -1977,7 +1978,7 @@ class _VisualsBoxState extends State<_VisualsBox> {
           Text(m.preset == null ? 'Pick a preset (or leave it shuffling)' : 'Showing: ${m.preset}',
               style: const TextStyle(fontWeight: FontWeight.w700)),
           TextField(
-            decoration: const InputDecoration(hintText: 'Search presets', prefixIcon: Icon(Icons.search)),
+            decoration: const InputDecoration(hintText: 'Search presets', prefixIcon: Icon(Ph.search)),
             onChanged: (v) => setState(() => _q = v),
           ),
           SizedBox(
@@ -1987,7 +1988,7 @@ class _VisualsBoxState extends State<_VisualsBox> {
                 ListTile(
                   dense: true,
                   title: Text(n, maxLines: 1, overflow: TextOverflow.ellipsis),
-                  trailing: m.preset == n ? const Icon(Icons.check, color: Color(0xFFFF5A2B)) : null,
+                  trailing: m.preset == n ? const Icon(Ph.check, color: Color(0xFFFF5A2B)) : null,
                   onTap: () => m.set(pick: n),
                 ),
             ]),
@@ -2214,8 +2215,8 @@ class _StyleBoxState extends State<_StyleBox> {
           ActionChip(
             avatar: Icon(
               Starred.instance.items.where((t) => t.genre == g).every((t) => !st.excluded.contains(t.key))
-                  ? Icons.check_box
-                  : Icons.check_box_outline_blank,
+                  ? Ph.checkBox
+                  : Ph.checkBoxOutlineBlank,
               size: 18,
             ),
             label: Text(g),
@@ -2308,7 +2309,7 @@ class _StyleBoxState extends State<_StyleBox> {
                 Navigator.pop(context);
                 widget.onPlayNow();
               },
-        icon: const Icon(Icons.insights),
+        icon: const Icon(Ph.insights),
         label: const Text('Play something in my style now'),
       ),
     ]);

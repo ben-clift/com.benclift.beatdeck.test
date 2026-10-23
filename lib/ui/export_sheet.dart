@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:sidedeck/theme/ph.dart';
 
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
@@ -109,7 +110,7 @@ class _ExportSheetState extends State<_ExportSheet> {
               width: double.infinity,
               child: FilledButton.icon(
                 onPressed: (_sel.isEmpty || _busy) ? null : _send,
-                icon: const Icon(Icons.cloud_upload_outlined),
+                icon: const Icon(Ph.cloudUploadOutlined),
                 label: Text(_busy ? 'Opening…' : 'Send ${_sel.length} to Google Drive'),
               ),
             ),

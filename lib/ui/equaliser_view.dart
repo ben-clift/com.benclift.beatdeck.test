@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:sidedeck/theme/ph.dart';
 import 'package:sidedeck/state/dj_controller.dart';
 import 'package:sidedeck/state/eq_presets.dart';
 
@@ -151,7 +152,7 @@ class _EqualiserViewState extends State<EqualiserView> {
               child: GestureDetector(
                 onLongPress: () => dj.deleteEqPreset(e.key),
                 child: ChoiceChip(
-                  avatar: const Icon(Icons.star, size: 14),
+                  avatar: const Icon(Ph.star, size: 14),
                   label: Text(e.key, style: const TextStyle(fontSize: 12)),
                   visualDensity: VisualDensity.compact,
                   selected: _isNow(e.value),
@@ -160,7 +161,7 @@ class _EqualiserViewState extends State<EqualiserView> {
               ),
             ),
           ActionChip(
-            avatar: const Icon(Icons.save_outlined, size: 14),
+            avatar: const Icon(Ph.saveOutlined, size: 14),
             label: const Text('Save this sound', style: TextStyle(fontSize: 12)),
             visualDensity: VisualDensity.compact,
             onPressed: _saveCurrent,

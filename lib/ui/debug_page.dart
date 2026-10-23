@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:sidedeck/theme/ph.dart';
 import 'package:flutter/services.dart';
 import 'package:sidedeck/debug/debug_log.dart';
 import 'package:sidedeck/debug/log_upload.dart';
@@ -21,12 +22,12 @@ class _DebugPageState extends State<DebugPage> {
         title: const Text('Test log'),
         actions: [
           IconButton(
-            icon: Icon(_failsOnly ? Icons.filter_alt : Icons.filter_alt_outlined),
+            icon: Icon(_failsOnly ? Ph.filterAlt : Ph.filterAltOutlined),
             tooltip: 'Show only failures',
             onPressed: () => setState(() => _failsOnly = !_failsOnly),
           ),
           IconButton(
-            icon: const Icon(Icons.copy),
+            icon: const Icon(Ph.copy),
             tooltip: 'Copy all',
             onPressed: () {
               Clipboard.setData(ClipboardData(text: log.lines.join('\n')));
@@ -36,7 +37,7 @@ class _DebugPageState extends State<DebugPage> {
             },
           ),
           IconButton(
-            icon: const Icon(Icons.cloud_upload_outlined),
+            icon: const Icon(Ph.cloudUploadOutlined),
             tooltip: 'Send to Claude now',
             onPressed: () async {
               final r = await LogUpload.send();
@@ -46,7 +47,7 @@ class _DebugPageState extends State<DebugPage> {
             },
           ),
           IconButton(
-            icon: const Icon(Icons.delete_outline),
+            icon: const Icon(Ph.deleteOutline),
             tooltip: 'Clear',
             onPressed: log.clear,
           ),

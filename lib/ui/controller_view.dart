@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:sidedeck/theme/ph.dart';
 import 'dart:math' as math;
 
 import 'package:file_picker/file_picker.dart';
@@ -233,7 +234,7 @@ class _ControllerViewState extends State<ControllerView> {
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Not now')),
           FilledButton.icon(
-            icon: const Icon(Icons.share_outlined),
+            icon: const Icon(Ph.shareOutlined),
             label: const Text('Share'),
             onPressed: () {
               Navigator.pop(ctx);
@@ -741,14 +742,14 @@ class _DeckPanelState extends State<_DeckPanel> {
                   ],
                 ),
               ),
-              const Icon(Icons.library_music, size: 18),
+              const Icon(Ph.libraryMusic, size: 18),
               if (d.loaded && widget.dj.automixOn)
                 IconButton(
                   tooltip: 'Skip this track',
                   visualDensity: VisualDensity.compact,
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                  icon: const Icon(Icons.skip_next, size: 22),
+                  icon: const Icon(Ph.skipNext, size: 22),
                   onPressed: () {
                     final err = widget.dj.automixSkip(widget.index);
                     if (err != null) {
@@ -762,7 +763,7 @@ class _DeckPanelState extends State<_DeckPanel> {
                   visualDensity: VisualDensity.compact,
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                  icon: const Icon(Icons.insights, size: 20),
+                  icon: const Icon(Ph.insights, size: 20),
                   onPressed: () {
                     final msg = widget.dj.automixMoreLike(widget.index);
                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
@@ -774,7 +775,7 @@ class _DeckPanelState extends State<_DeckPanel> {
                   visualDensity: VisualDensity.compact,
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                  icon: const Icon(Icons.do_not_disturb_on_outlined, size: 20),
+                  icon: const Icon(Ph.doNotDisturbOnOutlined, size: 20),
                   onPressed: () {
                     final msg = widget.dj.automixLessLike(widget.index);
                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
@@ -786,7 +787,7 @@ class _DeckPanelState extends State<_DeckPanel> {
                   visualDensity: VisualDensity.compact,
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                  icon: const Icon(Icons.share_outlined, size: 20),
+                  icon: const Icon(Ph.shareOutlined, size: 20),
                   onPressed: () {
                     final path = d.path!;
                     final name = path.split(RegExp(r'[\\/]')).last.replaceFirst(RegExp(r'\.[^.]+$'), '');
@@ -803,7 +804,7 @@ class _DeckPanelState extends State<_DeckPanel> {
                   visualDensity: VisualDensity.compact,
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                  icon: const Icon(Icons.bookmark_add_outlined, size: 20),
+                  icon: const Icon(Ph.bookmarkAddOutlined, size: 20),
                   onPressed: () => _backup(d),
                 ),
               if (d.loaded)
@@ -812,7 +813,7 @@ class _DeckPanelState extends State<_DeckPanel> {
                   visualDensity: VisualDensity.compact,
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                  icon: const Icon(Icons.delete_outline, size: 20, color: Colors.redAccent),
+                  icon: const Icon(Ph.deleteOutline, size: 20, color: Colors.redAccent),
                   onPressed: () => _confirmRemove(d),
                 ),
             ],
@@ -842,7 +843,7 @@ class _DeckPanelState extends State<_DeckPanel> {
                   margin: const EdgeInsets.only(left: 8),
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                   color: d.cue ? const Color(0xFF2E9BFF) : Colors.transparent,
-                  child: Icon(Icons.headphones,
+                  child: Icon(Ph.headphones,
                       size: 16, color: d.cue ? Colors.black : SideDeckTheme.muted),
                 ),
               ),
@@ -909,7 +910,7 @@ class _DeckPanelState extends State<_DeckPanel> {
                         onTap: () => Ratings.instance.tap(path, i),
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: Icon(i <= n ? Icons.star : Icons.star_border,
+                          child: Icon(i <= n ? Ph.star : Ph.starBorder,
                               size: 20,
                               color: i <= n ? const Color(0xFFFFC107) : SideDeckTheme.muted),
                         ),

@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'package:sidedeck/theme/ph.dart';
 
 import 'package:flutter/material.dart';
 import 'package:sidedeck/state/library_controller.dart';
@@ -165,7 +166,7 @@ class _GenrePickerState extends State<GenrePicker> {
 
   Widget _fetchButton() => FilledButton.icon(
         onPressed: (_sel.isEmpty && _genre.text.trim().isEmpty) ? null : _go,
-        icon: const Icon(Icons.download, size: 18),
+        icon: const Icon(Ph.download, size: 18),
         label: const Text('Fetch & mix now'),
       );
 
@@ -194,7 +195,7 @@ class _GenrePickerState extends State<GenrePicker> {
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => SoulseekPage(library: widget.library)),
               ),
-              icon: const Icon(Icons.search, size: 18),
+              icon: const Icon(Ph.search, size: 18),
               label: const Text('Open search'),
             ),
           ],
@@ -227,7 +228,7 @@ class _GenrePickerState extends State<GenrePicker> {
           decoration: InputDecoration(
             labelText: 'Type a genre and press enter, or tick as many as you like',
             isDense: true,
-            suffixIcon: IconButton(icon: const Icon(Icons.add), onPressed: _addTyped),
+            suffixIcon: IconButton(icon: const Icon(Ph.add), onPressed: _addTyped),
           ),
         ),
         if (_sel.isNotEmpty) ...[
@@ -309,7 +310,7 @@ class _GenrePickerState extends State<GenrePicker> {
           style: const TextStyle(fontSize: 11, color: SideDeckTheme.muted),
         ),
         TextButton.icon(
-          icon: const Icon(Icons.help_outline, size: 18),
+          icon: const Icon(Ph.helpOutline, size: 18),
           label: const Text('What do these genres mean?'),
           onPressed: () => Navigator.of(context).push(
             MaterialPageRoute<void>(builder: (_) => const GenreGlossaryPage()),
@@ -345,7 +346,7 @@ class _GenrePickerState extends State<GenrePicker> {
                       : c,
                   style: const TextStyle(fontSize: 12),
                 ),
-                avatar: Icon(_openCats.contains(c) ? Icons.expand_less : Icons.expand_more, size: 16),
+                avatar: Icon(_openCats.contains(c) ? Ph.expandLess : Ph.expandMore, size: 16),
                 visualDensity: VisualDensity.compact,
                 selected: _openCats.contains(c),
                 showCheckmark: false,

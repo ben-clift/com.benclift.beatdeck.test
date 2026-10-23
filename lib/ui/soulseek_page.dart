@@ -1,5 +1,6 @@
 
 import 'package:flutter/material.dart';
+import 'package:sidedeck/theme/ph.dart';
 import 'package:sidedeck/debug/debug_log.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sidedeck/soulseek/playable.dart';
@@ -147,7 +148,7 @@ class _SoulseekPageState extends State<SoulseekPage> {
           decoration: InputDecoration(
             labelText: 'Password',
             suffixIcon: IconButton(
-              icon: Icon(_hide ? Icons.visibility : Icons.visibility_off),
+              icon: Icon(_hide ? Ph.visibility : Ph.visibilityOff),
               onPressed: () => setState(() => _hide = !_hide),
             ),
           ),
@@ -192,7 +193,7 @@ class _SoulseekPageState extends State<SoulseekPage> {
               onSubmitted: soulseek.search,
               decoration: InputDecoration(
                 hintText: 'Search artist or track',
-                prefixIcon: const Icon(Icons.search),
+                prefixIcon: const Icon(Ph.search),
                 suffixIcon: soulseek.searching
                     ? const Padding(
                         padding: EdgeInsets.all(12),
@@ -203,7 +204,7 @@ class _SoulseekPageState extends State<SoulseekPage> {
                         ),
                       )
                     : IconButton(
-                        icon: const Icon(Icons.arrow_forward),
+                        icon: const Icon(Ph.arrowForward),
                         onPressed: () => soulseek.search(_query.text),
                       ),
               ),
@@ -219,7 +220,7 @@ class _SoulseekPageState extends State<SoulseekPage> {
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                   child: Row(
                     children: [
-                      Icon(_panelOpen ? Icons.expand_less : Icons.expand_more, size: 20),
+                      Icon(_panelOpen ? Ph.expandLess : Ph.expandMore, size: 20),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
@@ -248,7 +249,7 @@ class _SoulseekPageState extends State<SoulseekPage> {
           if (_panelOpen) ...[
           ListTile(
             dense: true,
-            leading: const Icon(Icons.folder_open),
+            leading: const Icon(Ph.folderOpen),
             title: Text(
               'Saving to ${SlskSetup.dirFor(widget.library)}',
               maxLines: 2,
@@ -484,7 +485,7 @@ class _SoulseekPageState extends State<SoulseekPage> {
           ),
           isThreeLine: true,
           trailing: IconButton(
-            icon: const Icon(Icons.download),
+            icon: const Icon(Ph.download),
             onPressed: () {
               DebugLog.add('download', 'tapped: ${r.fileName} from ${r.user}');
               soulseek.download(r);
@@ -539,7 +540,7 @@ class _SoulseekPageState extends State<SoulseekPage> {
             ],
           ),
           trailing: IconButton(
-            icon: const Icon(Icons.close),
+            icon: const Icon(Ph.close),
             onPressed: () => soulseek.removeDownload(d),
           ),
         );

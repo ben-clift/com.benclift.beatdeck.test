@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:sidedeck/theme/ph.dart';
 import 'package:sidedeck/engine/music_utils.dart';
 import 'package:sidedeck/state/dj_controller.dart';
 import 'package:sidedeck/state/library_controller.dart';
@@ -238,7 +239,7 @@ class _SuggestPageState extends State<SuggestPage> {
                     '  ·  ${m.label}',
                   ),
                   trailing: IconButton(
-                    icon: const Icon(Icons.play_circle_outline),
+                    icon: const Icon(Ph.playCircleOutline),
                     onPressed: () => _loadTo(t),
                   ),
                 ),
@@ -351,7 +352,7 @@ class _SuggestPageState extends State<SuggestPage> {
                     '${s.bpm > 0 ? '${s.bpm.round()} BPM  ·  ' : ''}${s.reason}',
                   ),
                   trailing: IconButton(
-                    icon: const Icon(Icons.travel_explore),
+                    icon: const Icon(Ph.travelExplore),
                     tooltip: 'Find on Soulseek',
                     onPressed: () => _find(s.query),
                   ),

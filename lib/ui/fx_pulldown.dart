@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:sidedeck/theme/ph.dart';
 import 'package:flutter/material.dart';
 import 'package:sidedeck/state/dj_controller.dart';
 import 'package:sidedeck/state/look_controller.dart';
@@ -95,7 +96,7 @@ class _FxPullDownState extends State<FxPullDown> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                _open ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                _open ? Ph.keyboardArrowUp : Ph.keyboardArrowDown,
                 size: 16,
                 color: fg,
               ),

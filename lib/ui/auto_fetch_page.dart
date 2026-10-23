@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'package:sidedeck/theme/ph.dart';
 
 import 'package:flutter/material.dart';
 import 'package:sidedeck/soulseek/soulseek_client.dart';
@@ -408,7 +409,7 @@ class _AutoFetchPageState extends State<AutoFetchPage> {
                   OutlinedButton.icon(
                     // First time: show everything. Reload: only tracks not seen yet.
                     onPressed: () => _loadTracks(onlyNew: _tracks.isNotEmpty && !_allMode),
-                    icon: const Icon(Icons.refresh, size: 18),
+                    icon: const Icon(Ph.refresh, size: 18),
                     label: Text(_tracks.isEmpty || _allMode ? 'Show tracks' : 'Reload'),
                   ),
                   const SizedBox(width: 6),
@@ -423,13 +424,13 @@ class _AutoFetchPageState extends State<AutoFetchPage> {
                         _artistDesc = !_artistDesc;
                         _showAllFinds();
                       },
-                      icon: Icon(_artistDesc ? Icons.arrow_downward : Icons.arrow_upward, size: 20),
+                      icon: Icon(_artistDesc ? Ph.arrowDownward : Ph.arrowUpward, size: 20),
                     ),
                   
                   if (_picked.isNotEmpty)
                     FilledButton.icon(
                       onPressed: () => _download([for (final i in _picked) _tracks[i]]),
-                      icon: const Icon(Icons.download, size: 18),
+                      icon: const Icon(Ph.download, size: 18),
                       label: Text('Download ${_picked.length}'),
                     )
                   else if (_tracks.isNotEmpty)
@@ -474,7 +475,7 @@ class _AutoFetchPageState extends State<AutoFetchPage> {
                     style: const TextStyle(fontSize: 11),
                   ),
                   secondary: IconButton(
-                    icon: const Icon(Icons.download),
+                    icon: const Icon(Ph.download),
                     tooltip: 'Download now',
                     onPressed: () => _download([_tracks[i]]),
                   ),

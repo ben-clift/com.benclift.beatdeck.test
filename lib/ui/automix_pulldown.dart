@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:sidedeck/theme/ph.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -244,7 +245,7 @@ class _AutomixPullDownState extends State<AutomixPullDown> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                _open ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                _open ? Ph.keyboardArrowUp : Ph.keyboardArrowDown,
                 size: 16,
                 color: on ? SideDeckTheme.bg : SideDeckTheme.text,
               ),
@@ -359,7 +360,7 @@ class _AutomixPullDownState extends State<AutomixPullDown> {
                 child: on
                     ? FilledButton.icon(
                         onPressed: dj.stopAutomix,
-                        icon: const Icon(Icons.stop),
+                        icon: const Icon(Ph.stop),
                         label: Text(
                           'Stop Auto DJ  ·  track ${dj.automixIndex + 1} of ${dj.automixQueueLength}',
                           style: const TextStyle(fontSize: 16),
@@ -367,7 +368,7 @@ class _AutomixPullDownState extends State<AutomixPullDown> {
                       )
                     : FilledButton.icon(
                         onPressed: !hasMusic ? null : () => _start(_pathsFor(choice, lists)),
-                        icon: const Icon(Icons.auto_mode),
+                        icon: const Icon(Ph.autoMode),
                         label: const Text('Start Auto DJ', style: TextStyle(fontSize: 18)),
                       ),
               ),
@@ -442,7 +443,7 @@ class _AutomixPullDownState extends State<AutomixPullDown> {
                     Row(
                       children: [
                         Icon(
-                          Icons.circle,
+                          Ph.circle,
                           size: 10,
                           color: soulseek.online
                               ? Colors.greenAccent
@@ -604,7 +605,7 @@ class _AutomixPullDownState extends State<AutomixPullDown> {
                           : Padding(
                               padding: const EdgeInsets.only(top: 8),
                               child: OutlinedButton.icon(
-                                icon: const Icon(Icons.restart_alt, size: 18),
+                                icon: const Icon(Ph.restartAlt, size: 18),
                                 label: Text(
                                   'Reset "Less of this" (${Avoids.instance.count})',
                                   style: const TextStyle(fontSize: 12),

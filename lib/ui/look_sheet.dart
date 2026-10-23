@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:sidedeck/theme/ph.dart';
 import 'package:sidedeck/state/look_controller.dart';
 import 'package:sidedeck/theme/sidedeck_theme.dart';
 
@@ -297,7 +298,7 @@ class _LookSheet extends StatelessWidget {
                 ),
                 child: i == selected
                     ? Icon(
-                        Icons.check,
+                        Ph.check,
                         size: 18,
                         color: options[i].color.computeLuminance() > 0.4
                             ? Colors.black

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:sidedeck/theme/ph.dart';
 
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
@@ -161,7 +162,7 @@ class _PlaylistsPanelState extends State<PlaylistsPanel> {
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                 trailing: Icon(
-                                  inList ? Icons.check_circle : Icons.add_circle_outline,
+                                  inList ? Ph.checkCircle : Ph.addCircleOutline,
                                   color: inList ? SideDeckTheme.accentA : null,
                                 ),
                                 onTap: inList
@@ -226,7 +227,7 @@ class _PlaylistsPanelState extends State<PlaylistsPanel> {
               ),
               FilledButton.icon(
                 onPressed: _create,
-                icon: const Icon(Icons.add, size: 18),
+                icon: const Icon(Ph.add, size: 18),
                 label: const Text('New'),
               ),
             ],
@@ -284,7 +285,7 @@ class _PlaylistsPanelState extends State<PlaylistsPanel> {
               IconButton(
                 tooltip: 'Back',
                 onPressed: () => setState(() => _openId = null),
-                icon: const Icon(Icons.arrow_back, size: 22),
+                icon: const Icon(Ph.arrowBack, size: 22),
               ),
               Expanded(
                 child: Text(
@@ -296,7 +297,7 @@ class _PlaylistsPanelState extends State<PlaylistsPanel> {
               ),
               TextButton.icon(
                 onPressed: () => _addTracks(pl),
-                icon: const Icon(Icons.add, size: 18),
+                icon: const Icon(Ph.add, size: 18),
                 label: const Text('Add tracks'),
               ),
             ],
@@ -423,7 +424,7 @@ class _PlaylistsPanelState extends State<PlaylistsPanel> {
               if (on)
                 FilledButton.icon(
                   onPressed: dj.stopAutomix,
-                  icon: const Icon(Icons.stop, size: 18),
+                  icon: const Icon(Ph.stop, size: 18),
                   label: const Text('Stop automix'),
                 )
               else
@@ -431,7 +432,7 @@ class _PlaylistsPanelState extends State<PlaylistsPanel> {
                   onPressed: pl.paths.isEmpty
                       ? null
                       : () => dj.startAutomix(pl.paths, fadeSeconds: _fade),
-                  icon: const Icon(Icons.auto_mode, size: 18),
+                  icon: const Icon(Ph.autoMode, size: 18),
                   label: const Text('Automix'),
                 ),
               const SizedBox(width: 12),

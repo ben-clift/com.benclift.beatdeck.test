@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:sidedeck/theme/ph.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sidedeck/engine/usb_output.dart';
@@ -144,10 +145,10 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           const Divider(height: 32),
           ListTile(
-            leading: const Icon(Icons.delete_outline),
+            leading: const Icon(Ph.deleteOutline),
             title: Text('Deleted tracks (${Dislikes.instance.count})'),
             subtitle: const Text('See what you deleted. These are never picked or searched for.'),
-            trailing: const Icon(Icons.chevron_right),
+            trailing: const Icon(Ph.chevronRight),
             onTap: () async {
               await Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const DeletedTracksPage()),
@@ -168,7 +169,7 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           ListTile(
             contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.bug_report_outlined),
+            leading: const Icon(Ph.bugReportOutlined),
             title: const Text('Test log'),
             subtitle: const Text('Every step with OK or FAIL. Copy it to send.'),
             onTap: () => Navigator.of(context).push(
@@ -299,7 +300,7 @@ class _SettingsPageState extends State<SettingsPage> {
             },
           ),
           OutlinedButton.icon(
-            icon: const Icon(Icons.graphic_eq),
+            icon: const Icon(Ph.graphicEq),
             label: const Text('Copy mix quality log'),
             onPressed: () {
               final lines = DebugLog.instance.lines
@@ -368,7 +369,7 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           const SizedBox(height: 8),
           OutlinedButton.icon(
-            icon: const Icon(Icons.cleaning_services_outlined),
+            icon: const Icon(Ph.cleaningServicesOutlined),
             label: const Text('Clear cache'),
             onPressed: _clearCache,
           ),
@@ -380,7 +381,7 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           const SizedBox(height: 12),
           OutlinedButton.icon(
-            icon: const Icon(Icons.restart_alt),
+            icon: const Icon(Ph.restartAlt),
             label: const Text('Reset to factory settings'),
             onPressed: _factoryReset,
           ),

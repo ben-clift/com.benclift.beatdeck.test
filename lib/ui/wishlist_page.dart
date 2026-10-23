@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:sidedeck/theme/ph.dart';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -53,7 +54,7 @@ class _WishListPageState extends State<WishListPage> {
       appBar: AppBar(title: const Text('Song wish lists')),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _import,
-        icon: const Icon(Icons.playlist_add),
+        icon: const Icon(Ph.playlistAdd),
         label: const Text('Import a list'),
       ),
       body: ListenableBuilder(
@@ -84,7 +85,7 @@ class _WishListPageState extends State<WishListPage> {
                   ),
                   onTap: () => _open(l),
                   trailing: IconButton(
-                    icon: const Icon(Icons.delete_outline),
+                    icon: const Icon(Ph.deleteOutline),
                     onPressed: () => _ctl.remove(l),
                   ),
                 ),
@@ -114,7 +115,7 @@ class _WishDetail extends StatelessWidget {
         title: Text(list.name),
         actions: [
           TextButton.icon(
-            icon: const Icon(Icons.download),
+            icon: const Icon(Ph.download),
             label: const Text('Download all'),
             onPressed: () {
               final tracks = [
@@ -144,7 +145,7 @@ class _WishDetail extends StatelessWidget {
               title: Text(it.title, maxLines: 1, overflow: TextOverflow.ellipsis),
               subtitle: it.artist.isEmpty ? null : Text(it.artist),
               trailing: TextButton.icon(
-                icon: const Icon(Icons.travel_explore, size: 18),
+                icon: const Icon(Ph.travelExplore, size: 18),
                 label: const Text('Find'),
                 onPressed: () => Navigator.of(context).push(
                   MaterialPageRoute<void>(
@@ -298,7 +299,7 @@ class _ImportSheetState extends State<_ImportSheet> {
               const SizedBox(width: 10),
               OutlinedButton.icon(
                 onPressed: _file,
-                icon: const Icon(Icons.upload_file),
+                icon: const Icon(Ph.uploadFile),
                 label: const Text('Pick a CSV'),
               ),
             ],

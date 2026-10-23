@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:sidedeck/theme/ph.dart';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -251,9 +252,9 @@ class _FreeMusicPageState extends State<FreeMusicPage> {
                 hintText: _source == 'jamendo'
                     ? 'Search artists, tracks or genres'
                     : 'Search live sets, old records, public domain',
-                prefixIcon: const Icon(Icons.search),
+                prefixIcon: const Icon(Ph.search),
                 suffixIcon: IconButton(
-                  icon: const Icon(Icons.arrow_forward),
+                  icon: const Icon(Ph.arrowForward),
                   onPressed: _search,
                 ),
               ),
@@ -271,7 +272,7 @@ class _FreeMusicPageState extends State<FreeMusicPage> {
               child: Row(
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.arrow_back),
+                    icon: const Icon(Ph.arrowBack),
                     onPressed: _search,
                   ),
                   Expanded(
@@ -296,7 +297,7 @@ class _FreeMusicPageState extends State<FreeMusicPage> {
               dense: true,
               title: Text(it['title']!, maxLines: 2, overflow: TextOverflow.ellipsis),
               subtitle: Text(it['creator']!),
-              trailing: const Icon(Icons.chevron_right),
+              trailing: const Icon(Ph.chevronRight),
               onTap: () => _openArchive(it),
             ),
         ],
@@ -325,7 +326,7 @@ class _FreeMusicPageState extends State<FreeMusicPage> {
           subtitle: Text('${s.artist}  ·  ${s.ext.toUpperCase()}'
               '${st == null ? '' : '  ·  $st'}'),
           trailing: IconButton(
-            icon: Icon(st == 'Saved' ? Icons.check : Icons.download),
+            icon: Icon(st == 'Saved' ? Ph.check : Ph.download),
             onPressed: st == 'Downloading' || st == 'Saved' ? null : () => _download(s),
           ),
         );
