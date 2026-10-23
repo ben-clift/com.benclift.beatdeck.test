@@ -51,6 +51,7 @@ class AutoFetch extends ChangeNotifier {
 
   /// 0 any, 1 vocals, 2 instrumental (judged from artist, title and file names).
   int vocal = 0;
+  int mood = 0; // 0 whatever, 1 sad .. 4 happy (by key)
 
   /// Words for the vocal styles asked for (MC, diva, soulful...). Tracks whose
   /// artist or title match are fetched first.

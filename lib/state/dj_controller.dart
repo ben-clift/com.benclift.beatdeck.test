@@ -762,6 +762,10 @@ class DjController extends ChangeNotifier {
   /// 0 any, 1 vocals, 2 instrumental.
   int Function()? vocalMode;
 
+  /// Mood by musical key: 0 whatever, 1 sad (minor keys), 2 moody (mostly
+  /// minor), 3 bright (mostly major), 4 happy (major keys).
+  int Function()? moodMode;
+
   bool _kindOk(String path) {
     final vm = vocalMode?.call() ?? 0;
     if (vm != 0 &&
@@ -769,6 +773,16 @@ class DjController extends ChangeNotifier {
         !(requestedPath?.call(path) ?? false) &&
         vocalClash(path.split(RegExp(r'[\\/]')).last, vm)) {
       return false;
+    }
+    final mm = moodMode?.call() ?? 0;
+    if (mm != 0 && !_userOk.contains(path) && !(requestedPath?.call(path) ?? false)) {
+      final k = _flowOf(path)?.key;
+      if (k != null) {
+        final wantMinor = mm <= 2;
+        final off = k.minor != wantMinor;
+        // Moody / bright let a quarter of the off-mood tracks through (a stable pick per track).
+        if (off && (mm == 1 || mm == 4 || path.hashCode.abs() % 4 != 0)) return false;
+      }
     }
     if (!_kindStrict) return true;
     final fam = genreFamily(genreOf?.call(path) ?? '');

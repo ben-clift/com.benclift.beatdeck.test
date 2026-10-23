@@ -112,6 +112,10 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
   final _track = TextEditingController();
   double _intensity = 0;
   int _vocal = 0; // 0 any, 1 vocals, 2 instrumental
+  int _mood = 0; // 0 whatever, 1 sad .. 4 happy (by musical key)
+  bool _genresOpen = false;
+  bool _optionsOpen = false;
+  bool _reqOpen = false;
   final Set<String> _typesOn = {}; // vocal types chosen ("Genre|Type")
   final Set<String> _subOff = {}; // sub-genres switched off
   int _decade = 0; // 0 = any year, else the first year of the decade
@@ -756,6 +760,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     try {
       final p = await SharedPreferences.getInstance();
       _vocal = p.getInt('simple_vocal') ?? 0;
+      _mood = p.getInt('simple_mood') ?? 0;
       _subOff.addAll(p.getStringList('simple_suboff') ?? const []);
       _typesOn.addAll(p.getStringList('simple_types') ?? const []);
       final s = p.getStringList('simple_vibes');
@@ -809,6 +814,8 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
         genres.addAll(on.isEmpty ? v.genres : on);
       }
       af.vocal = _vocal;
+      af.mood = _mood;
+      widget.dj.moodMode = () => AutoFetch.instance.mood;
       af.vocalTerms = [
         if (_vocal != 2)
           for (final v in vibes)
@@ -818,6 +825,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
       widget.dj.vocalMode = () => AutoFetch.instance.vocal;
       SharedPreferences.getInstance().then((p) {
         p.setInt('simple_vocal', _vocal);
+        p.setInt('simple_mood', _mood);
         p.setStringList('simple_suboff', _subOff.toList());
         p.setStringList('simple_types', _typesOn.toList());
       }).catchError((_) {});
@@ -1332,6 +1340,72 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     );
   }
 
+  Widget _sectionLink({required String title, required String summary, required bool open, required VoidCallback onTap}) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+        decoration: BoxDecoration(border: Border.all(color: const Color(0xFF2E2E33)), borderRadius: BorderRadius.circular(4)),
+        child: Row(children: [
+          Text(title.toUpperCase(),
+              style: const TextStyle(fontFamily: SideDeckTheme.label, fontWeight: FontWeight.w700, fontSize: 17, letterSpacing: 1.4)),
+          const SizedBox(width: 12),
+          Expanded(child: Text(summary, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _dim))),
+          Icon(open ? Ph.keyboardArrowUp : Ph.keyboardArrowDown, color: SideDeckTheme.accentB),
+        ]),
+      ),
+    );
+  }
+
+  String _optionsSummary() {
+    final b = <String>[];
+    b.add(const ['Any mood', 'Sad', 'Moody', 'Bright', 'Happy'][_mood]);
+    if (_vocal != 0) b.add(_vocal == 1 ? 'Vocal' : 'Instrumental');
+    if (!_bpmAny) b.add('${_bpm.start.round()}-${_bpm.end.round()} BPM');
+    if (_decade != 0) b.add('${_decade}s');
+    return b.join(' · ');
+  }
+
+  /// Happy to sad meter. The track's musical key decides: minor keys sound sad, major keys happy.
+  Widget _moodBox() {
+    const names = ['Whatever', 'Sad', 'Moody', 'Bright', 'Happy'];
+    final any = _mood == 0;
+    return Padding(
+      padding: const EdgeInsets.only(top: 12, bottom: 4),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          const Text('Mood', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+          const Spacer(),
+          Text(names[_mood], style: const TextStyle(color: SideDeckTheme.accentA, fontWeight: FontWeight.w700)),
+          const SizedBox(width: 8),
+          ChoiceChip(
+            label: const Text('Whatever'),
+            selected: any,
+            onSelected: _starting ? null : (v) => setState(() => _mood = v ? 0 : 3),
+          ),
+        ]),
+        Opacity(
+          opacity: any ? .35 : 1,
+          child: Row(children: [
+            const Text('SAD', style: TextStyle(fontFamily: SideDeckTheme.label, fontWeight: FontWeight.w700, letterSpacing: 1.2, color: _dim)),
+            Expanded(
+              child: Slider(
+                value: any ? 2.5 : (5 - _mood).toDouble(),
+                min: 1,
+                max: 4,
+                divisions: 3,
+                onChanged: _starting ? null : (v) => setState(() => _mood = 5 - v.round()),
+              ),
+            ),
+            const Text('HAPPY', style: TextStyle(fontFamily: SideDeckTheme.label, fontWeight: FontWeight.w700, letterSpacing: 1.2, color: _dim)),
+          ]),
+        ),
+        const Text('Chosen by each track\'s musical key: minor sounds sad, major sounds happy.',
+            style: TextStyle(fontSize: 12, color: Color(0xFF8A857C))),
+      ]),
+    );
+  }
+
   Widget _chooser() {
     return ListView(
       children: [
@@ -1344,8 +1418,18 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
           'Pick one or more, then tap Start. The music is found, downloaded and mixed for you.',
           style: TextStyle(color: Color(0xFFB8B3AA)),
         ),
-        const SizedBox(height: 20),
-        Wrap(
+        const SizedBox(height: 14),
+        _sectionLink(
+          title: 'Genres',
+          summary: _picked.isEmpty
+              ? 'None picked'
+              : (_picked.length <= 2
+                  ? _picked.map((i) => _vibes[i].label).join(', ')
+                  : '${_vibes[_picked.first].label} +${_picked.length - 1}'),
+          open: _genresOpen,
+          onTap: () => setState(() => _genresOpen = !_genresOpen),
+        ),
+        if (_genresOpen) Padding(padding: const EdgeInsets.only(top: 6, bottom: 4), child: Wrap(
           spacing: 10,
           runSpacing: 10,
           children: [
@@ -1357,7 +1441,16 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
               ),
           ],
+        )),
+        const SizedBox(height: 6),
+        _sectionLink(
+          title: 'Options',
+          summary: _optionsSummary(),
+          open: _optionsOpen,
+          onTap: () => setState(() => _optionsOpen = !_optionsOpen),
         ),
+        if (_optionsOpen) ...[
+          _moodBox(),
         Theme(
           data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
           child: ExpansionTile(
@@ -1481,10 +1574,20 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
             onChanged: _starting ? null : (v) => setState(() => _decade = v ?? 0),
           ),
         ]),
-        const SizedBox(height: 8),
-        _requestBox(running: false),
-        const SizedBox(height: 16),
-        _importBox(),
+        ],
+        const SizedBox(height: 6),
+        _sectionLink(
+          title: 'Request or import',
+          summary: 'A track, artist or playlist',
+          open: _reqOpen,
+          onTap: () => setState(() => _reqOpen = !_reqOpen),
+        ),
+        if (_reqOpen) ...[
+          const SizedBox(height: 10),
+          _requestBox(running: false),
+          const SizedBox(height: 16),
+          _importBox(),
+        ],
         const SizedBox(height: 20),
         SizedBox(
           height: 64,
