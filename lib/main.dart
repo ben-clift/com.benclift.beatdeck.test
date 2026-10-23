@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:sidedeck/theme/sidedeck_theme.dart';
 import 'package:sidedeck/ui/home_page.dart';
 import 'package:sidedeck/ui/live_trace.dart';
+import 'package:sidedeck/ui/splash.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,7 +21,7 @@ class SideDeckApp extends StatelessWidget {
       builder: (context, child) => Stack(
         children: [if (child != null) child, const LiveTrace()],
       ),
-      home: const HomePage(),
+      home: const SplashGate(child: HomePage()),
     );
   }
 }
