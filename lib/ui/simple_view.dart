@@ -16,6 +16,7 @@ import 'package:sidedeck/state/app_mode.dart';
 import 'package:sidedeck/state/dj_controller.dart';
 import 'package:sidedeck/state/expiry.dart';
 import 'package:sidedeck/state/library_controller.dart';
+import 'package:sidedeck/state/dislikes.dart';
 import 'package:sidedeck/state/ratings.dart';
 import 'package:sidedeck/suggest/harmony.dart';
 import 'package:sidedeck/state/screen_brightness.dart';
@@ -211,33 +212,66 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     if (left > (styleActive ? 45 : 90)) return;
     if (DateTime.now().difference(_lastLib).inSeconds < 25) return;
     _lastLib = DateTime.now();
+    final best = _bestByKey(dj, d);
+    if (best == null) return;
+    DebugLog.add('simple', 'nothing waiting: playing library track ${_nameOf(best).title} (best key match)');
+    dj.automixAllow(best);
+    dj.automixAppend(best);
+  }
+
+  /// The track whose key (and tempo) mixes best with what is playing: tracks
+  /// already waiting in the queue and the whole library compete. Honours the
+  /// genre, vocal, mood, year and tempo settings.
+  String? _bestByKey(DjController dj, DeckState d, {Set<String> exclude = const {}}) {
     final cur = d.key >= 0 ? CamelotKey.fromIndex(d.key) : null;
     final bpm = d.bpm > 1 ? d.bpm * d.rate : 0.0;
-    LibraryTrack? best;
+    final byPath = {for (final t in widget.library.tracks) t.path: t};
+    final pool = <String, LibraryTrack?>{
+      ...byPath,
+      for (final u in dj.automixUpcoming) u: byPath[u],
+    };
+    String? best;
     var bestScore = -1e9;
-    for (final t in widget.library.tracks) {
-      if (t.path == d.path || dj.playedRecently(t.path) || !File(t.path).existsSync()) continue;
-      if (!dj.automixFits(t.path)) continue;
+    final rnd = math.Random();
+    pool.forEach((path, t) {
+      if (path == d.path || exclude.contains(path) || Dislikes.instance.hasPath(path)) return;
+      final waiting = dj.automixUpcoming.contains(path);
+      if (!waiting && dj.playedRecently(path)) return;
+      if (!File(path).existsSync() || !dj.automixFits(path)) return;
+      final tt = t ?? byPath[path];
       var score = 0.0;
-      final tk = t.key == null ? null : CamelotKey.fromIndex(t.key!);
-      if (cur != null && tk != null) {
-        score += keyMatch(cur, tk).score.toDouble();
-      } else {
-        score += 35; // key not known yet: neutral
-      }
-      if (bpm > 0 && t.bpm != null && t.bpm! > 1) {
-        score -= ((t.bpm! - bpm).abs() / bpm * 100).clamp(0, 40).toDouble();
-      }
-      score += math.Random().nextDouble() * 6; // vary ties
+      final tk = tt?.key == null ? null : CamelotKey.fromIndex(tt!.key!);
+      score += (cur != null && tk != null) ? keyMatch(cur, tk).score.toDouble() : 35;
+      final tb = tt?.bpm ?? 0;
+      if (bpm > 0 && tb > 1) score -= ((tb - bpm).abs() / bpm * 100).clamp(0, 40).toDouble();
+      if (waiting) score += 8; // already downloaded and ready
+      score += rnd.nextDouble() * 6;
       if (score > bestScore) {
         bestScore = score;
-        best = t;
+        best = path;
       }
+    });
+    return best;
+  }
+
+  /// X button: this track is not for me. Drop it for good and bring in the
+  /// best-fitting track right away.
+  void _dislikeNow() {
+    final dj = widget.dj;
+    final d = dj.deck(dj.automixPlayingDeck.clamp(0, 1));
+    final path = d.path;
+    if (path != null) Dislikes.instance.add(path);
+    final best = _bestByKey(dj, d, exclude: {if (path != null) path});
+    if (best == null) {
+      _toast('Not for you. Looking for another...');
+      final msg = dj.automixSkip(dj.automixPlayingDeck);
+      if (msg != null) _toast(msg);
+      return;
     }
-    if (best == null) return;
-    DebugLog.add('simple', 'nothing waiting: playing library track ${best.title} (best key match, score ${bestScore.round()})');
-    dj.automixAllow(best.path);
-    dj.automixAppend(best.path);
+    final n = _nameOf(best);
+    _toast('Swapping in ${n.artist.isEmpty ? '' : '${n.artist} - '}${n.title}');
+    final msg = dj.automixReplaceNow(best);
+    if (msg != null) _toast(msg);
   }
 
   /// When there is nothing else to play next, play music in the style of the
@@ -2187,6 +2221,7 @@ Container(
                     _dial(dj, frac, 84),
                     _orb(Ph.skipNext, _skip, tip: 'Next track'),
                     _starOrb(dj, d),
+                    _orb(Ph.close, _dislikeNow, tip: "Don't like it: swap it now", color: const Color(0xFFB05A4A)),
                     _orb(Ph.insights, () {
                       if (StyleSettings.instance.chosen().isEmpty) {
                         _toast('Star some tracks first. My style copies their sound.');

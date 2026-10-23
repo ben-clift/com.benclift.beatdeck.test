@@ -890,6 +890,15 @@ class DjController extends ChangeNotifier {
   }
 
   bool _forceAnyTempo = false;
+  bool _quickNext = false;
+
+  /// Replaces the playing track at once with [path] (a short 3 s hand-over,
+  /// or an instant cut if a mix is already running).
+  String? automixReplaceNow(String path) {
+    _quickNext = true;
+    _userOk.add(path);
+    return automixSkip(automixPlayingDeck, prefer: path);
+  }
 
   bool _isLoadedNext(String path) => _automixPreloaded && _upNext == path;
 
@@ -2416,6 +2425,10 @@ class DjController extends ChangeNotifier {
     final left = remainingSeconds(position: outPosition, duration: out.duration, rate: out.rate);
     final cap = left > 5 ? left - 1.0 : math.max(2.0, left - 0.3);
     _fadeLen = math.min(_plan?.seconds ?? automixFadeSeconds, cap).toDouble();
+    if (_quickNext) {
+      _quickNext = false;
+      _fadeLen = math.min(_fadeLen, 3.0);
+    }
     if (tempoClash && _fadeLen > 5) {
       _fadeLen = 5;
       DebugLog.add('automix', 'tempos too far apart to match: short clean hand-over at the new track\'s own speed');
