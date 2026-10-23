@@ -212,7 +212,8 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     if (left > (styleActive ? 45 : 90)) return;
     if (DateTime.now().difference(_lastLib).inSeconds < 25) return;
     _lastLib = DateTime.now();
-    final best = _bestByKey(dj, d);
+    // Only genres you picked; any genre only when the track is nearly over.
+    final best = _bestByKey(dj, d) ?? (left <= 30 ? _bestByKey(dj, d, pickedOnly: false) : null);
     if (best == null) return;
     DebugLog.add('simple', 'nothing waiting: playing library track ${_nameOf(best).title} (best key match)');
     dj.automixAllow(best);
@@ -222,7 +223,16 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
   /// The track whose key (and tempo) mixes best with what is playing: tracks
   /// already waiting in the queue and the whole library compete. Honours the
   /// genre, vocal, mood, year and tempo settings.
-  String? _bestByKey(DjController dj, DeckState d, {Set<String> exclude = const {}}) {
+  /// A track fits the genres you picked (a track with no genre tag fits).
+  bool _pickedGenreOk(DjController dj, String path) {
+    final picked = AutoFetch.instance.genres;
+    if (picked.isEmpty) return true;
+    final tag = (dj.genreOf?.call(path) ?? '').trim();
+    if (tag.isEmpty) return true;
+    return picked.any((g) => genresSimilar(g, tag));
+  }
+
+  String? _bestByKey(DjController dj, DeckState d, {Set<String> exclude = const {}, bool pickedOnly = true}) {
     final cur = d.key >= 0 ? CamelotKey.fromIndex(d.key) : null;
     final bpm = d.bpm > 1 ? d.bpm * d.rate : 0.0;
     final byPath = {for (final t in widget.library.tracks) t.path: t};
@@ -238,6 +248,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
       final waiting = dj.automixUpcoming.contains(path);
       if (!waiting && dj.playedRecently(path)) return;
       if (!File(path).existsSync() || !dj.automixFits(path)) return;
+      if (pickedOnly && !_pickedGenreOk(dj, path)) return;
       final tt = t ?? byPath[path];
       var score = 0.0;
       final tk = tt?.key == null ? null : CamelotKey.fromIndex(tt!.key!);
@@ -261,7 +272,8 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     final d = dj.deck(dj.automixPlayingDeck.clamp(0, 1));
     final path = d.path;
     if (path != null) Dislikes.instance.add(path);
-    final best = _bestByKey(dj, d, exclude: {if (path != null) path});
+    final ex = {if (path != null) path};
+    final best = _bestByKey(dj, d, exclude: ex) ?? _bestByKey(dj, d, exclude: ex, pickedOnly: false);
     if (best == null) {
       _toast('Not for you. Looking for another...');
       final msg = dj.automixSkip(dj.automixPlayingDeck);
