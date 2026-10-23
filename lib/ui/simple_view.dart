@@ -1799,7 +1799,16 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
   }
 
   void _toast(String m) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
+    final h = MediaQuery.of(context).size.height;
+    final m2 = ScaffoldMessenger.of(context);
+    m2.hideCurrentSnackBar();
+    // At the top, under the title, so it never covers the sliders at the bottom.
+    m2.showSnackBar(SnackBar(
+      content: Text(m),
+      behavior: SnackBarBehavior.floating,
+      duration: const Duration(seconds: 3),
+      margin: EdgeInsets.fromLTRB(16, 0, 16, (h - 170).clamp(0.0, h).toDouble()),
+    ));
   }
 
   /// Token for the automatic log upload, and a send-now button.

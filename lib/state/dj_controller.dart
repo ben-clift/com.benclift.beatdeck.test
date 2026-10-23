@@ -2170,6 +2170,10 @@ class DjController extends ChangeNotifier {
   }
 
   bool _automixTick() {
+    if (_manualStart && DateTime.now().difference(_manualAsked).inSeconds > 40) {
+      _manualStart = false; // nothing was ready in time: stop waiting
+      notifyListeners();
+    }
     if (!automixOn || _automixDeck < 0) return false;
     if (automixPaused) return false;
     if (_automixBusy) {
