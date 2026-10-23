@@ -138,12 +138,42 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
       _refill();
       _styleFallback();
       _libraryFallback();
+      _autoClean();
     });
   }
 
   Future<void> _loadStyle() => StyleSettings.instance.load();
   DateTime _lastStyle = DateTime.fromMillisecondsSinceEpoch(0);
   DateTime _lastLib = DateTime.fromMillisecondsSinceEpoch(0);
+  DateTime _lastClean = DateTime.now().subtract(const Duration(minutes: 4, seconds: 30)); // first pass ~30 s after start
+  bool _cleaning = false;
+
+  /// Deletes extra copies of tracks already in the library, from the phone.
+  /// Never touches a track that is loaded on a deck or waiting in the queue,
+  /// a starred track, or a track with a different length (another mix).
+  Future<void> _autoClean() async {
+    if (!mounted || _cleaning || DateTime.now().difference(_lastClean).inMinutes < 5) return;
+    _cleaning = true;
+    _lastClean = DateTime.now();
+    try {
+      final dj = widget.dj;
+      final busy = <String>{
+        for (var i = 0; i < 2; i++)
+          if (dj.deck(i).path != null) dj.deck(i).path!,
+        ...dj.automixUpcoming,
+      };
+      final dups = widget.library
+          .duplicateTracks()
+          .where((t) => !busy.contains(t.path) && Ratings.instance.starsOf(t.path) == 0)
+          .toList();
+      if (dups.isEmpty) return;
+      final n = await widget.library.deleteTracks(dups);
+      if (n > 0) DebugLog.add('library', 'auto-clean: deleted $n duplicate track${n == 1 ? '' : 's'} from the phone');
+    } catch (_) {
+    } finally {
+      _cleaning = false;
+    }
+  }
 
   /// Nothing downloaded and waiting? Play something from the library: the
   /// track whose key mixes best with the one playing (and a close tempo).
