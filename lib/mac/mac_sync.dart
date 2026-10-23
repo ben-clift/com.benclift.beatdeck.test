@@ -21,6 +21,7 @@ class MacSync extends ChangeNotifier {
 
   String url = '';
   String pin = '';
+  int limit = 200; // tracks per run: a whole Mac library would fill the phone
   bool running = false;
   bool _cancel = false;
   int total = 0;
@@ -32,12 +33,14 @@ class MacSync extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     url = prefs.getString('mac_url') ?? '';
     pin = prefs.getString('mac_pin') ?? '';
+    limit = prefs.getInt('mac_limit') ?? 200;
   }
 
   Future<void> save() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('mac_url', url.trim());
     await prefs.setString('mac_pin', pin.trim());
+    await prefs.setInt('mac_limit', limit);
   }
 
   Uri _uri(String path, [Map<String, String> q = const {}]) {
@@ -100,7 +103,8 @@ class MacSync extends ChangeNotifier {
       final index = await _index();
       final prefs = await SharedPreferences.getInstance();
       final synced = (prefs.getStringList('mac_synced') ?? <String>[]).toSet();
-      final todo = [for (final e in index) if (!synced.contains('${e['p']}|${e['s']}')) e];
+      final all = [for (final e in index) if (!synced.contains('${e['p']}|${e['s']}')) e];
+      final todo = all.take(limit).toList();
       total = todo.length;
       if (todo.isEmpty) {
         _set('Everything on the Mac is already in BeatDeck (${index.length} tracks).');

@@ -1849,6 +1849,13 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
               TextField(controller: addr, decoration: const InputDecoration(labelText: 'Address, e.g. http://192.168.1.20:8765', isDense: true), onChanged: (v) => ms.url = v),
               const SizedBox(height: 6),
               TextField(controller: code, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Code', isDense: true), onChanged: (v) => ms.pin = v),
+              const SizedBox(height: 6),
+              TextField(
+                controller: TextEditingController(text: '${ms.limit}'),
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: 'Tracks to bring per run (they use phone storage)', isDense: true),
+                onChanged: (v) => ms.limit = (int.tryParse(v) ?? 200).clamp(1, 100000),
+              ),
               const SizedBox(height: 10),
               if (ms.status.isNotEmpty) Text(ms.status, style: TextStyle(color: SideDeckTheme.accentA)),
               if (ms.running && ms.total > 0) ...[
