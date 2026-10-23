@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sidedeck/automix/genre_family.dart';
 import 'package:sidedeck/debug/debug_log.dart';
 import 'package:sidedeck/debug/log_upload.dart';
+import 'package:sidedeck/mac/mac_sync.dart';
 import 'package:sidedeck/soulseek/slsk_keeper.dart';
 import 'package:sidedeck/soulseek/slsk_setup.dart';
 import 'package:sidedeck/soulseek/soulseek_client.dart';
@@ -1821,6 +1822,64 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
   }
 
   /// Token for the automatic log upload, and a send-now button.
+  Future<void> _macSheet() async {
+    final ms = MacSync.instance;
+    await ms.load();
+    if (!mounted) return;
+    final addr = TextEditingController(text: ms.url);
+    final code = TextEditingController(text: ms.pin);
+    await showDialog<void>(
+      context: context,
+      builder: (dc) => AlertDialog(
+        title: const Text('Connect my Mac'),
+        content: SingleChildScrollView(
+          child: ListenableBuilder(
+            listenable: ms,
+            builder: (_, __) => Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text(
+                'On the Mac (same Wi-Fi as this phone):\n'
+                '1. Open Terminal and paste:\n'
+                'curl -O https://raw.githubusercontent.com/ben-clift/com.benclift.beatdeck.test/main/tools/beatdeck-share.py\n'
+                '2. Then run it with your folders, for example:\n'
+                'python3 beatdeck-share.py ~/Music ~/Desktop/DJ\n'
+                '3. Type the address and code it prints here.',
+                style: TextStyle(fontSize: 13),
+              ),
+              const SizedBox(height: 10),
+              TextField(controller: addr, decoration: const InputDecoration(labelText: 'Address, e.g. http://192.168.1.20:8765', isDense: true), onChanged: (v) => ms.url = v),
+              const SizedBox(height: 6),
+              TextField(controller: code, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Code', isDense: true), onChanged: (v) => ms.pin = v),
+              const SizedBox(height: 10),
+              if (ms.status.isNotEmpty) Text(ms.status, style: TextStyle(color: SideDeckTheme.accentA)),
+              if (ms.running && ms.total > 0) ...[
+                const SizedBox(height: 6),
+                LinearProgressIndicator(value: (ms.done / ms.total).clamp(0.0, 1.0)),
+                Text('${ms.done} of ${ms.total} · 10 at a time', style: TextStyle(fontSize: 12, color: _dim)),
+              ],
+            ]),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => ms.running ? ms.stop() : ms.test(), child: ListenableBuilder(listenable: ms, builder: (_, __) => Text(ms.running ? 'Stop' : 'Test'))),
+          ListenableBuilder(
+            listenable: ms,
+            builder: (_, __) => FilledButton(
+              onPressed: ms.running
+                  ? null
+                  : () {
+                      ms.url = addr.text;
+                      ms.pin = code.text;
+                      unawaited(ms.start(widget.library));
+                    },
+              child: Text(ms.running ? 'Syncing…' : 'Bring my tracks over'),
+            ),
+          ),
+          TextButton(onPressed: () => Navigator.pop(dc), child: const Text('Close')),
+        ],
+      ),
+    );
+  }
+
   Future<void> _logSettings() async {
     await LogUpload.load();
     if (!mounted) return;
@@ -1914,6 +1973,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                       onSelected: (v) {
                         if (v == 'log') _copyLog();
                         if (v == 'send') _logSettings();
+                        if (v == 'mac') _macSheet();
                         if (v == 'look') Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AppearancePage()));
                         if (v == 'pro') AppMode.set(false);
                       },
@@ -1927,6 +1987,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                             ),
                           ),
                         const PopupMenuItem(value: 'look', child: Text('Appearance: colours, shapes, 3D')),
+                        const PopupMenuItem(value: 'mac', child: Text('Connect my Mac (shared folders)')),
                         const PopupMenuItem(value: 'send', child: Text('Send logs to Ben automatically')),
                         const PopupMenuItem(value: 'log', child: Text('Report a problem (copy log)')),
                         const PopupMenuItem(value: 'pro', child: Text('Switch to Pro mode')),

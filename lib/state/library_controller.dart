@@ -734,6 +734,9 @@ class LibraryController extends ChangeNotifier {
     return _analyzeList([path]);
   }
 
+  /// Analyse exactly these files (BPM, key), one after another.
+  Future<List<String>> analyzePaths(List<String> paths) => _analyzeList(paths);
+
   Future<List<String>> analyzeMissing() async {
     final pending = tracks.where((t) => !t.hasAnalysis).map((t) => t.path).toList();
     return _analyzeList(pending);
