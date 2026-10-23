@@ -2135,6 +2135,24 @@ class DjController extends ChangeNotifier {
         if (plan.seconds > dropLeft) plan = TransitionPlan(plan.kind, dropLeft);
         DebugLog.add('automix', 'dropping into a breakdown: ${dropLeft.toStringAsFixed(0)} s of break left, mix ${plan.seconds.toStringAsFixed(0)} s');
       }
+      // Only a well-matched pair gets the long blend: a tempo gap over 3 % or
+      // a clashing key sounds awful when overlapped for 30 s, so use a short
+      // clean swap instead.
+      if (!skipping && dropLeft <= 0 && plan.kind == TransitionKind.smooth && plan.seconds > 10) {
+        final o = deck(cur);
+        final n = deck(other);
+        var g = (o.bpm > 1 && n.bpm > 1) ? o.bpm * o.rate / n.bpm : 1.0;
+        if (g > 1.85 && g < 2.15) g /= 2;
+        if (g > 0.46 && g < 0.54) g *= 2;
+        final gap = (g - 1).abs() * 100;
+        final fo = _flowOf(_automixQueue[_automixIndex]);
+        final fi = _flowOf(_automixQueue[next]);
+        final km = (fo?.key != null && fi?.key != null) ? keyMatch(fo!.key!, fi!.key!) : null;
+        if (gap > 3 || (km != null && km.score < 60)) {
+          plan = TransitionPlan(TransitionKind.quick, math.min(plan.seconds, 8.0));
+          DebugLog.add('automix', 'poor match (tempo gap ${gap.toStringAsFixed(1)}%${km == null ? '' : ', key ${km.label}'}): short swap instead of a long blend');
+        }
+      }
       // Next / skip: always a real blend, started right now. A bar-line cut, a
       // breakdown swap or a long filter sweep would wait or sound like a restart.
       if (skipping && plan.kind != TransitionKind.smooth && plan.kind != TransitionKind.quick) {

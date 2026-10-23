@@ -2794,7 +2794,7 @@ class MixSettings {
   double fade = 24; // seconds of blend, starting this long before the end
   double offset = 10; // seconds into the next track
   double early = 0; // 0 = full tracks, else minimum seconds before an early change
-  double blend = 0; // 0 = automatic, else seconds the blend itself lasts
+  double blend = 30; // 0 = automatic, else seconds the blend itself lasts
   bool _loaded = false;
 
   Future<void> load() async {
@@ -2804,7 +2804,7 @@ class MixSettings {
       fade = p.getDouble('mix_fade') ?? 24;
       offset = p.getDouble('mix_offset') ?? 10;
       early = p.getDouble('mix_early') ?? 0;
-      blend = p.getDouble('mix_blend') ?? 0;
+      blend = p.getDouble('mix_blend') ?? 30;
       _loaded = true;
     } catch (_) {}
   }
