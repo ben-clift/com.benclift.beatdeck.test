@@ -2304,7 +2304,7 @@ class DjController extends ChangeNotifier {
         if (plan.seconds > dropLeft) plan = TransitionPlan(plan.kind, dropLeft);
         DebugLog.add('automix', 'dropping into a breakdown: ${dropLeft.toStringAsFixed(0)} s of break left, mix ${plan.seconds.toStringAsFixed(0)} s');
       }
-      // Only a well-matched pair gets the long blend: a tempo gap over 3 % or
+      // Only a well-matched pair gets the long blend: a tempo gap over 6 % or
       // a clashing key sounds awful when overlapped for 30 s, so use a short
       // clean swap instead.
       if (!skipping && dropLeft <= 0 && plan.kind == TransitionKind.smooth && plan.seconds > 10) {
@@ -2317,7 +2317,7 @@ class DjController extends ChangeNotifier {
         final fo = _flowOf(_automixQueue[_automixIndex]);
         final fi = _flowOf(_automixQueue[next]);
         final km = (fo?.key != null && fi?.key != null) ? keyMatch(fo!.key!, fi!.key!) : null;
-        if (gap > 3 || (km != null && km.score < 60)) {
+        if (gap > 6 || (km != null && km.score < 60)) {
           plan = TransitionPlan(TransitionKind.quick, math.min(plan.seconds, 8.0));
           DebugLog.add('automix', 'poor match (tempo gap ${gap.toStringAsFixed(1)}%${km == null ? '' : ', key ${km.label}'}): short swap instead of a long blend');
         }
