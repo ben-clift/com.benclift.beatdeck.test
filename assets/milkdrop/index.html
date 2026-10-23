@@ -40,7 +40,17 @@
     }
     next(0);
     var paused = false;
-    canvas.addEventListener('click', function () { paused = !paused; });
+    // Tap = next visual. Hold = freeze / unfreeze.
+    var downAt = 0, holdT = null, held2 = false;
+    canvas.addEventListener('pointerdown', function () {
+      downAt = performance.now(); held2 = false;
+      holdT = setTimeout(function () { held2 = true; paused = !paused; }, 600);
+    });
+    canvas.addEventListener('pointerup', function () {
+      clearTimeout(holdT);
+      if (!held2) { paused = false; held = null; next(1.0); }
+    });
+    canvas.addEventListener('pointercancel', function () { clearTimeout(holdT); });
 
     // The app sends 14 band levels (0..1). Make a waveform whose spectrum has
     // that shape so the presets react to bass, mids and treble.
