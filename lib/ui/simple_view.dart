@@ -16,6 +16,7 @@ import 'package:sidedeck/state/app_mode.dart';
 import 'package:sidedeck/state/dj_controller.dart';
 import 'package:sidedeck/state/expiry.dart';
 import 'package:sidedeck/state/library_controller.dart';
+import 'package:sidedeck/state/ratings.dart';
 import 'package:sidedeck/suggest/harmony.dart';
 import 'package:sidedeck/state/screen_brightness.dart';
 import 'package:sidedeck/state/starred.dart';
@@ -1095,8 +1096,39 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                 child: Row(children: [
                   const Icon(Ph.libraryMusic),
                   const SizedBox(width: 8),
-                  Text('Library (${shown.length}${shown.length == all.length ? '' : ' of ${all.length}'})',
-                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+                  Expanded(
+                    child: Text('Library (${shown.length}${shown.length == all.length ? '' : ' of ${all.length}'})',
+                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+                  ),
+                  Builder(builder: (_) {
+                    final dups = lib.duplicateTracks().where((t) => Ratings.instance.starsOf(t.path) == 0).toList();
+                    if (dups.isEmpty) return const SizedBox.shrink();
+                    return TextButton.icon(
+                      style: _tight,
+                      icon: const Icon(Ph.deleteOutline, size: 16),
+                      label: Text('Delete ${dups.length} duplicate${dups.length == 1 ? '' : 's'}'),
+                      onPressed: () async {
+                        final ok = await showDialog<bool>(
+                          context: ctx,
+                          builder: (dc) => AlertDialog(
+                            title: const Text('Delete duplicates?'),
+                            content: Text(
+                                '${dups.length} extra cop${dups.length == 1 ? 'y' : 'ies'} of tracks you already have will be deleted from the phone. '
+                                'The best copy of each (analysed first, then the biggest file) stays. Starred tracks are never deleted.'),
+                            actions: [
+                              TextButton(onPressed: () => Navigator.pop(dc, false), child: const Text('Cancel')),
+                              FilledButton(onPressed: () => Navigator.pop(dc, true), child: const Text('Delete')),
+                            ],
+                          ),
+                        );
+                        if (ok == true) {
+                          final n = await lib.deleteTracks(dups);
+                          _toast('Deleted $n duplicate${n == 1 ? '' : 's'}.');
+                          setS(() {});
+                        }
+                      },
+                    );
+                  }),
                 ]),
               ),
               Padding(
