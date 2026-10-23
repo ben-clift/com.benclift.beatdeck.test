@@ -132,7 +132,7 @@ class ThemeSettings extends ChangeNotifier {
 
   /// The outline for boxes and buttons. [size] is the shorter side of the
   /// thing being drawn, so round shapes can become full circles on small ones.
-  ShapeBorder shapeBorder({double size = 100, Color? side, double width = 1}) {
+  OutlinedBorder shapeBorder({double size = 100, Color? side, double width = 1}) {
     final s = BorderSide(color: side ?? line, width: width);
     switch (shape) {
       case 1:

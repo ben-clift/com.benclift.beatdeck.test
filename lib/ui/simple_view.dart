@@ -2237,7 +2237,6 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
             ),
           ),
         )),
-        ),
       ),
     );
   }
