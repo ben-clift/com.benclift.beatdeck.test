@@ -64,7 +64,20 @@
     window.setLevels = function (a) { for (var i = 0; i < nb && i < a.length; i++) levels[i] = a[i]; };
     var tb = new Uint8Array(N), tl = new Uint8Array(N), tr = new Uint8Array(N);
     var t0 = performance.now(), prev = t0, firstFrame = true;
-    function frame(now) {
+    // A small still of the picture, sent to the app every few seconds so the
+    // phone's home screen / lock screen player can show it as the cover art.
+    var snap = document.createElement('canvas'); snap.width = 256; snap.height = 256;
+    var sctx = snap.getContext('2d'), lastSnap = 0;
+    function shot(now) {
+      if (now - lastSnap < 2500) return;
+      lastSnap = now;
+      try {
+        var side = Math.min(canvas.width, canvas.height);
+        sctx.drawImage(canvas, (canvas.width - side) / 2, (canvas.height - side) / 2, side, side, 0, 0, 256, 256);
+        say('art:' + snap.toDataURL('image/jpeg', 0.72));
+      } catch (e) {}
+    }
+    function frame(now, fromTimer) {
       var dt = (now - prev) / 1000; prev = now;
       var buf = new Float32Array(N), bufR = new Float32Array(N);
       for (var k = 0; k < nb; k++) {
@@ -89,11 +102,14 @@
       }
       if (!held && autoSecs > 0 && now - lastSwitch > autoSecs * 1000) next(2.7);
       var due = now - lastDraw >= 1000 / fps - 2;
-      if (!paused && due) { lastDraw = now; viz.render({ audioLevels: { timeByteArray: tb, timeByteArrayL: tl, timeByteArrayR: tr }, elapsedTime: (now - t0) / 1000 }); }
+      if (!paused && due) { lastDraw = now; viz.render({ audioLevels: { timeByteArray: tb, timeByteArrayL: tl, timeByteArrayR: tr }, elapsedTime: (now - t0) / 1000 }); shot(now); }
       if (firstFrame) { firstFrame = false; say('ok'); say('names:' + JSON.stringify(names)); }
-      requestAnimationFrame(frame);
+      if (!fromTimer) requestAnimationFrame(frame);
     }
     requestAnimationFrame(frame);
+    // With the app in the background the browser stops animation frames: keep
+    // drawing once a second so the cover art on the home screen keeps moving.
+    setInterval(function () { if (document.hidden) frame(performance.now(), true); }, 1000);
   } catch (e) { say('fail'); }
 })();
 </script></body></html>

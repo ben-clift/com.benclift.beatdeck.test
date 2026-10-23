@@ -26,6 +26,10 @@ class NowPlaying(private val ctx: Context, messenger: BinaryMessenger) {
     private val chanId = "beatdeck_now_playing"
     private val notifId = 4711
     private var shown = false
+    private var art: android.graphics.Bitmap? = null
+    private var lastTitle = ""
+    private var lastArtist = ""
+    private var lastPlaying = true
 
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(c: Context?, i: Intent?) {
@@ -59,6 +63,14 @@ class NowPlaying(private val ctx: Context, messenger: BinaryMessenger) {
                     )
                     result.success(null)
                 }
+                "art" -> {
+                    val bytes = call.arguments as? ByteArray
+                    if (bytes != null && shown) {
+                        art = android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: art
+                        update(lastTitle, lastArtist, lastPlaying)
+                    }
+                    result.success(null)
+                }
                 "hide" -> { hide(); result.success(null) }
                 else -> result.notImplemented()
             }
@@ -73,12 +85,17 @@ class NowPlaying(private val ctx: Context, messenger: BinaryMessenger) {
         )
 
     private fun update(title: String, artist: String, playing: Boolean) {
-        session.setMetadata(
-            MediaMetadata.Builder()
-                .putString(MediaMetadata.METADATA_KEY_TITLE, title)
-                .putString(MediaMetadata.METADATA_KEY_ARTIST, artist)
-                .build(),
-        )
+        lastTitle = title
+        lastArtist = artist
+        lastPlaying = playing
+        val md = MediaMetadata.Builder()
+            .putString(MediaMetadata.METADATA_KEY_TITLE, title)
+            .putString(MediaMetadata.METADATA_KEY_ARTIST, artist)
+        art?.let {
+            md.putBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART, it)
+            md.putBitmap(MediaMetadata.METADATA_KEY_ART, it)
+        }
+        session.setMetadata(md.build())
         session.setPlaybackState(
             PlaybackState.Builder()
                 .setActions(PlaybackState.ACTION_PLAY or PlaybackState.ACTION_PAUSE or PlaybackState.ACTION_PLAY_PAUSE or PlaybackState.ACTION_SKIP_TO_NEXT)
@@ -95,6 +112,7 @@ class NowPlaying(private val ctx: Context, messenger: BinaryMessenger) {
             .setContentTitle(if (title.isEmpty()) "BeatDeck" else title)
             .setContentText(artist.ifEmpty { "Now playing" })
             .setContentIntent(open)
+            .apply { art?.let { setLargeIcon(it) } }
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setVisibility(Notification.VISIBILITY_PUBLIC)
@@ -114,6 +132,7 @@ class NowPlaying(private val ctx: Context, messenger: BinaryMessenger) {
     private fun hide() {
         if (shown) nm.cancel(notifId)
         shown = false
+        art = null
         session.isActive = false
     }
 

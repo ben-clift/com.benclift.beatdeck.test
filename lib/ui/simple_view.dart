@@ -208,6 +208,9 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _np.setMethodCallHandler(_npAction);
+    milkdropArtSink = (b) {
+      if (widget.dj.automixOn) _np.invokeMethod<void>('art', b).catchError((_) {});
+    };
     _btnTick = Timer.periodic(const Duration(seconds: 1), (_) {
       final busy = AutoFetch.instance.manualBusy;
       if (busy && _busySince == null) _busySince = DateTime.now();
@@ -499,6 +502,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    milkdropArtSink = null;
     _btnTick?.cancel();
     _keepAhead?.cancel();
     widget.dj.setSpectrumOn(false);

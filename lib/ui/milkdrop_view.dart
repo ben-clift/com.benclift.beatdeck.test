@@ -1,9 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+
+/// Receives a small still of the MilkDrop picture every few seconds (JPEG).
+void Function(Uint8List jpeg)? milkdropArtSink;
 
 /// MilkDrop settings: how wild it is, how often the picture changes, and an
 /// optional fixed preset. Saved on the phone.
@@ -111,6 +115,12 @@ class _MilkdropViewState extends State<MilkdropView> {
         if (m.message == 'ok') {
           setState(() => _ready = true);
           _apply(true);
+        }
+        if (m.message.startsWith('art:')) {
+          try {
+            final i = m.message.indexOf(',');
+            if (i > 0) milkdropArtSink?.call(base64Decode(m.message.substring(i + 1)));
+          } catch (_) {}
         }
         if (m.message.startsWith('names:')) {
           try {
