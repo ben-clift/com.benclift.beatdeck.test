@@ -183,6 +183,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     StyleSettings.instance.load();
     _loadIntro();
     _keepAhead = Timer.periodic(const Duration(seconds: 8), (_) {
+      if (widget.dj.playlistActive) return;
       _styleFallback();
       _refill();
       _libraryFallback();
@@ -1256,7 +1257,8 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
               for (final t in all)
                 if (passes(t) && (genre.isEmpty || gOf(t).trim().toLowerCase() == genre)) t,
             ]..sort((a, b) => '${a.artist} ${a.title}'.toLowerCase().compareTo('${b.artist} ${b.title}'.toLowerCase()));
-            return Column(children: [
+            final playingPath = dj.deck(dj.automixPlayingDeck.clamp(0, 1)).path;
+            return ListenableBuilder(listenable: dj, builder: (_, __) => Column(children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
                 child: Row(children: [
@@ -1266,6 +1268,21 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                     child: Text('Library (${shown.length}${shown.length == all.length ? '' : ' of ${all.length}'})  ·  hold to delete',
                         style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
                   ),
+                  if (shown.isNotEmpty)
+                    FilledButton.icon(
+                      style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 10), visualDensity: VisualDensity.compact),
+                      icon: const Icon(Ph.playArrow, size: 18),
+                      label: Text(dj.playlistActive ? 'Restart ${shown.length}' : 'Play ${shown.length}'),
+                      onPressed: () {
+                        final msg = dj.automixPlaylist([for (final t in shown) t.path]);
+                        if (msg != null) {
+                          _toast(msg);
+                        } else {
+                          _toast('Playing these ${shown.length} in order.');
+                          Navigator.pop(ctx);
+                        }
+                      },
+                    ),
                   Builder(builder: (_) {
                     final dups = lib.duplicateTracks().where((t) => Ratings.instance.starsOf(t.path) == 0).toList();
                     if (dups.isEmpty) return const SizedBox.shrink();
@@ -1381,9 +1398,15 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                             if ((t.bpm ?? 0) > 0) '${t.bpm!.round()} BPM',
                             if (t.year > 0) '${t.year}',
                           ].join('  ·  ');
+                          final now = playingPath == t.path;
+                          final inList = dj.playlistActive && (dj.playlist?.contains(t.path) ?? false);
                           return ListTile(
                             dense: true,
-                            leading: Icon(dj.playedRecently(t.path) ? Ph.checkCircleOutline : Ph.playArrow),
+                            selected: now,
+                            selectedColor: SideDeckTheme.accentA,
+                            selectedTileColor: const Color(0xFF3A2218),
+                            leading: Icon(now ? Ph.equalizer : (dj.playedRecently(t.path) ? Ph.checkCircleOutline : Ph.playArrow)),
+                            trailing: inList && !now ? Text('${dj.playlist!.indexOf(t.path) + 1}', style: const TextStyle(fontFamily: SideDeckTheme.mono, color: _dim)) : null,
                             title: Text((AutoFetch.instance.isStyle(t.path) ? 'MS  ' : '') + t.title, maxLines: 1, overflow: TextOverflow.ellipsis),
                             subtitle: sub.isEmpty ? null : Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis),
                             onTap: () {
@@ -1423,7 +1446,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                         },
                       ),
               ),
-            ]);
+            ]));
           },
         ),
       ),
@@ -2351,6 +2374,19 @@ Container(
                   Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)))),
                   const SizedBox(height: 12),
                   title,
+                  if (widget.dj.playlistActive)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Row(children: [
+                        const Icon(Ph.libraryMusic, size: 16, color: SideDeckTheme.accentA),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text('Playlist ${widget.dj.playlistPos} of ${widget.dj.playlist!.length}, in order',
+                              style: const TextStyle(color: SideDeckTheme.accentA, fontWeight: FontWeight.w700)),
+                        ),
+                        TextButton(style: _tight, onPressed: widget.dj.automixPlaylistStop, child: const Text('Stop playlist')),
+                      ]),
+                    ),
                   const SizedBox(height: 14),
                   Wrap(alignment: WrapAlignment.spaceEvenly, crossAxisAlignment: WrapCrossAlignment.center, spacing: 6, runSpacing: 10, children: [
                     _orb(Ph.arrowBack, () => setState(() => _showChooser = true), tip: 'Back to genres'),

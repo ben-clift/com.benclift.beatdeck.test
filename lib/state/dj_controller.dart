@@ -481,10 +481,60 @@ class DjController extends ChangeNotifier {
   final Set<String> failedPaths = {};
 
   /// Paths of what plays next (the chosen next track first), for the screen.
+  /// An ordered playlist (from the Library filters) played start to finish.
+  List<String>? _plist;
+  List<String>? get playlist => _plist;
+  bool get playlistActive => _plist != null && automixOn;
+
+  /// 1-based place of the playing track in the playlist (0 when not in it).
+  int get playlistPos {
+    final pl = _plist;
+    if (pl == null || _automixIndex < 0 || _automixIndex >= _automixQueue.length) return 0;
+    return pl.indexOf(_automixQueue[_automixIndex]) + 1;
+  }
+
+  /// Plays [paths] in this order, one after another, mixing each into the next.
+  /// Nothing else is fetched or queued until it ends or is stopped.
+  String? automixPlaylist(List<String> paths) {
+    if (!automixOn) return 'Start a set first.';
+    final list = [for (final p in paths) if (File(p).existsSync()) p];
+    if (list.isEmpty) return 'None of those tracks are on the phone.';
+    _plist = list;
+    final upcoming = _automixIndex + 1 < _automixQueue.length ? _automixQueue.sublist(_automixIndex + 1) : const <String>[];
+    for (final p in list) {
+      final k = _trackKey(p);
+      _userOk.add(p);
+      _automixPlayed.remove(k);
+      _recentPlayed.remove(k);
+      _rejected.remove(p);
+      if (!upcoming.contains(p)) _automixQueue.add(p);
+    }
+    _clearUpNext();
+    DebugLog.add('automix', 'playlist: ${list.length} tracks in order');
+    final msg = automixSkip(automixPlayingDeck, prefer: list.first);
+    notifyListeners();
+    return msg;
+  }
+
+  void automixPlaylistStop() {
+    if (_plist == null) return;
+    _plist = null;
+    DebugLog.add('automix', 'playlist stopped');
+    notifyListeners();
+  }
+
   List<String> get automixUpcoming {
     if (!automixOn) return const [];
     final out = <String>[];
     if (_upNext != null) out.add(_upNext!);
+    final pl = _plist;
+    if (pl != null) {
+      final cur = _automixIndex >= 0 && _automixIndex < _automixQueue.length ? _automixQueue[_automixIndex] : null;
+      for (final q in pl) {
+        if (q != cur && !out.contains(q) && !_wasPlayed(q)) out.add(q);
+      }
+      return out;
+    }
     for (var i = math.max(0, _automixIndex + 1); i < _automixQueue.length; i++) {
       final q = _automixQueue[i];
       if (!out.contains(q) && !_wasPlayed(q)) out.add(q);
@@ -504,6 +554,7 @@ class DjController extends ChangeNotifier {
   DateTime _needCheck = DateTime.fromMillisecondsSinceEpoch(0);
 
   void _checkNeedTrack() {
+    if (_plist != null) return;
     final cb = onNeedTrack;
     if (cb == null || _automixIndex < 0 || _automixIndex >= _automixQueue.length) return;
     final now = DateTime.now();
@@ -675,7 +726,7 @@ class DjController extends ChangeNotifier {
   /// A new track (for example a finished Soulseek download) joins the end of
   /// the automix queue if automix is running.
   void automixAppend(String path) {
-    if (!automixOn || _automixQueue.contains(path)) return;
+    if (!automixOn || _plist != null || _automixQueue.contains(path)) return;
     if (_automixQueue.any((q) => _trackKey(q) == _trackKey(path))) return;
     _automixQueue.add(path);
     _learnAfterAnalysis(path);
@@ -1473,6 +1524,18 @@ class DjController extends ChangeNotifier {
   }
 
   int? _pickNext(int tier) {
+    final pl = _plist;
+    if (pl != null) {
+      for (final p in pl) {
+        if (_wasPlayed(p) || failedPaths.contains(p) || !File(p).existsSync()) continue;
+        final i = _automixQueue.lastIndexOf(p);
+        if (i > _automixIndex) return i;
+      }
+      // Playlist finished: back to normal automix.
+      _plist = null;
+      DebugLog.add('automix', 'playlist finished');
+      return null;
+    }
     final flow = _flow;
     if (flow != null && flow.arc != FlowArc.off) {
       final held = _flowNext;
@@ -1683,6 +1746,7 @@ class DjController extends ChangeNotifier {
   }
 
   void stopAutomix() {
+    _plist = null;
     final wasOn = automixOn;
     if (wasOn) DebugLog.add('automix', 'stopped');
     if (_automixFading && _automixDeck >= 0) {
