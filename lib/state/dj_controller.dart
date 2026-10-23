@@ -896,7 +896,6 @@ class DjController extends ChangeNotifier {
   /// Skip: on the playing deck, mix into the next track now; on the waiting
   /// deck, drop that track and choose another.
   String? automixSkip(int deckIndex, {String? prefer}) {
-    if (autoFxOn && automixOn && !_automixFading) _afxBrake = true;
     if (prefer != null) {
       _userOk.add(prefer);
       _rejected.remove(prefer);
@@ -1895,7 +1894,12 @@ class DjController extends ChangeNotifier {
   bool autoFxOn = true;
   final List<int> _afxBits = [0, 0, 0, 0];
   final List<double> _afxAmt = [0.5, 0.5, 0.5, 0.5];
-  bool _afxBrake = false;
+  DateTime? _afxBrakeAt;
+
+  /// Your own Next / swap press: the leaving track may spin down for it.
+  void armSkipBrake() {
+    _afxBrakeAt = DateTime.now();
+  }
 
   /// Auto sync: the incoming track is tempo-matched to the playing one (beat
   /// matched). Off: it plays at its own speed.
@@ -1953,7 +1957,8 @@ class DjController extends ChangeNotifier {
     final d = deck(cur);
     final bpm = d.bpm * (d.rate <= 0 ? 1 : d.rate);
     final kind = _plan?.kind ?? TransitionKind.smooth;
-    if (_afxBrake) {
+    final bAt = _afxBrakeAt;
+    if (bAt != null && DateTime.now().difference(bAt).inSeconds < 15 && _fadeLen <= 10) {
       // You pressed skip: the old track slows to a stop as the new one comes in.
       _afxSet(cur, t < 0.85 ? 512 : 0, 0.8);
       return;
@@ -1976,7 +1981,7 @@ class DjController extends ChangeNotifier {
   }
 
   void _afxClearAll() {
-    _afxBrake = false;
+    _afxBrakeAt = null;
     for (var i = 0; i < deckCount; i++) {
       if (_afxBits[i] != 0) _afxSet(i, 0, 0.0);
     }

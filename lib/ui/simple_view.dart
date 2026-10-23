@@ -491,6 +491,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
   /// best-fitting track right away.
   void _dislikeNow() {
     final dj = widget.dj;
+    dj.armSkipBrake();
     final d = dj.deck(dj.automixPlayingDeck.clamp(0, 1));
     final path = d.path;
     if (path != null) Dislikes.instance.add(path);
@@ -1818,6 +1819,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
 
   void _skip() {
     final dj = widget.dj;
+    dj.armSkipBrake();
     final msg = dj.automixSkip(dj.automixPlayingDeck);
     if (msg != null) _toast(msg);
   }
