@@ -177,7 +177,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     });
   }
 
-  String? _note;
+  String? _pressNote;
   DateTime? _noteUntil;
 
   /// A one-shot orb press: highlight it and show a countdown on the visuals.
@@ -186,7 +186,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     final until = DateTime.now().add(Duration(seconds: secs));
     setState(() {
       _sel = label;
-      _note = note;
+      _pressNote = note;
       _noteUntil = note == null ? null : until;
       _flashUntil = until;
     });
@@ -195,7 +195,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
         setState(() {
           _sel = null;
           _flashUntil = null;
-          _note = null;
+          _pressNote = null;
           _noteUntil = null;
         });
       }
@@ -205,9 +205,9 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
   Widget _noteBadge() {
     String? t;
     final until = _noteUntil;
-    if (_note != null && until != null) {
+    if (_pressNote != null && until != null) {
       final left = until.difference(DateTime.now()).inSeconds + 1;
-      t = '$_note  ${left < 0 ? 0 : left}s';
+      t = '$_pressNote  ${left < 0 ? 0 : left}s';
     }
     if (AutoFetch.instance.manualBusy) {
       t = 'Finding a track  ${_waitText() ?? ''}';
