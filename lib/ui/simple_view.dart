@@ -1247,11 +1247,13 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
           backgroundColor: _bg,
           body: SafeArea(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+              padding: (viz && MediaQuery.of(context).orientation == Orientation.landscape)
+                  ? const EdgeInsets.all(6)
+                  : const EdgeInsets.fromLTRB(20, 8, 20, 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Row(children: [
+                  if (!(viz && MediaQuery.of(context).orientation == Orientation.landscape)) Row(children: [
                     if (on && !_showChooser)
                       IconButton(
                         tooltip: 'Back',
@@ -1577,6 +1579,13 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     textStyle: const TextStyle(fontFamily: SideDeckTheme.label, fontWeight: FontWeight.w700, fontSize: 14, letterSpacing: .4),
   );
 
+  static final _tight = TextButton.styleFrom(
+    padding: const EdgeInsets.symmetric(horizontal: 6),
+    minimumSize: const Size(0, 36),
+    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    textStyle: const TextStyle(fontFamily: SideDeckTheme.label, fontWeight: FontWeight.w700, fontSize: 14, letterSpacing: .4),
+  );
+
   Widget _queueCard(DjController dj, DeckState d, List<String> upcoming, String status) {
     return
 Container(
@@ -1777,32 +1786,36 @@ Container(
     return LayoutBuilder(builder: (context, box) {
       final land = box.maxWidth > box.maxHeight;
       if (land) {
-        // Landscape: the visuals fill the whole page, controls float on a glass bar.
+        // Landscape: only the visuals, with the track name and genre.
         return Stack(fit: StackFit.expand, children: [
           ClipRRect(borderRadius: BorderRadius.circular(5), child: visuals),
-          Positioned(left: 12, top: 12, child: chips),
-          Positioned(right: 8, top: 8, child: tune),
           Positioned(
-            left: 12,
-            right: 12,
-            bottom: 10,
-            child: _glass(
-              Row(children: [
-                Expanded(child: title),
-                const SizedBox(width: 12),
-                _orb(Ph.arrowBack, () => setState(() => _showChooser = true), tip: 'Back to genres'),
-                const SizedBox(width: 10),
-                _dial(dj, frac, 64),
-                const SizedBox(width: 10),
-                _orb(Ph.skipNext, _skip, tip: 'Next track'),
-                const SizedBox(width: 10),
-                _starOrb(dj, d),
-                const SizedBox(width: 10),
-                _orb(Ph.queueMusic, () => _sheet('Queue', _queueCard(dj, d, upcoming, status)), tip: 'Queue'),
-                const SizedBox(width: 10),
-                _orb(Ph.moreHoriz, () => _sheet('More', _actionRow()), tip: 'More'),
-              ]),
-              pad: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: IgnorePointer(
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(20, 36, 20, 16),
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Color(0x00000000), Color(0xCC000000)],
+                  ),
+                ),
+                child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                  Expanded(
+                    child: Text(
+                      d.loaded ? (d.artist.isNotEmpty ? '${d.artist} - ${d.title}' : d.title) : '…',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          fontFamily: SideDeckTheme.label, fontSize: 28, fontWeight: FontWeight.w700, letterSpacing: .8),
+                    ),
+                  ),
+                  if (genre.isNotEmpty) ...[const SizedBox(width: 12), _chip(genre.toUpperCase())],
+                ]),
+              ),
             ),
           ),
         ]);
