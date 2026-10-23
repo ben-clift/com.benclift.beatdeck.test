@@ -12,6 +12,7 @@ import 'package:sidedeck/automix/genre_family.dart';
 import 'package:sidedeck/debug/debug_log.dart';
 import 'package:sidedeck/debug/log_upload.dart';
 import 'package:sidedeck/mac/mac_sync.dart';
+import 'package:sidedeck/soulseek/storage_guard.dart';
 import 'package:sidedeck/soulseek/slsk_keeper.dart';
 import 'package:sidedeck/soulseek/slsk_setup.dart';
 import 'package:sidedeck/soulseek/soulseek_client.dart';
@@ -1850,12 +1851,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
               const SizedBox(height: 6),
               TextField(controller: code, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Code', isDense: true), onChanged: (v) => ms.pin = v),
               const SizedBox(height: 6),
-              TextField(
-                controller: TextEditingController(text: '${ms.limit}'),
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Tracks to bring per run (they use phone storage)', isDense: true),
-                onChanged: (v) => ms.limit = (int.tryParse(v) ?? 200).clamp(1, 100000),
-              ),
+              Text('Stops by itself at your storage limits (${StorageGuard.maxGb.round()} GB, keeping ${StorageGuard.reserveGb.round()} GB free).', style: TextStyle(fontSize: 12, color: _dim)),
               const SizedBox(height: 10),
               if (ms.status.isNotEmpty) Text(ms.status, style: TextStyle(color: SideDeckTheme.accentA)),
               if (ms.running && ms.total > 0) ...[

@@ -8,6 +8,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sidedeck/debug/debug_log.dart';
+import 'package:sidedeck/soulseek/storage_guard.dart';
 import 'package:sidedeck/state/library_controller.dart';
 
 /// Pulls the tracks from folders shared by the BeatDeck Mac script
@@ -21,7 +22,8 @@ class MacSync extends ChangeNotifier {
 
   String url = '';
   String pin = '';
-  int limit = 200; // tracks per run: a whole Mac library would fill the phone
+  int limit = 100000; // the storage limits below are what stop a run
+  String stoppedFor = '';
   bool running = false;
   bool _cancel = false;
   int total = 0;
@@ -33,14 +35,12 @@ class MacSync extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     url = prefs.getString('mac_url') ?? '';
     pin = prefs.getString('mac_pin') ?? '';
-    limit = prefs.getInt('mac_limit') ?? 200;
   }
 
   Future<void> save() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('mac_url', url.trim());
     await prefs.setString('mac_pin', pin.trim());
-    await prefs.setInt('mac_limit', limit);
   }
 
   Uri _uri(String path, [Map<String, String> q = const {}]) {
@@ -113,12 +113,22 @@ class MacSync extends ChangeNotifier {
       final support = await getApplicationSupportDirectory();
       final root = Directory(p.join(support.path, 'mac'));
       await root.create(recursive: true);
+      await StorageGuard.load();
+      stoppedFor = '';
       DebugLog.add('mac', 'sync start: ${todo.length} new of ${index.length} tracks');
       for (var i = 0; i < todo.length && !_cancel; i += batchSize) {
         final batch = todo.sublist(i, (i + batchSize).clamp(0, todo.length));
         final got = <String>[];
         for (final e in batch) {
           if (_cancel) break;
+          // Your storage limits (Auto DJ settings): a cap on how much these
+          // tracks may use, and free space the phone always keeps.
+          final why = await StorageGuard.blockReason(root.path, (e['s'] as num).toInt(), recycle: false);
+          if (why != null) {
+            stoppedFor = why;
+            _cancel = true;
+            break;
+          }
           final rel = '${e['p']}';
           final target = File(p.joinAll([root.path, ...rel.split('/').where((s) => s.isNotEmpty && s != '..')]));
           _set('Downloading ${done + 1} of $total: ${p.basename(rel)}');
@@ -152,7 +162,9 @@ class MacSync extends ChangeNotifier {
         await lib.readTags();
         await prefs.setStringList('mac_synced', synced.toList());
       }
-      _set(_cancel
+      _set(stoppedFor.isNotEmpty
+          ? 'Stopped: $stoppedFor. $done of $total done. Raise the limit in Auto DJ settings to bring more.'
+          : _cancel
           ? 'Stopped. $done of $total done. Start again to carry on.'
           : 'Finished. $done tracks brought over${failed == 0 ? '' : ', $failed failed'}.');
     } catch (e) {
