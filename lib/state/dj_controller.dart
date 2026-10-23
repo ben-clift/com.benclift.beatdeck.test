@@ -201,7 +201,8 @@ class DjController extends ChangeNotifier {
   /// The eight effect pads. Each pad holds one effect; any pad can be given
   /// any effect.
   static const fxNames = [
-    'ECHO', 'REVERB', 'FLANGER', 'PHASER', 'FILTER', 'GATE', 'NOISE', 'ROLL',
+    'ECHO', 'REVERB', 'FLANGER', 'PHASER', 'LOWPASS', 'GATE', 'NOISE', 'ROLL',
+    'HIPASS', 'BRAKE', 'DUB', 'SPIRAL', 'REPEAT', 'CRUSH', 'TAPE',
   ];
   final List<List<int>> padFx =
       List.generate(4, (_) => List<int>.generate(8, (i) => i));
@@ -234,7 +235,7 @@ class DjController extends ChangeNotifier {
 
   void assignPadFx(int deckIndex, int pad, int effect) {
     deckFxOn[deckIndex].remove(padFx[deckIndex][pad]);
-    padFx[deckIndex][pad] = effect.clamp(0, 7);
+    padFx[deckIndex][pad] = effect.clamp(0, fxNames.length - 1);
     _applyDeckFx(deckIndex);
     notifyListeners();
   }
@@ -246,6 +247,12 @@ class DjController extends ChangeNotifier {
     }
     final d = deck(deckIndex);
     final heard = d.bpm > 1 ? d.bpm * d.rate : 120.0;
+    if (deckFxOn[deckIndex].isEmpty && _afxBits[deckIndex] != 0) {
+      // Auto FX owns this deck's effects: its own amount and length.
+      final beat = 60 / heard;
+      _engine.setDeckFx(deckIndex, _afxBits[deckIndex], _afxAmt[deckIndex], (_afxBits[deckIndex] & 1) != 0 ? beat * 0.5 : beat);
+      return;
+    }
     _engine.setDeckFx(deckIndex, mask, fxAmount, fxBeats * 60 / heard);
   }
 
@@ -449,6 +456,7 @@ class DjController extends ChangeNotifier {
       dirty = true;
     }
     if (_breakBassTick()) dirty = true;
+    _afxBuildTick();
     if (_automixTick()) dirty = true;
     if (dirty) notifyListeners();
   }
@@ -887,6 +895,7 @@ class DjController extends ChangeNotifier {
   /// Skip: on the playing deck, mix into the next track now; on the waiting
   /// deck, drop that track and choose another.
   String? automixSkip(int deckIndex, {String? prefer}) {
+    if (autoFxOn && automixOn && !_automixFading) _afxBrake = true;
     if (prefer != null) {
       _userOk.add(prefer);
       _rejected.remove(prefer);
@@ -979,8 +988,22 @@ class DjController extends ChangeNotifier {
   double get manualT => _manualT;
 
   /// Bring the next track in now and let the slider drive the blend.
-  bool manualMixStart() {
+  bool manualMixStart({String? prefer}) {
     if (!automixOn || _automixDeck < 0 || _automixFading || _manualStart) return false;
+    if (prefer != null && File(prefer).existsSync()) {
+      // The track you chose goes on the other deck now, then the slider blends it in.
+      if (_upNext != prefer) {
+        _clearUpNext();
+        _forcePath = prefer;
+        _forceAnyTempo = true;
+        _upNext = prefer;
+        _automixPreloaded = false;
+        _flowNext = null;
+        _rejected.remove(prefer);
+      }
+      _loadHold = DateTime(2000);
+      _userOk.add(prefer);
+    }
     _manualStart = true;
     _manualAsked = DateTime.now();
     return true;
@@ -1834,6 +1857,114 @@ class DjController extends ChangeNotifier {
   final List<BreakSpan?> _brkSkipped = [null, null, null, null];
   final List<double> _brkBase = [0, 0, 0, 0];
   final List<double> _brkShown = [0, 0, 0, 0];
+
+  // ---- Auto FX -----------------------------------------------------------
+  // Effects that play themselves where a DJ would use them: a high-pass sweep
+  // or echo-out on the leaving track in a mix, a noise sweep and beat repeat
+  // into the drop, a brake when you skip. Only on one deck at a time, and
+  // never on a deck where you have an effect on yourself.
+  bool autoFxOn = true;
+  final List<int> _afxBits = [0, 0, 0, 0];
+  final List<double> _afxAmt = [0.5, 0.5, 0.5, 0.5];
+  bool _afxBrake = false;
+
+  Future<void> loadAutoFx() async {
+    try {
+      autoFxOn = (await SharedPreferences.getInstance()).getBool('auto_fx') ?? true;
+    } catch (_) {}
+  }
+
+  Future<void> setAutoFx(bool v) async {
+    autoFxOn = v;
+    if (!v) {
+      for (var i = 0; i < deckCount; i++) {
+        _afxSet(i, 0, 0.5);
+      }
+    }
+    notifyListeners();
+    try {
+      await (await SharedPreferences.getInstance()).setBool('auto_fx', v);
+    } catch (_) {}
+  }
+
+  void _afxSet(int i, int bits, double amt) {
+    if (!autoFxOn) bits = 0;
+    if (deckFxOn[i].isNotEmpty && bits != 0) return; // yours wins
+    if (bits == _afxBits[i] && (amt - _afxAmt[i]).abs() < 0.03) return;
+    final was = _afxBits[i];
+    _afxBits[i] = bits;
+    _afxAmt[i] = amt;
+    _applyDeckFx(i);
+    if (was != 0 && bits == 0) DebugLog.add('fx', 'auto FX off on deck ${i + 1}');
+    if (was == 0 && bits != 0) DebugLog.add('fx', 'auto FX on deck ${i + 1}: mask $bits at ${amt.toStringAsFixed(2)}');
+  }
+
+  /// During a mix: the leaving deck gets one effect, chosen from the tempo and
+  /// the kind of mix. [t] is how far through the mix we are, 0 to 1.
+  void _afxFade(int cur, double t) {
+    if (!autoFxOn) return;
+    final d = deck(cur);
+    final bpm = d.bpm * (d.rate <= 0 ? 1 : d.rate);
+    final kind = _plan?.kind ?? TransitionKind.smooth;
+    if (_afxBrake) {
+      // You pressed skip: the old track slows to a stop as the new one comes in.
+      _afxSet(cur, t < 0.85 ? 512 : 0, 0.8);
+      return;
+    }
+    final fast = bpm >= 150;
+    if (kind == TransitionKind.smooth && _fadeLen >= 16 && !fast) {
+      // Long house-style blend: the leaving track rolls its lows off.
+      if (t < 0.5) {
+        _afxSet(cur, 0, 0.0);
+      } else {
+        _afxSet(cur, 256, ((t - 0.5) * 2 * 0.6).clamp(0.0, 0.6).toDouble());
+      }
+    } else if (t >= 0.72 && t < 0.98) {
+      // Quick swap: echo the last bit of the old track out (dub echo, or a
+      // short echo on fast tracks), then it falls away under the new one.
+      _afxSet(cur, fast ? 1 : 1024, 0.45);
+    } else {
+      _afxSet(cur, 0, 0.0);
+    }
+  }
+
+  void _afxClearAll() {
+    _afxBrake = false;
+    for (var i = 0; i < deckCount; i++) {
+      if (_afxBits[i] != 0) _afxSet(i, 0, 0.0);
+    }
+  }
+
+  /// Not in a mix: into the drop of a breakdown, a noise sweep builds, then a
+  /// beat repeat on the last beat.
+  void _afxBuildTick() {
+    for (var i = 0; i < deckCount; i++) {
+      final d = deck(i);
+      if (!autoFxOn || !automixOn || _automixFading || !d.loaded || !d.playing || d.bpm <= 1 || i != _automixDeck) {
+        if (_afxBits[i] != 0 && !_automixFading) _afxSet(i, 0, 0.0);
+        continue;
+      }
+      final rate = d.rate <= 0 ? 1.0 : d.rate;
+      final beat = 60.0 / (d.bpm * rate);
+      final pos = d.position;
+      var bits = 0;
+      var amt = 0.0;
+      for (final b in breaksOf(i)) {
+        if (pos >= b.end) continue;
+        if (pos < b.start) break;
+        final left = (b.end - pos) / rate;
+        if (left <= 1.0 * beat) {
+          bits = 64 | 4096; // noise sweep carries on; the last beat repeats
+          amt = 0.55;
+        } else if (left <= 16 * beat && (b.end - b.start) / rate >= 24 * beat) {
+          bits = 64;
+          amt = (0.25 + 0.4 * (1 - left / (16 * beat))).clamp(0.25, 0.65).toDouble();
+        }
+        break;
+      }
+      _afxSet(i, bits, amt);
+    }
+  }
 
   Future<void> loadBreakBass() async {
     try {
@@ -2715,6 +2846,7 @@ class DjController extends ChangeNotifier {
   void _abortFade(int cur, int other) {
     _manualMix = false;
     _manualT = 0;
+    _afxClearAll();
     _mixqReport(cur, other, finished: false);
     _engine.play(other, false);
     deck(other).playing = false;
@@ -2898,6 +3030,7 @@ class DjController extends ChangeNotifier {
     _engine.setFader(other, _fadeInBase * gIn);
     _engine.setFader(cur, _fadeOutBase * gOut);
     _applyMixEq(cur, other, t);
+    _afxFade(cur, t);
     _mixqSample(cur, other, elapsed);
     if (!_phaseFixed && elapsed >= 0.35) {
       _phaseFixed = true;
@@ -2906,6 +3039,7 @@ class DjController extends ChangeNotifier {
     if (elapsed >= _fadeLen) {
       _manualMix = false;
       _manualT = 0;
+      _afxClearAll();
       _mixqReport(cur, other, finished: true);
       _engine.play(cur, false);
       deck(cur).playing = false;

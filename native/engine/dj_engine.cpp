@@ -827,10 +827,12 @@ struct Engine : public oboe::AudioStreamDataCallback,
       l = d.filtL.process(l);
       r = d.filtR.process(r);
       const int fxM = d.fxMask.load(std::memory_order_relaxed);
-      if (fxM != 0 || d.fxRack.rollActive || d.fxRack.tail > 0) {
+      if (fxM != 0 || d.fxRack.rollActive || d.fxRack.tail > 0 || d.fxRack.brActive) {
         d.fxRack.prepare(std::max(8000, engineSampleRate.load()));
         d.fxRack.process(fxM, d.fxAmount.load(std::memory_order_relaxed),
                          d.fxTime.load(std::memory_order_relaxed), l, r);
+      } else {
+        d.fxRack.idle();
       }
       d.preL = l;
       d.preR = r;
@@ -1488,7 +1490,7 @@ void dj_set_deck_fx(DjEngine engine, int deck, int mask, float amount, float tim
   Deck& d = asEngine(engine)->decks[deck];
   d.fxAmount.store(std::max(0.0f, std::min(1.0f, amount)));
   d.fxTime.store(std::max(0.1f, std::min(2.5f, time_sec)));
-  d.fxMask.store(mask & 0xFF);
+  d.fxMask.store(mask & 0x7FFF);
 }
 
 int dj_record_start(DjEngine engine, const char* path) {

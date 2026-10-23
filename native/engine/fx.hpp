@@ -51,7 +51,12 @@ struct Unit {
   static constexpr int kAll = 4;
   Comb combL[kCombs], combR[kCombs];
   Allpass apL[kAll], apR[kAll];
-  float lpL = 0, lpR = 0; // gentle damping of echo repeats
+  float lpL = 0, lpR = 0; // darkening of each echo repeat
+  float hpEL = 0, hpER = 0; // low cut inside the echo loop
+  float echoD = 0;          // smoothed delay (samples): a tempo change glides like tape
+  float lpCoef = 0.5f, hpCoef = 0.02f, echoFb = 0.0f;
+  float rvHp = 0;           // keeps bass out of the reverb
+  float rvLpL = 0, rvLpR = 0; // reverb tail loses treble faster
 
   void prepare(int newSr) {
     if (newSr == sr) return;
@@ -61,6 +66,10 @@ struct Unit {
     flL.assign(kFlangeMax, 0.0f);
     flR.assign(kFlangeMax, 0.0f);
     echoPos = flPos = 0;
+    echoD = 0;
+    const float twoPi = 6.2831853f;
+    lpCoef = 1.0f - std::exp(-twoPi * 5000.0f / (float)sr);
+    hpCoef = 1.0f - std::exp(-twoPi * 150.0f / (float)sr);
     static const int ct[kCombs] = {1116, 1188, 1277, 1356, 1422, 1491, 1557, 1617};
     static const int at[kAll] = {556, 441, 341, 225};
     const float k = (float)sr / 44100.0f;
@@ -79,27 +88,38 @@ struct Unit {
     if (type <= 0 || sr == 0) return;
     const float a = std::max(0.0f, std::min(1.0f, amount));
     if (type == 1) {
-      const int d = std::max(1, std::min(kEchoMax - 1, (int)(timeSec * sr)));
-      int rp = echoPos - d;
-      if (rp < 0) rp += kEchoMax;
-      float wl = echoL[rp];
-      float wr = echoR[rp];
-      lpL += 0.6f * (wl - lpL);
-      lpR += 0.6f * (wr - lpR);
-      wl = lpL;
-      wr = lpR;
-      // ping-pong feedback
-      const float efb = 0.30f + 0.5f * a;
-      echoL[echoPos] = l + wr * efb;
-      echoR[echoPos] = r + wl * efb;
+      const float target = std::max(2.0f, std::min((float)(kEchoMax - 2), timeSec * sr));
+      if (echoD <= 0) echoD = target;
+      echoD += (target - echoD) * 0.0006f; // tape-style glide when the time changes
+      float rp = (float)echoPos - echoD;
+      while (rp < 0) rp += kEchoMax;
+      const int i0 = (int)rp % kEchoMax;
+      const int i1 = (i0 + 1) % kEchoMax;
+      const float fr = rp - std::floor(rp);
+      float wl = echoL[i0] * (1.0f - fr) + echoL[i1] * fr;
+      float wr = echoR[i0] * (1.0f - fr) + echoR[i1] * fr;
+      // Each repeat is darker and thinner than the last, like a tape loop.
+      lpL += lpCoef * (wl - lpL);
+      lpR += lpCoef * (wr - lpR);
+      hpEL += hpCoef * (lpL - hpEL);
+      hpER += hpCoef * (lpR - hpER);
+      wl = lpL - hpEL;
+      wr = lpR - hpER;
+      const float efb = (echoFb > 0 ? echoFb : 0.30f + 0.5f * a);
+      // ping-pong feedback, soft-clipped so it can never run away
+      echoL[echoPos] = l + std::tanh(wr * efb);
+      echoR[echoPos] = r + std::tanh(wl * efb);
       if (++echoPos >= kEchoMax) echoPos = 0;
-      l += wl * a;
-      r += wr * a;
+      // equal-power blend: no dip in level at the middle
+      l += wl * std::sin(a * 1.5707963f);
+      r += wr * std::sin(a * 1.5707963f);
     } else if (type == 2) {
-      const float in = (l + r) * 0.015f;
+      float in = (l + r) * 0.015f;
+      rvHp += 0.04f * (in - rvHp); // about 280 Hz: no bass into the reverb
+      in -= rvHp;
       float oL = 0, oR = 0;
       const float fb = 0.80f + 0.12f * a;
-      const float damp = 0.35f;
+      const float damp = 0.5f; // treble dies faster than the body
       for (int i = 0; i < kCombs; ++i) {
         oL += combL[i].process(in, fb, damp);
         oR += combR[i].process(in, fb, damp);
@@ -108,8 +128,11 @@ struct Unit {
         oL = apL[i].process(oL);
         oR = apR[i].process(oR);
       }
-      l += oL * a * 3.0f;
-      r += oR * a * 3.0f;
+      rvLpL += 0.45f * (oL - rvLpL);
+      rvLpR += 0.45f * (oR - rvLpR);
+      const float w = std::sin(a * 1.5707963f) * 3.0f;
+      l += rvLpL * w;
+      r += rvLpR * w;
     } else if (type == 3) {
       const float rate = 0.15f + 0.5f * std::max(0.0f, std::min(4.0f, timeSec));
       lfo += 6.2831853f * rate / (float)sr;
@@ -160,12 +183,37 @@ struct DeckFx {
   float nzPhase = 0;
   int nzTick = 0;
   unsigned nzSeed = 22222u;
+  // dub echo (3/4 beat, dark, long) and spiral (rising pitch echo)
+  Unit dub;
+  std::vector<float> spL, spR;
+  int spPos = 0;
+  float spD = 0;
+  // high pass
+  Biquad hpL, hpR;
+  float hpAmount = -1;
+  // vinyl brake
+  std::vector<float> brL, brR;
+  int brW = 0;
+  double brRead = 0;
+  float brSpeed = 1;
+  bool brActive = false;
+  int brFade = 0;
+  // bit crusher
+  float bcHold[2] = {};
+  int bcCount = 0;
+  // tape warmth and output protection
+  float tapeLp[2] = {};
+  float tapeCoef = 0.8f;
+  float dcX[2] = {}, dcY[2] = {};
   // roll
   std::vector<float> rollL, rollR;
+  int rollHeld = 0;
   int rollRec = 0;
   int rollLen = 0;
   int rollPos = 0;
   bool rollActive = false;
+
+  void idle() { dcX[0] = dcX[1] = dcY[0] = dcY[1] = 0; }
 
   void prepare(int newSr) {
     if (newSr == sr) return;
@@ -173,8 +221,19 @@ struct DeckFx {
     base.prepare(sr);
     rollL.assign(sr, 0.0f);
     rollR.assign(sr, 0.0f);
-    fltL.lowPass((float)sr, 18000.0f, 1.5f);
-    fltR.lowPass((float)sr, 18000.0f, 1.5f);
+    dub.prepare(sr);
+    dub.lpCoef = 1.0f - std::exp(-6.2831853f * 3200.0f / (float)sr);
+    dub.echoFb = 0.62f;
+    spL.assign(sr * 2, 0.0f);
+    spR.assign(sr * 2, 0.0f);
+    brL.assign(sr * 3, 0.0f);
+    brR.assign(sr * 3, 0.0f);
+    tapeCoef = 1.0f - std::exp(-6.2831853f * 13000.0f / (float)sr);
+    hpL.highPass((float)sr, 30.0f, 1.0f);
+    hpR.highPass((float)sr, 30.0f, 1.0f);
+    hpAmount = -1;
+    fltL.lowPass((float)sr, 18000.0f, 1.0f);
+    fltR.lowPass((float)sr, 18000.0f, 1.0f);
     nzL.highPass((float)sr, 300.0f, 0.8f);
     nzR.highPass((float)sr, 300.0f, 0.8f);
     fltAmount = -1;
@@ -194,13 +253,13 @@ struct DeckFx {
       lastMask = mask;
       tail = (int)tailLen;
     } else if (tail > 0) {
-      mask = lastMask & (1 | 2 | 4 | 8 | 16);
+      mask = lastMask & (1 | 2 | 4 | 8 | 16 | 256 | 1024);
       --tail;
       a *= (float)tail / tailLen;
       if (mask == 0) tail = 0;
     }
-    if (!(mask & 128)) rollActive = false;
-    if (mask == 0) return;
+    if (!(mask & (128 | 4096))) { rollActive = false; rollHeld = 0; }
+    if (mask == 0 && !brActive) return;
     const float beat = std::max(0.1f, std::min(2.5f, timeSec));
     if (mask & 1) base.process(1, a, beat, l, r);
     if (mask & 2) base.process(2, a, beat, l, r);
@@ -230,8 +289,8 @@ struct DeckFx {
         fltAmount = a;
         const float fc = 18000.0f * std::pow(0.01f, a); // 18 kHz down to 180 Hz
         const float f = std::min(fc, 0.45f * (float)sr);
-        fltL.lowPass((float)sr, f, 1.5f);
-        fltR.lowPass((float)sr, f, 1.5f);
+        fltL.lowPass((float)sr, f, 1.0f);
+        fltR.lowPass((float)sr, f, 1.0f);
       }
       l = fltL.process(l);
       r = fltR.process(r);
@@ -263,21 +322,156 @@ struct DeckFx {
       l += nzL.process(n1) * level;
       r += nzR.process(n2) * level;
     }
-    if (mask & 128) {
+    if (mask & (128 | 4096)) {
       if (!rollActive) {
         rollActive = true;
         rollLen = std::max(256, std::min(sr - 1, (int)(beat * 0.25f * (float)sr)));
         rollRec = 0;
         rollPos = 0;
+        rollHeld = 0;
       }
       if (rollRec < rollLen) {
         rollL[rollRec] = l;
         rollR[rollRec] = r;
         ++rollRec;
       } else {
-        l = rollL[rollPos];
-        r = rollR[rollPos];
+        // Beat repeat shortens each beat held (1/4, 1/8, 1/16): a build.
+        if ((mask & 4096) && ++rollHeld >= (int)(beat * (float)sr)) {
+          rollHeld = 0;
+          rollLen = std::max(256, std::max((int)(beat * 0.0625f * (float)sr), rollLen / 2));
+          if (rollPos >= rollLen) rollPos = 0;
+        }
+        const int edge = std::min(rollPos, rollLen - rollPos);
+        const float g = std::min(1.0f, (float)edge / 48.0f); // no click at the loop point
+        l = rollL[rollPos] * g;
+        r = rollR[rollPos] * g;
         if (++rollPos >= rollLen) rollPos = 0;
+      }
+    }
+    if (mask & 256) {
+      // High pass: sweeps up from 30 Hz; the first few percent do nothing.
+      if (std::fabs(a - hpAmount) > 0.004f) {
+        hpAmount = a;
+        const float fc = std::min(30.0f * std::pow(200.0f, a), 0.45f * (float)sr);
+        hpL.highPass((float)sr, fc, 1.0f);
+        hpR.highPass((float)sr, fc, 1.0f);
+      }
+      if (a > 0.03f) {
+        l = hpL.process(l);
+        r = hpR.process(r);
+      }
+    }
+    if (mask & 1024) {
+      // Dub echo: three-quarter-beat tape echo, dark and long.
+      dub.process(1, std::max(a, 0.35f), beat * 0.75f, l, r);
+    }
+    if (mask & 2048) {
+      // Spiral: the echo's delay keeps shrinking, so every repeat climbs in pitch.
+      const int n = (int)spL.size();
+      if (spD <= 0.0f) spD = std::min((float)(n - 2), beat * 0.5f * (float)sr);
+      spD -= 0.22f;
+      const float minD = 0.03f * (float)sr;
+      float fade = 1.0f;
+      if (spD < minD) {
+        spD = std::min((float)(n - 2), beat * 0.5f * (float)sr);
+        std::fill(spL.begin(), spL.end(), 0.0f);
+        std::fill(spR.begin(), spR.end(), 0.0f);
+      } else if (spD < minD * 3.0f) {
+        fade = (spD - minD) / (minD * 2.0f);
+      }
+      float rp = (float)spPos - spD;
+      while (rp < 0) rp += n;
+      const int i0 = (int)rp % n;
+      const int i1 = (i0 + 1) % n;
+      const float fr = rp - std::floor(rp);
+      const float wl = spL[i0] * (1.0f - fr) + spL[i1] * fr;
+      const float wr = spR[i0] * (1.0f - fr) + spR[i1] * fr;
+      spL[spPos] = l + std::tanh(wl * 0.68f);
+      spR[spPos] = r + std::tanh(wr * 0.68f);
+      if (++spPos >= n) spPos = 0;
+      l += wl * a * 0.8f * fade;
+      r += wr * a * 0.8f * fade;
+    } else {
+      spD = 0.0f;
+    }
+    if (mask & 8192) {
+      // Crusher: fewer samples and fewer bits as the amount rises.
+      const int hold = 1 + (int)(a * 14.0f);
+      const float bits = 16.0f - a * 10.0f;
+      const float step = std::pow(2.0f, 1.0f - bits);
+      if (++bcCount >= hold) {
+        bcCount = 0;
+        bcHold[0] = std::floor(l / step + 0.5f) * step;
+        bcHold[1] = std::floor(r / step + 0.5f) * step;
+      }
+      l = bcHold[0];
+      r = bcHold[1];
+    }
+    if (mask & 16384) {
+      // Tape: soft saturation and a little treble loss, level kept steady.
+      const float g = 1.0f + a * 3.5f;
+      const float norm = std::tanh(g);
+      tapeLp[0] += tapeCoef * (std::tanh(l * g) / norm - tapeLp[0]);
+      tapeLp[1] += tapeCoef * (std::tanh(r * g) / norm - tapeLp[1]);
+      l = tapeLp[0];
+      r = tapeLp[1];
+    }
+    // Vinyl brake: records what is playing, then slows it to a stop; when
+    // released it spins back up and fades into the live sound.
+    {
+      const int n = (int)brL.size();
+      const bool want = (mask & 512) != 0;
+      brL[brW] = l;
+      brR[brW] = r;
+      if (want && !brActive) {
+        brActive = true;
+        brSpeed = 1.0f;
+        brRead = (double)brW;
+        brFade = 0;
+      }
+      if (brActive) {
+        if (want) {
+          brSpeed = std::max(0.0f, brSpeed - 1.0f / (0.7f * (float)sr));
+        } else {
+          brSpeed = std::min(1.0f, brSpeed + 1.0f / (0.35f * (float)sr));
+        }
+        double rp = brRead;
+        while (rp < 0) rp += n;
+        const int i0 = (int)rp % n;
+        const int i1 = (i0 + 1) % n;
+        const float fr = (float)(rp - std::floor(rp));
+        float wl = brL[i0] * (1.0f - fr) + brL[i1] * fr;
+        float wr = brR[i0] * (1.0f - fr) + brR[i1] * fr;
+        const float quiet = std::min(1.0f, brSpeed * 6.0f); // no hum at a standstill
+        wl *= quiet;
+        wr *= quiet;
+        brRead += brSpeed;
+        if (brRead >= n) brRead -= n;
+        if (!want && brSpeed >= 1.0f) {
+          // Back to full speed: crossfade to the live sound.
+          const float k = std::min(1.0f, (float)brFade / 2048.0f);
+          l = wl * (1.0f - k) + l * k;
+          r = wr * (1.0f - k) + r * k;
+          if (++brFade >= 2048) brActive = false;
+        } else {
+          l = wl;
+          r = wr;
+        }
+      }
+      if (++brW >= n) brW = 0;
+    }
+    // Output protection: no DC offset, and a soft ceiling instead of clipping.
+    {
+      float* ch[2] = {&l, &r};
+      for (int c = 0; c < 2; ++c) {
+        const float x = *ch[c];
+        const float y = x - dcX[c] + 0.995f * dcY[c];
+        dcX[c] = x;
+        dcY[c] = y;
+        float o = y;
+        const float ax = std::fabs(o);
+        if (ax > 0.9f) o = (o < 0 ? -1.0f : 1.0f) * (0.9f + 0.1f * std::tanh((ax - 0.9f) / 0.1f));
+        *ch[c] = o;
       }
     }
   }

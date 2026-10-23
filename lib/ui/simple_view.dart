@@ -363,6 +363,8 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
       builder: (dc) => SimpleDialog(
         title: Text(nm.title, maxLines: 2, overflow: TextOverflow.ellipsis),
         children: [
+          if (!playing) SimpleDialogOption(onPressed: () => Navigator.pop(dc, 'blend'), child: const Text('Play next, then blend it in by hand')),
+          if (!playing) SimpleDialogOption(onPressed: () => Navigator.pop(dc, 'now'), child: const Text('Play next and blend now')),
           if (!playing) SimpleDialogOption(onPressed: () => Navigator.pop(dc, 'queue'), child: const Text('Remove from the queue')),
           if (playing) SimpleDialogOption(onPressed: () => Navigator.pop(dc, 'skip'), child: const Text('Skip it (keep the file)')),
           if (!starred) SimpleDialogOption(onPressed: () => Navigator.pop(dc, 'delete'), child: Text(playing ? 'Skip it and delete from the phone' : 'Delete from the phone')),
@@ -372,7 +374,16 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     );
     if (!mounted || pick == null) return;
     final dj = widget.dj;
-    if (pick == 'queue') {
+    if (pick == 'blend') {
+      if (!dj.manualMixStart(prefer: path)) {
+        _toast('Wait for the current mix to finish.');
+      } else {
+        _toast('Loading it. Then move the blend slider at the bottom.');
+      }
+    } else if (pick == 'now') {
+      final msg = dj.automixSkip(dj.automixPlayingDeck, prefer: path);
+      if (msg != null) _toast(msg);
+    } else if (pick == 'queue') {
       if (!dj.automixRemove(path)) _toast('That one is being mixed in right now.');
     } else if (pick == 'skip') {
       final msg = dj.automixSkip(dj.automixPlayingDeck);
@@ -2365,6 +2376,12 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
               }
             }, tip: 'Play next track, then blend by hand', size: 36, sel: dj.manualMixing || dj.manualPending),
           ),
+        ]),
+        Row(children: [
+          lab('AUTO FX', dj.autoFxOn ? 'on' : 'off'),
+          const Spacer(),
+          Switch(value: dj.autoFxOn, onChanged: (v) => dj.setAutoFx(v)),
+          const SizedBox(width: 6),
         ]),
         Row(children: [
           lab('VOLUME', '${(dj.master * 100).round()}%'),
