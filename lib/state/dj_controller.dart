@@ -1880,6 +1880,24 @@ class DjController extends ChangeNotifier {
   final List<double> _afxAmt = [0.5, 0.5, 0.5, 0.5];
   bool _afxBrake = false;
 
+  /// Auto sync: the incoming track is tempo-matched to the playing one (beat
+  /// matched). Off: it plays at its own speed.
+  bool autoSyncOn = true;
+
+  Future<void> loadAutoSync() async {
+    try {
+      autoSyncOn = (await SharedPreferences.getInstance()).getBool('auto_sync') ?? true;
+    } catch (_) {}
+  }
+
+  Future<void> setAutoSync(bool v) async {
+    autoSyncOn = v;
+    notifyListeners();
+    try {
+      await (await SharedPreferences.getInstance()).setBool('auto_sync', v);
+    } catch (_) {}
+  }
+
   Future<void> loadAutoFx() async {
     try {
       autoFxOn = (await SharedPreferences.getInstance()).getBool('auto_fx') ?? true;
@@ -2719,8 +2737,9 @@ class DjController extends ChangeNotifier {
     if (rr > 1.85 && rr < 2.15) rr /= 2;
     if (rr > 0.46 && rr < 0.54) rr *= 2;
     final tempoClash = rr < 0.92 || rr > 1.08;
-    if (tempoClash) inc.rate = 1.0;
+    if (tempoClash || !autoSyncOn) inc.rate = 1.0;
     inc.synced = false;
+    if (!autoSyncOn) DebugLog.add('automix', 'auto sync is off: the new track plays at its own speed');
     _applyRate(other);
     final startRaw = incomingStartPosition(
       outPosition: outPosition,

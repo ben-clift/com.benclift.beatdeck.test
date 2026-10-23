@@ -70,6 +70,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     Avoids.instance.load();
     _dj.loadBreakBass();
     _dj.loadAutoFx();
+    _dj.loadAutoSync();
     ShazamWatcher.instance.start(_library);
     ScreenBrightness.load();
     AppMode.load();

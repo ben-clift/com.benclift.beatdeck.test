@@ -2318,7 +2318,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     final pct = (d.rate - 1) * 100;
     final bpm = d.bpm > 1 ? (d.bpm * d.rate).toStringAsFixed(1) : '--';
     Widget lab(String t, String v) => SizedBox(
-          width: 74,
+          width: 96,
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
             Text(t, style: TextStyle(fontFamily: SideDeckTheme.label, fontWeight: FontWeight.w700, fontSize: 13, letterSpacing: 1.2, color: _dim)),
             Text(v, style: const TextStyle(fontFamily: SideDeckTheme.mono, fontSize: 13)),
@@ -2376,6 +2376,12 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
               }
             }, tip: 'Play next track, then blend by hand', size: 36, sel: dj.manualMixing || dj.manualPending),
           ),
+        ]),
+        Row(children: [
+          lab('AUTO SYNC', dj.autoSyncOn ? 'BPMs match' : 'off'),
+          const Spacer(),
+          Switch(value: dj.autoSyncOn, onChanged: (v) => dj.setAutoSync(v)),
+          const SizedBox(width: 6),
         ]),
         Row(children: [
           lab('AUTO FX', dj.autoFxOn ? 'on' : 'off'),
