@@ -154,7 +154,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
       if (st.mode == 1) {
         // only when nothing else is waiting and the end is near
         if (dj.automixUpcoming.isNotEmpty) return;
-        if (d.duration <= 0 || d.duration - d.position > 60) return;
+        if (d.duration <= 0 || d.duration - d.position > 120) return;
         if (DateTime.now().difference(_lastStyle).inSeconds < 40) return;
       } else {
         // mixed in regularly: at most one every few minutes
@@ -170,6 +170,8 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     final local = <LibraryTrack>[
       for (final t in widget.library.tracks)
         if (!dj.playedRecently(t.path) &&
+            !((dj.vocalMode?.call() ?? 0) != 0 &&
+                vocalClash(t.path.split(RegExp(r'[\\/]')).last, dj.vocalMode!.call())) &&
             File(t.path).existsSync() &&
             (!st.matchGenre ||
                 genres.contains((t.genre.isNotEmpty ? t.genre : (dj.genreOf?.call(t.path) ?? '')).toLowerCase()) ||
@@ -179,7 +181,14 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                 : (mid == 0 || t.bpm == null || t.bpm! <= 0 || (t.bpm! - mid).abs() <= mid * st.bpmTol / 100)))
           t,
     ]..shuffle();
+    final starKeys = {for (final t in stars) '${t.artist}|${t.title}'.toLowerCase()};
+    local.sort((a, b) {
+      final sa = starKeys.contains('${a.artist}|${a.title}'.toLowerCase()) ? 1 : 0;
+      final sb = starKeys.contains('${b.artist}|${b.title}'.toLowerCase()) ? 1 : 0;
+      return sa - sb; // tracks you have not starred yet come first
+    });
     if (local.isNotEmpty) {
+      st.lastNote.value = 'Playing from your library: ${local.first.artist.isEmpty ? '' : '${local.first.artist} - '}${local.first.title}';
       DebugLog.add('simple', 'nothing waiting: playing a library track in the style of your starred ones');
       dj.automixAllow(local.first.path);
       if (force) {
@@ -190,20 +199,32 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
       return;
     }
     if (!st.download || !soulseek.online || AutoFetch.instance.running) return;
-    final seed = stars[math.Random().nextInt(stars.length)];
+    final rnd = math.Random();
+    final seed = stars[rnd.nextInt(stars.length)];
     DebugLog.add('simple', 'looking for artists like ${seed.artist} (adventure ${st.adventure})');
-    var found = await SuggestService().relatedTracks(seed.artist);
+    st.lastNote.value = 'Looking for music like ${seed.artist.isEmpty ? seed.title : seed.artist}...';
+    var found = await SuggestService().styleTracks(seed.artist);
     // Adventurous: go one step further out, to artists related to those.
     if (st.adventure >= 2 && found.isNotEmpty) {
-      final hop = found[math.Random().nextInt(found.length)].artist;
-      final more = await SuggestService().relatedTracks(hop);
+      final hop = found[rnd.nextInt(found.length)].artist;
+      final more = await SuggestService().styleTracks(hop);
       if (more.isNotEmpty) found = more;
     }
     if (st.adventure == 0) {
       // Close to home: the starred artists' own other tracks come first.
       found = [...found.where((t) => artists.contains(t.artist.toLowerCase())), ...found];
+    } else {
+      // Further out: skip artists already starred so it is new music.
+      final fresh = found.where((t) => !artists.contains(t.artist.toLowerCase())).toList();
+      if (fresh.length >= 3) found = fresh;
     }
-    if (found.isEmpty || !mounted) return;
+    found = found.where((t) => !starKeys.contains('${t.artist}|${t.title}'.toLowerCase())).toList();
+    if (found.isEmpty || !mounted) {
+      st.lastNote.value = 'Could not find anything new like ${seed.artist}. Will try again.';
+      return;
+    }
+    final pick = found.take(3).toList();
+    st.lastNote.value = 'Fetching: ${pick.map((t) => '${t.artist} - ${t.title}').join(', ')}';
     if (force) dj.armPlayNext();
     AutoFetch.instance.enqueueTracks(found.take(3).toList(), widget.library);
   }
@@ -2306,6 +2327,7 @@ class StyleSettings {
   bool matchGenre = true;
   bool download = true; // may fetch new tracks (else library only)
   final Set<String> excluded = {}; // starred tracks left out (by key)
+  final ValueNotifier<String> lastNote = ValueNotifier('Nothing picked yet.');
   double bpmFrom = 0; // 0 = automatic from the starred tracks
   double bpmTo = 0;
   bool _loaded = false;
@@ -2374,11 +2396,34 @@ class _StyleBoxState extends State<_StyleBox> {
   Widget build(BuildContext context) {
     final n = st.chosen().length;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Text(n == 0
-          ? 'Star some tracks first. This uses their genre, tempo and artists.'
-          : 'Music chosen from the style of your $n starred track${n == 1 ? '' : 's'}.',
-          style: const TextStyle(color: Color(0xFF8A857C))),
-      const SizedBox(height: 10),
+      Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(border: Border.all(color: SideDeckTheme.accentA), borderRadius: BorderRadius.circular(4)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('WHAT MY STYLE DOES',
+              style: TextStyle(fontFamily: SideDeckTheme.label, fontWeight: FontWeight.w700, fontSize: 16, letterSpacing: 1.4, color: SideDeckTheme.accentA)),
+          const SizedBox(height: 6),
+          const Text(
+              'Star the tracks you love (the star button while a track plays). My style learns their genre, tempo and artists, '
+              'then picks more music like them. It plays tracks you already have first. If there are none, it finds similar artists online and downloads them.\n'
+              'Use it when the genre queue runs dry, or mix it in regularly below. Tick which starred tracks count, and set how far from them it may roam.',
+              style: TextStyle(fontSize: 14)),
+          const SizedBox(height: 8),
+          Text(
+              n == 0
+                  ? 'You have no starred tracks yet. Star a few and come back.'
+                  : 'Using $n starred track${n == 1 ? '' : 's'} · ${st.mode == 0 ? 'Off' : (st.mode == 1 ? 'Only when nothing else is waiting' : 'Mixed in about every ${st.everyMin} min')}',
+              style: const TextStyle(color: SideDeckTheme.accentB, fontWeight: FontWeight.w600)),
+          ValueListenableBuilder<String>(
+            valueListenable: st.lastNote,
+            builder: (_, v, __) => Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text('Last pick: $v', style: const TextStyle(fontSize: 13, color: Color(0xFF8A857C))),
+            ),
+          ),
+        ]),
+      ),
+      const SizedBox(height: 12),
       const Text('Starred tracks to use', style: TextStyle(fontWeight: FontWeight.w700)),
       Wrap(spacing: 8, children: [
         for (final g in {for (final t in Starred.instance.items) if (t.genre.isNotEmpty) t.genre}.toList()..sort())

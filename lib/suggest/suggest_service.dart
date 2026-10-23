@@ -82,6 +82,35 @@ class SuggestService {
     return out;
   }
 
+  /// Tracks in the style of [artist]: Deezer's artist radio (a mix of similar
+  /// artists) plus top tracks of related artists. Deduplicated, shuffled.
+  Future<List<Suggestion>> styleTracks(String artist) async {
+    final out = <Suggestion>[];
+    final seen = <String>{};
+    void add(String a, String t) {
+      if (a.isEmpty || t.isEmpty) return;
+      if (seen.add('${a.toLowerCase()}|${t.toLowerCase()}')) out.add(Suggestion(a, t, 0, 'Like $artist'));
+    }
+    try {
+      final s = await _get('https://api.deezer.com/search/artist?q=${Uri.encodeQueryComponent(artist)}&limit=1');
+      final data = (s['data'] as List?) ?? const [];
+      if (data.isNotEmpty) {
+        final id = (data.first as Map)['id'];
+        final radio = await _get('https://api.deezer.com/artist/$id/radio?limit=30');
+        for (final t in ((radio['data'] as List?) ?? const []).cast<Map>()) {
+          add((t['artist'] as Map?)?['name']?.toString() ?? '', t['title_short']?.toString() ?? t['title']?.toString() ?? '');
+        }
+      }
+    } catch (_) {}
+    if (out.length < 6) {
+      for (final t in await relatedTracks(artist)) {
+        add(t.artist, t.title);
+      }
+    }
+    out.shuffle();
+    return out;
+  }
+
   Future<SeedInfo> lookupSeed(String artist, String title) async {
     final genres = <String>{};
     double bpm = 0;
