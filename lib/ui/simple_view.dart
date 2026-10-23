@@ -1851,7 +1851,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
               const SizedBox(height: 6),
               TextField(controller: code, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Code', isDense: true), onChanged: (v) => ms.pin = v),
               const SizedBox(height: 6),
-              Text('Stops by itself at your storage limits (${StorageGuard.maxGb.round()} GB, keeping ${StorageGuard.reserveGb.round()} GB free).', style: TextStyle(fontSize: 12, color: _dim)),
+              Text('Tracks stay on the Mac and stream when they are about to play (keep the Terminal window open). Recent ones stay on the phone up to ${StorageGuard.maxGb.round()} GB, and ${StorageGuard.reserveGb.round()} GB of phone space is always kept free.', style: TextStyle(fontSize: 12, color: _dim)),
               const SizedBox(height: 10),
               if (ms.status.isNotEmpty) Text(ms.status, style: TextStyle(color: SideDeckTheme.accentA)),
               if (ms.running && ms.total > 0) ...[

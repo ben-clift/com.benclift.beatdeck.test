@@ -31,6 +31,131 @@ class MacSync extends ChangeNotifier {
   int failed = 0;
   String status = '';
 
+  // ---- Streaming: tracks are kept as empty "stubs" (same name, size and date,
+  // no disk used) and fetched from the Mac when a deck needs them. The most
+  // recently used real files are kept up to your storage limit.
+  Set<String> _stubs = {};
+  Map<String, int> _mtime = {};
+  Map<String, int> _used = {};
+  bool _stateLoaded = false;
+  Directory? _root;
+
+  Future<Directory> _rootDir() async {
+    final r = _root;
+    if (r != null) return r;
+    final support = await getApplicationSupportDirectory();
+    final d = Directory(p.join(support.path, 'mac'));
+    await d.create(recursive: true);
+    return _root = d;
+  }
+
+  Future<void> _loadState() async {
+    if (_stateLoaded) return;
+    _stateLoaded = true;
+    final prefs = await SharedPreferences.getInstance();
+    _stubs = (prefs.getStringList('mac_stub') ?? <String>[]).toSet();
+    try {
+      _mtime = {for (final e in (jsonDecode(prefs.getString('mac_mtime') ?? '{}') as Map).entries) '${e.key}': (e.value as num).toInt()};
+      _used = {for (final e in (jsonDecode(prefs.getString('mac_used') ?? '{}') as Map).entries) '${e.key}': (e.value as num).toInt()};
+    } catch (_) {}
+    if (url.isEmpty) await load();
+  }
+
+  Future<void> _saveState() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList('mac_stub', _stubs.toList());
+    await prefs.setString('mac_mtime', jsonEncode(_mtime));
+    await prefs.setString('mac_used', jsonEncode(_used));
+  }
+
+  Future<bool> isMacPath(String path) async => p.isWithin((await _rootDir()).path, path);
+
+  /// Makes sure [path] is a real file before a deck loads it: if it is a
+  /// stub, it is fetched from the Mac now. Returns false if it cannot be.
+  Future<bool> ensure(String path) async {
+    await _loadState();
+    if (!_stubs.contains(path)) {
+      if (_used.containsKey(path)) {
+        _used[path] = DateTime.now().millisecondsSinceEpoch;
+      }
+      return true;
+    }
+    try {
+      final root = await _rootDir();
+      final rel = p.split(p.relative(path, from: root.path)).join('/');
+      final f = File(path);
+      final want = await f.length();
+      final part = File('$path.part');
+      DebugLog.add('mac', 'streaming from the Mac: $rel');
+      await _download(rel, part);
+      if (await part.length() != want) {
+        await part.delete();
+        throw 'the file on the Mac has changed';
+      }
+      await part.rename(path);
+      final mt = _mtime[path];
+      if (mt != null) await File(path).setLastModified(DateTime.fromMillisecondsSinceEpoch(mt));
+      _stubs.remove(path);
+      _used[path] = DateTime.now().millisecondsSinceEpoch;
+      await _saveState();
+      unawaited(_trim());
+      return true;
+    } catch (e) {
+      DebugLog.add('mac', 'could not fetch $path from the Mac: $e');
+      status = 'Cannot reach the Mac to play this track. Is the Terminal window still open?';
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<void> _stub(String path) async {
+    final f = File(path);
+    if (!await f.exists()) return;
+    final st = await f.stat();
+    final mt = _mtime[path] ?? st.modified.millisecondsSinceEpoch;
+    final raf = await f.open(mode: FileMode.write);
+    await raf.truncate(st.size); // sparse: same length, no disk used
+    await raf.close();
+    await f.setLastModified(DateTime.fromMillisecondsSinceEpoch(mt));
+    _mtime[path] = mt;
+    _stubs.add(path);
+    _used.remove(path);
+  }
+
+  bool _trimming = false;
+
+  /// Keeps real (fetched) files within your storage limit by turning the
+  /// least recently used ones back into stubs.
+  Future<void> _trim() async {
+    if (_trimming) return;
+    _trimming = true;
+    try {
+      await StorageGuard.load();
+      final root = await _rootDir();
+      final real = <String, int>{};
+      await for (final e in root.list(recursive: true, followLinks: false)) {
+        if (e is File && !_stubs.contains(e.path) && !e.path.endsWith('.part')) {
+          real[e.path] = await e.length();
+        }
+      }
+      var total = real.values.fold<int>(0, (a, b) => a + b);
+      final cap = (StorageGuard.maxGb * 1024 * 1024 * 1024).round();
+      final recent = DateTime.now().millisecondsSinceEpoch - 15 * 60 * 1000;
+      final order = real.keys.toList()..sort((a, b) => (_used[a] ?? 0).compareTo(_used[b] ?? 0));
+      for (final path in order) {
+        if (total <= cap) break;
+        if ((_used[path] ?? 0) > recent) continue; // probably on a deck
+        total -= real[path]!;
+        await _stub(path);
+      }
+      await _saveState();
+    } catch (e) {
+      DebugLog.add('mac', 'trim error: $e');
+    } finally {
+      _trimming = false;
+    }
+  }
+
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
     url = prefs.getString('mac_url') ?? '';
@@ -114,6 +239,7 @@ class MacSync extends ChangeNotifier {
       final root = Directory(p.join(support.path, 'mac'));
       await root.create(recursive: true);
       await StorageGuard.load();
+      await _loadState();
       stoppedFor = '';
       DebugLog.add('mac', 'sync start: ${todo.length} new of ${index.length} tracks');
       for (var i = 0; i < todo.length && !_cancel; i += batchSize) {
@@ -121,11 +247,10 @@ class MacSync extends ChangeNotifier {
         final got = <String>[];
         for (final e in batch) {
           if (_cancel) break;
-          // Your storage limits (Auto DJ settings): a cap on how much these
-          // tracks may use, and free space the phone always keeps.
-          final why = await StorageGuard.blockReason(root.path, (e['s'] as num).toInt(), recycle: false);
-          if (why != null) {
-            stoppedFor = why;
+          // Keep the phone's free space (your Auto DJ setting) untouched.
+          final free = StorageGuard.freeBytes(root.path);
+          if (free != null && free - (e['s'] as num).toInt() < StorageGuard.reserveGb * 1024 * 1024 * 1024) {
+            stoppedFor = 'Phone space is low (${(free / 1073741824).toStringAsFixed(1)} GB free)';
             _cancel = true;
             break;
           }
@@ -138,6 +263,7 @@ class MacSync extends ChangeNotifier {
               await _download(rel, target);
             }
             got.add(target.path);
+            _mtime[target.path] = (await target.stat()).modified.millisecondsSinceEpoch;
             synced.add('$rel|${e['s']}');
           } catch (err) {
             failed++;
@@ -160,6 +286,12 @@ class MacSync extends ChangeNotifier {
         final need = [for (final path in got) if (lib.tracks.any((t) => t.path == path && !t.hasAnalysis)) path];
         if (need.isNotEmpty) await lib.analyzePaths(need);
         await lib.readTags();
+        // Streaming: now that genre and BPM are known, empty the files. They
+        // are fetched from the Mac again when a deck needs them.
+        for (final path in got) {
+          if (lib.tracks.any((t) => t.path == path)) await _stub(path);
+        }
+        await _saveState();
         await prefs.setStringList('mac_synced', synced.toList());
       }
       _set(stoppedFor.isNotEmpty

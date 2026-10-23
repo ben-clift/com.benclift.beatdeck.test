@@ -2,6 +2,7 @@ import 'package:sidedeck/debug/debug_log.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:sidedeck/mac/mac_sync.dart';
 
 import 'package:sidedeck/engine/audio_check.dart';
 import 'package:sidedeck/engine/tags.dart';
@@ -3146,6 +3147,18 @@ class DjController extends ChangeNotifier {
     loadingPath = path;
     notifyListeners();
     await Future<void>.delayed(const Duration(milliseconds: 16));
+
+    // A track that lives on the Mac is streamed in first (it is only an empty
+    // stub on the phone until a deck needs it).
+    if (!await MacSync.instance.ensure(path)) {
+      loadingDeck = null;
+      loadingTitle = null;
+      loadingPath = null;
+      failedPaths.add(path);
+      engineError = 'Cannot reach the Mac. Is the Terminal window still open, on the same Wi-Fi?';
+      notifyListeners();
+      return false;
+    }
 
     // Never put half a track on a deck: decode it through first. Automix
     // deletes a cut-off file and finds another; a hand-picked one is refused.
