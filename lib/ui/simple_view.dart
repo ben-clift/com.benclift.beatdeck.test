@@ -6,6 +6,7 @@ import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sidedeck/automix/genre_family.dart';
 import 'package:sidedeck/debug/debug_log.dart';
@@ -101,6 +102,44 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
   // Which Booth button is selected (sheet open or just pressed), and how long
   // fetches usually take, for the wait estimate shown on the buttons.
   String? _sel;
+  // Controls at the top of the phone (notification shade, lock screen).
+  static const _np = MethodChannel('beatdeck/nowplaying');
+  String _npSig = '';
+  bool _npAsked = false;
+
+  void _npUpdate(DjController dj) {
+    final on = dj.automixOn;
+    final d = dj.deck(dj.automixPlayingDeck.clamp(0, 1));
+    final n = d.loaded ? _cleanNames(d) : (artist: '', title: '');
+    final sig = '$on|${n.title}|${n.artist}|${dj.automixPaused}';
+    if (sig == _npSig) return;
+    _npSig = sig;
+    if (!on) {
+      _np.invokeMethod<void>('hide').catchError((_) {});
+      return;
+    }
+    if (!_npAsked) {
+      _npAsked = true;
+      Permission.notification.request().catchError((_) => PermissionStatus.denied);
+    }
+    _np.invokeMethod<void>('update', {'title': n.title, 'artist': n.artist, 'playing': !dj.automixPaused}).catchError((_) {});
+  }
+
+  Future<dynamic> _npAction(MethodCall c) async {
+    if (c.method != 'action' || !mounted) return null;
+    final dj = widget.dj;
+    switch (c.arguments) {
+      case 'PAUSE':
+        if (!dj.automixPaused) dj.automixPauseToggle();
+      case 'PLAY':
+        if (dj.automixPaused) dj.automixPauseToggle();
+      case 'NEXT':
+        _skip();
+      case 'SWAP':
+        _dislikeNow();
+    }
+    return null;
+  }
   DateTime? _flashUntil;
   Timer? _btnTick;
   DateTime? _busySince;
@@ -168,6 +207,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _np.setMethodCallHandler(_npAction);
     _btnTick = Timer.periodic(const Duration(seconds: 1), (_) {
       final busy = AutoFetch.instance.manualBusy;
       if (busy && _busySince == null) _busySince = DateTime.now();
@@ -1600,6 +1640,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
       listenable: Listenable.merge([dj, AutoFetch.instance, soulseek]),
       builder: (context, _) {
         final on = dj.automixOn;
+        WidgetsBinding.instance.addPostFrameCallback((_) => _npUpdate(dj));
         final viz = on && !_showChooser && _introDone;
         if (dj.spectrumOn != viz) {
           WidgetsBinding.instance.addPostFrameCallback((_) => dj.setSpectrumOn(viz));

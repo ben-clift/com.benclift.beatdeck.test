@@ -15,6 +15,7 @@ import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
     private var usbHotplug: UsbHotplug? = null
+    private var nowPlaying: NowPlaying? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -103,12 +104,15 @@ class MainActivity : FlutterActivity() {
             override fun onListen(arguments: Any?, events: EventChannel.EventSink?) { ShazamBridge.sink = events }
             override fun onCancel(arguments: Any?) { ShazamBridge.sink = null }
         })
+        nowPlaying = NowPlaying(this, messenger)
         val hotplug = UsbHotplug(this)
         usbHotplug = hotplug
         EventChannel(messenger, "sidedeck/usb").setStreamHandler(hotplug)
     }
 
     override fun onDestroy() {
+        nowPlaying?.release()
+        nowPlaying = null
         usbHotplug?.stop()
         usbHotplug = null
         UsbPlayer.stop()
