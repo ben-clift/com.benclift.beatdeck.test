@@ -1384,6 +1384,13 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                     child: Text('Library (${shown.length}${shown.length == all.length ? '' : ' of ${all.length}'})  ·  hold to delete',
                         style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
                   ),
+                  FilterChip(
+                    label: Text('MS ${all.where((t) => AutoFetch.instance.isStyle(t.path)).length}'),
+                    tooltip: 'Only tracks picked by My style',
+                    selected: msOnly,
+                    visualDensity: VisualDensity.compact,
+                    onSelected: (v) => setS(() => msOnly = v),
+                  ),
                   PopupMenuButton<int>(
                     tooltip: 'Order the list',
                     icon: Icon(Ph.tune, color: sortMode == 0 ? null : SideDeckTheme.accentA),
@@ -1451,13 +1458,6 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(children: [
-                  FilterChip(
-                    label: Text('MS ${all.where((t) => AutoFetch.instance.isStyle(t.path)).length}'),
-                    tooltip: 'Only tracks picked by My style',
-                    selected: msOnly,
-                    onSelected: (v) => setS(() => msOnly = v),
-                  ),
-                  const SizedBox(width: 8),
                   Expanded(
                     child: DropdownButton<String>(
                       isExpanded: true,
@@ -1481,7 +1481,46 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                       onChanged: (v) => setS(() => genre = v ?? ''),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 8),
+                  if (bpms.length > 1)
+                    OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          visualDensity: VisualDensity.compact,
+                          side: BorderSide(color: range == null ? const Color(0xFF2E2E33) : SideDeckTheme.accentA)),
+                      onPressed: () async {
+                        var tmp = range ?? RangeValues(lo, hi);
+                        await showDialog<void>(
+                          context: ctx,
+                          builder: (dc) => StatefulBuilder(
+                            builder: (dc, setD) => AlertDialog(
+                              title: Text(tmp.start <= lo && tmp.end >= hi ? 'BPM: any' : 'BPM ${tmp.start.round()} to ${tmp.end.round()}'),
+                              content: RangeSlider(
+                                values: tmp,
+                                min: lo,
+                                max: hi,
+                                onChanged: (v) {
+                                  setD(() => tmp = v);
+                                  setS(() => bpm = (v.start <= lo && v.end >= hi) ? null : v);
+                                },
+                              ),
+                              actions: [
+                                TextButton(
+                                    onPressed: () {
+                                      setS(() => bpm = null);
+                                      Navigator.pop(dc);
+                                    },
+                                    child: const Text('Any BPM')),
+                                FilledButton(onPressed: () => Navigator.pop(dc), child: const Text('Done')),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                      child: Text(range == null ? 'BPM' : '${range.start.round()}-${range.end.round()}',
+                          style: TextStyle(color: range == null ? null : SideDeckTheme.accentA)),
+                    ),
+                  const SizedBox(width: 8),
                   DropdownButton<int>(
                     value: decade,
                     dropdownColor: _panel,
@@ -1495,21 +1534,6 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                   ),
                 ]),
               ),
-              if (bpms.length > 1)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: Row(children: [
-                    Text(range == null ? 'BPM any' : 'BPM ${range.start.round()}-${range.end.round()}', style: const TextStyle(color: _dim)),
-                    Expanded(
-                      child: RangeSlider(
-                        values: range ?? RangeValues(lo, hi),
-                        min: lo,
-                        max: hi,
-                        onChanged: (v) => setS(() => bpm = (v.start <= lo && v.end >= hi) ? null : v),
-                      ),
-                    ),
-                  ]),
-                ),
               const Divider(height: 8),
               Expanded(
                 child: shown.isEmpty
