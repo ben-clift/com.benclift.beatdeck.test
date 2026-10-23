@@ -1057,18 +1057,37 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
           builder: (ctx, setS) {
             String gOf(LibraryTrack t) => t.genre.isNotEmpty ? t.genre : (dj.genreOf?.call(t.path) ?? '');
             final all = lib.tracks.toList();
-            final genres = {for (final t in all) if (gOf(t).isNotEmpty) gOf(t)}.toList()..sort();
+            // One entry per genre, ignoring capital letters (Deep House = Deep house).
+            final names = <String, String>{};
+            for (final t in all) {
+              final g = gOf(t).trim();
+              if (g.isNotEmpty) names.putIfAbsent(g.toLowerCase(), () => g);
+            }
+            final genres = names.keys.toList();
             final bpms = [for (final t in all) if ((t.bpm ?? 0) > 0) t.bpm!];
             final lo = bpms.isEmpty ? 60.0 : bpms.reduce(math.min).floorToDouble();
             final hi = bpms.isEmpty ? 200.0 : math.max(bpms.reduce(math.max).ceilToDouble(), lo + 1);
             final range = bpm == null ? null : RangeValues(bpm!.start.clamp(lo, hi), bpm!.end.clamp(lo, hi));
+            bool passes(LibraryTrack t) =>
+                (q.isEmpty || '${t.artist} ${t.title}'.toLowerCase().contains(q.toLowerCase())) &&
+                (decade == 0 || (t.year >= decade && t.year <= decade + 9)) &&
+                (range == null || ((t.bpm ?? 0) >= range.start && (t.bpm ?? 0) <= range.end));
+            // How many tracks each genre has under the other filters; most first, empty ones A to Z.
+            final counts = <String, int>{for (final g in genres) g: 0};
+            var anyCount = 0;
+            for (final t in all) {
+              if (!passes(t)) continue;
+              anyCount++;
+              final g = gOf(t).trim().toLowerCase();
+              if (g.isNotEmpty) counts[g] = (counts[g] ?? 0) + 1;
+            }
+            genres.sort((a, b) {
+              final c = counts[b]!.compareTo(counts[a]!);
+              return c != 0 ? c : names[a]!.toLowerCase().compareTo(names[b]!.toLowerCase());
+            });
             final shown = [
               for (final t in all)
-                if ((q.isEmpty || '${t.artist} ${t.title}'.toLowerCase().contains(q.toLowerCase())) &&
-                    (genre.isEmpty || gOf(t) == genre) &&
-                    (decade == 0 || (t.year >= decade && t.year <= decade + 9)) &&
-                    (range == null || ((t.bpm ?? 0) >= range.start && (t.bpm ?? 0) <= range.end)))
-                  t,
+                if (passes(t) && (genre.isEmpty || gOf(t).trim().toLowerCase() == genre)) t,
             ]..sort((a, b) => '${a.artist} ${a.title}'.toLowerCase().compareTo('${b.artist} ${b.title}'.toLowerCase()));
             return Column(children: [
               Padding(
@@ -1097,8 +1116,18 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                       dropdownColor: _panel,
                       underline: const SizedBox.shrink(),
                       items: [
-                        const DropdownMenuItem(value: '', child: Text('Any genre')),
-                        for (final g in genres) DropdownMenuItem(value: g, child: Text(g, overflow: TextOverflow.ellipsis)),
+                        DropdownMenuItem(value: '', child: Text('Any genre ($anyCount)')),
+                        for (final g in genres)
+                          DropdownMenuItem(
+                            value: g,
+                            child: Row(children: [
+                              Expanded(child: Text(names[g]!, overflow: TextOverflow.ellipsis)),
+                              Text('${counts[g]}',
+                                  style: TextStyle(
+                                      fontFamily: SideDeckTheme.mono,
+                                      color: counts[g] == 0 ? const Color(0xFF6B6860) : SideDeckTheme.accentB)),
+                            ]),
+                          ),
                       ],
                       onChanged: (v) => setS(() => genre = v ?? ''),
                     ),
