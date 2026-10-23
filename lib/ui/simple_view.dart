@@ -1429,7 +1429,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
             });
             final shown = [
               for (final t in all)
-                if (passes(t) && (genre.isEmpty || gOf(t).trim().toLowerCase() == genre)) t,
+                if (passes(t) && !_pendingDelete.contains(t.path) && (genre.isEmpty || gOf(t).trim().toLowerCase() == genre)) t,
             ]..sort((a, b) {
                 if (sortMode != 0) {
                   // Tracks with no tempo go last.
@@ -1448,7 +1448,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                   const Icon(Ph.libraryMusic),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text('Library (${shown.length}${shown.length == all.length ? '' : ' of ${all.length}'})  ·  hold to delete',
+                    child: Text('Library (${shown.length}${shown.length == all.length ? '' : ' of ${all.length}'})  ·  swipe right to delete, hold to cue next',
                         style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
                   ),
                   FilterChip(
@@ -1618,7 +1618,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                           ].join('  ·  ');
                           final now = playingPath == t.path;
                           final inList = dj.playlistActive && (dj.playlist?.contains(t.path) ?? false);
-                          return ListTile(
+                          final tile = ListTile(
                             dense: true,
                             selected: now,
                             selectedColor: SideDeckTheme.accentA,
@@ -1632,30 +1632,43 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                               final msg = dj.automixPlayTrack(t.path);
                               if (msg != null) _toast(msg);
                             },
-                            // Hold a track to delete it from the phone.
-                            onLongPress: () async {
+                            // Hold a track: cue it up as the next track, then blend it in.
+                            onLongPress: () {
                               HapticFeedback.mediumImpact();
-                              if (Ratings.instance.starsOf(t.path) > 0) {
-                                _toast('That track is starred. Un-star it first to delete it.');
+                              if (!dj.automixOn) {
+                                _toast('Start Auto DJ first.');
                                 return;
                               }
-                              final ok = await showDialog<bool>(
-                                context: ctx,
-                                builder: (dc) => AlertDialog(
-                                  title: const Text('Delete from phone?'),
-                                  content: Text('${t.artist.isEmpty ? '' : '${t.artist} - '}${t.title}\n\n${(dj.deck(0).path == t.path || dj.deck(1).path == t.path) ? 'It is playing: it will be skipped, then deleted from this phone.' : (dj.automixUpcoming.contains(t.path) ? 'It is waiting in the queue: it will leave the queue and be deleted from this phone.' : 'The file is deleted from this phone and the library.')}'),
-                                  actions: [
-                                    TextButton(onPressed: () => Navigator.pop(dc, false), child: const Text('Cancel')),
-                                    FilledButton(onPressed: () => Navigator.pop(dc, true), child: const Text('Delete')),
-                                  ],
-                                ),
-                              );
-                              if (ok == true) {
-                                _deleteNow(t.path);
-                                _toast('Deleted.');
-                                setS(() {});
+                              if (dj.manualMixStart(prefer: t.path)) {
+                                Navigator.pop(ctx);
+                                _toast('Cued up next. Move the blend slider to mix it in.');
+                              } else {
+                                _toast('Wait for the current mix to finish.');
                               }
                             },
+                          );
+                          return Dismissible(
+                            key: ValueKey('lib-${t.path}'),
+                            direction: DismissDirection.startToEnd,
+                            background: Container(
+                              color: const Color(0xFF8E2F2F),
+                              alignment: Alignment.centerLeft,
+                              padding: const EdgeInsets.only(left: 20),
+                              child: const Icon(Icons.delete_outline, color: Colors.white),
+                            ),
+                            confirmDismiss: (_) async {
+                              if (Ratings.instance.starsOf(t.path) > 0) {
+                                _toast('That track is starred. Un-star it first to delete it.');
+                                return false;
+                              }
+                              return true;
+                            },
+                            onDismissed: (_) {
+                              _deleteNow(t.path);
+                              _toast('Deleted.');
+                              setS(() {});
+                            },
+                            child: tile,
                           );
                         },
                       ),
