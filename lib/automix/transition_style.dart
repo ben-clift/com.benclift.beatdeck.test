@@ -104,7 +104,8 @@ TransitionPlan planFor(
   t = t.clamp(0.0, 1.0);
   switch (kind) {
     case TransitionKind.smooth:
-      return (math.pow(math.sin(t * math.pi / 2), 2).toDouble(), math.cos(t * math.pi / 2));
+      // Equal power: the total loudness stays level as the blend moves.
+      return (math.sin(t * math.pi / 2), math.cos(t * math.pi / 2));
     case TransitionKind.quick:
       // Straighter: the new track is heard sooner.
       return (math.sin(t * math.pi / 2), math.cos(t * math.pi / 2));

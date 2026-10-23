@@ -895,7 +895,9 @@ class DjController extends ChangeNotifier {
 
   /// Skip: on the playing deck, mix into the next track now; on the waiting
   /// deck, drop that track and choose another.
-  String? automixSkip(int deckIndex, {String? prefer}) {
+  double? _userBlend;
+  String? automixSkip(int deckIndex, {String? prefer, double? blend}) {
+    if (blend != null) _userBlend = blend;
     if (prefer != null) {
       _userOk.add(prefer);
       _rejected.remove(prefer);
@@ -2277,6 +2279,15 @@ class DjController extends ChangeNotifier {
     final f = _lead;
     final tier = _manualStart ? 2 : (skipping ? 1 : (remaining > f + 45 ? 0 : (remaining > f + 20 ? 1 : 2)));
     var next = _nextUnplayed(tier: tier);
+    // Keep the waiting list steady: once a track is lined up it stays next.
+    if (_upNext != null && !_rejected.contains(_upNext)) {
+      for (var i = _automixIndex + 1; i < _automixQueue.length; i++) {
+        if (_automixQueue[i] == _upNext) {
+          next = i;
+          break;
+        }
+      }
+    }
     // Never silent: with the end near and nothing new yet, replay the track
     // played longest ago (never a deleted one) while the helper keeps looking.
     if (next == null && (remaining <= f + 25 || _manualStart)) next = _pickAnyReady();
@@ -2797,6 +2808,11 @@ class DjController extends ChangeNotifier {
     final left = remainingSeconds(position: outPosition, duration: out.duration, rate: out.rate);
     final cap = left > 5 ? left - 1.0 : math.max(2.0, left - 0.3);
     _fadeLen = math.min(_plan?.seconds ?? automixFadeSeconds, cap).toDouble();
+    if (_userBlend != null) {
+      // You tapped a waiting track: a slow blend of your length, if it fits.
+      _fadeLen = math.min(_userBlend!, cap).toDouble();
+      _userBlend = null;
+    }
     if (_quickNext) {
       _quickNext = false;
       _fadeLen = math.min(_fadeLen, 3.0);

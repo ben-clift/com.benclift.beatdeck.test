@@ -390,7 +390,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
         _toast('Loading it. Then move the blend slider at the bottom.');
       }
     } else if (pick == 'now') {
-      final msg = dj.automixSkip(dj.automixPlayingDeck, prefer: path);
+      final msg = dj.automixSkip(dj.automixPlayingDeck, prefer: path, blend: 30);
       if (msg != null) _toast(msg);
     } else if (pick == 'queue') {
       if (!dj.automixRemove(path)) _toast('That one is being mixed in right now.');
@@ -2577,7 +2577,7 @@ Container(
                     ? InkWell(
                         onLongPress: () => _queueMenu(upcoming[i]),
                         onTap: () {
-                          final msg = dj.automixSkip(dj.automixPlayingDeck, prefer: upcoming[i]);
+                          final msg = dj.automixSkip(dj.automixPlayingDeck, prefer: upcoming[i], blend: 30);
                           if (msg != null) _toast(msg);
                         },
                         child: Row(children: [
