@@ -619,7 +619,8 @@ class AutoFetch extends ChangeNotifier {
 
   int get manualPending => _manual.length;
 
-  void enqueueTracks(List<Suggestion> tracks, LibraryController library) {
+  void enqueueTracks(List<Suggestion> tracks, LibraryController library, {bool style = false}) {
+    if (style) _styleRun = true;
     _manual.addAll(tracks.where((t) => !Dislikes.instance.hasTrack(t.artist, t.title)));
     _lib = library;
     notifyListeners();
@@ -654,6 +655,7 @@ class AutoFetch extends ChangeNotifier {
           );
         } finally {
           _manualRun = false;
+          _styleRun = false;
         }
       }
     } finally {
@@ -780,6 +782,15 @@ class AutoFetch extends ChangeNotifier {
   bool wasFetched(String path) => _fetched.contains(path);
   final Set<String> _requested = {};
   bool isRequested(String path) => _requested.contains(path);
+
+  /// Tracks picked by "My style" (library picks and downloads).
+  final Set<String> _style = {};
+  bool _styleRun = false;
+  bool isStyle(String path) => _style.contains(path);
+  void markStyle(String path) {
+    _style.add(path);
+    notifyListeners();
+  }
   String hintFor(String path) => _genreHint[path] ?? '';
 
 
@@ -1019,7 +1030,10 @@ class AutoFetch extends ChangeNotifier {
       while (!_stop && winner == null) {
         for (final f in [...flights]) {
           if (f.dl.state == DlState.done && f.dl.savedPath != null) {
-            if (_manualRun) _requested.add(f.dl.savedPath!);
+            if (_manualRun) {
+              _requested.add(f.dl.savedPath!);
+              if (_styleRun) _style.add(f.dl.savedPath!);
+            }
             const generic = {'Hardwax', 'RA', 'You like', 'Bandcamp', 'Discogs'};
             if (f.s.reason.isNotEmpty &&
                 !generic.contains(f.s.reason) &&

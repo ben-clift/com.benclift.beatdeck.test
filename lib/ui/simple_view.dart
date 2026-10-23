@@ -191,6 +191,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
       st.lastNote.value = 'Playing from your library: ${local.first.artist.isEmpty ? '' : '${local.first.artist} - '}${local.first.title}';
       DebugLog.add('simple', 'nothing waiting: playing a library track in the style of your starred ones');
       dj.automixAllow(local.first.path);
+      AutoFetch.instance.markStyle(local.first.path);
       if (force) {
         dj.automixPlayTrack(local.first.path);
       } else {
@@ -226,7 +227,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     final pick = found.take(3).toList();
     st.lastNote.value = 'Fetching: ${pick.map((t) => '${t.artist} - ${t.title}').join(', ')}';
     if (force) dj.armPlayNext();
-    AutoFetch.instance.enqueueTracks(found.take(3).toList(), widget.library);
+    AutoFetch.instance.enqueueTracks(pick, widget.library, style: true);
   }
 
   /// Keeps 3 tracks waiting after the one playing, whatever happens: when
@@ -1752,6 +1753,19 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     );
   }
 
+  /// Small label on queue rows picked by My style.
+  Widget _styleTag() => Container(
+        margin: const EdgeInsets.only(top: 3),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+        decoration: BoxDecoration(border: Border.all(color: SideDeckTheme.accentA), borderRadius: BorderRadius.circular(3)),
+        child: const Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(Ph.insights, size: 12, color: SideDeckTheme.accentA),
+          SizedBox(width: 4),
+          Text('MY STYLE',
+              style: TextStyle(fontFamily: SideDeckTheme.label, fontWeight: FontWeight.w700, fontSize: 12, letterSpacing: 1, color: SideDeckTheme.accentA)),
+        ]),
+      );
+
   Widget _queueCard(DjController dj, DeckState d, List<String> upcoming, String status) {
     return
 Container(
@@ -1786,6 +1800,8 @@ Container(
                     maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _green, fontSize: 16, fontWeight: FontWeight.w700)),
               ),
             ]),
+            if (d.path != null && AutoFetch.instance.isStyle(d.path!))
+              Padding(padding: const EdgeInsets.only(left: 32, top: 2), child: _styleTag()),
             const Divider(height: 24, color: Color(0xFF2E2E33)),
             Row(children: [
               const Text('Next up', style: TextStyle(color: _dim)),
@@ -1812,6 +1828,7 @@ Container(
                             Text(_nameOf(upcoming[i]).title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16)),
                             if (_nameOf(upcoming[i]).artist.isNotEmpty)
                               Text(_nameOf(upcoming[i]).artist, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _dim, fontSize: 13)),
+                            if (AutoFetch.instance.isStyle(upcoming[i])) _styleTag(),
                             if (_unknownKind(dj, upcoming[i]))
                               const Text('Genre unknown. Tap to play it', style: TextStyle(color: Color(0xFFFFC83D), fontSize: 12)),
                           ]),
