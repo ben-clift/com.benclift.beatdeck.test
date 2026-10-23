@@ -236,14 +236,20 @@ class SlskSetup {
           );
           if (af.lastFound || !(dj?.automixOn ?? false) || !autoFetchForAutomix) return;
           attempt++;
-          lo = math.max(70, lo - 4);
-          hi = math.min(180, hi + 4);
+          // Genres you picked are never widened: only an automatic pick (no genre
+          // chosen) may borrow a related genre or a wider tempo range.
+          if (!fixedTempo) {
+            lo = math.max(70, lo - 4);
+            hi = math.min(180, hi + 4);
+          }
           String? add;
-          for (final grp in genreGroups) {
-            for (final g in grp.$2) {
-              if (add != null || pool.contains(g.name)) continue;
-              if (g.max < lo || g.min > hi) continue;
-              if (pool.any((p) => genresSimilar(p, g.name))) add = g.name;
+          if (!pin) {
+            for (final grp in genreGroups) {
+              for (final g in grp.$2) {
+                if (add != null || pool.contains(g.name)) continue;
+                if (g.max < lo || g.min > hi) continue;
+                if (pool.any((p) => genresSimilar(p, g.name))) add = g.name;
+              }
             }
           }
           if (add != null) pool.add(add);
