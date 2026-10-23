@@ -1144,6 +1144,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     final dj = widget.dj;
     String q = '', genre = '';
     int decade = 0;
+    bool msOnly = false;
     RangeValues? bpm;
     showModalBottomSheet<void>(
       context: context,
@@ -1168,6 +1169,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
             final hi = bpms.isEmpty ? 200.0 : math.max(bpms.reduce(math.max).ceilToDouble(), lo + 1);
             final range = bpm == null ? null : RangeValues(bpm!.start.clamp(lo, hi), bpm!.end.clamp(lo, hi));
             bool passes(LibraryTrack t) =>
+                (!msOnly || AutoFetch.instance.isStyle(t.path)) &&
                 (q.isEmpty || '${t.artist} ${t.title}'.toLowerCase().contains(q.toLowerCase())) &&
                 (decade == 0 || (t.year >= decade && t.year <= decade + 9)) &&
                 (range == null || ((t.bpm ?? 0) >= range.start && (t.bpm ?? 0) <= range.end));
@@ -1239,6 +1241,13 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(children: [
+                  FilterChip(
+                    label: Text('MS ${all.where((t) => AutoFetch.instance.isStyle(t.path)).length}'),
+                    tooltip: 'Only tracks picked by My style',
+                    selected: msOnly,
+                    onSelected: (v) => setS(() => msOnly = v),
+                  ),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: DropdownButton<String>(
                       isExpanded: true,
@@ -1309,7 +1318,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                           return ListTile(
                             dense: true,
                             leading: Icon(dj.playedRecently(t.path) ? Ph.checkCircleOutline : Ph.playArrow),
-                            title: Text(t.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+                            title: Text((AutoFetch.instance.isStyle(t.path) ? 'MS  ' : '') + t.title, maxLines: 1, overflow: TextOverflow.ellipsis),
                             subtitle: sub.isEmpty ? null : Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis),
                             onTap: () {
                               Navigator.pop(ctx);
@@ -2029,7 +2038,7 @@ Container(
               const Icon(Ph.equalizer, color: _green),
               const SizedBox(width: 10),
               Expanded(
-                child: Text(d.loaded ? d.title : '…',
+                child: Text(d.loaded ? ((d.path != null && AutoFetch.instance.isStyle(d.path!)) ? 'MS  ${d.title}' : d.title) : '…',
                     maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _green, fontSize: 16, fontWeight: FontWeight.w700)),
               ),
             ]),
@@ -2058,7 +2067,7 @@ Container(
                         const SizedBox(width: 10),
                         Expanded(
                           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            Text(_nameOf(upcoming[i]).title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16)),
+                            Text((AutoFetch.instance.isStyle(upcoming[i]) ? 'MS  ' : '') + _nameOf(upcoming[i]).title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16)),
                             if (_nameOf(upcoming[i]).artist.isNotEmpty)
                               Text(_nameOf(upcoming[i]).artist, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _dim, fontSize: 13)),
                             if (AutoFetch.instance.isStyle(upcoming[i])) _styleTag(),

@@ -104,6 +104,7 @@ class AutoFetch extends ChangeNotifier {
         await prefs.setBool('af_hardwax', true);
         await prefs.setString('af_hw_tag', '');
       }
+      _style.addAll(prefs.getStringList('af_style_paths') ?? const []);
       hardwax = prefs.getBool('af_hardwax') ?? hardwax;
       useHardwax = prefs.getBool('af_use_hw') ?? useHardwax;
       useTrax = prefs.getBool('af_use_trax') ?? useTrax;
@@ -788,8 +789,14 @@ class AutoFetch extends ChangeNotifier {
   bool _styleRun = false;
   bool isStyle(String path) => _style.contains(path);
   void markStyle(String path) {
-    _style.add(path);
+    if (_style.add(path)) _saveStyle();
     notifyListeners();
+  }
+
+  Future<void> _saveStyle() async {
+    try {
+      (await SharedPreferences.getInstance()).setStringList('af_style_paths', _style.toList());
+    } catch (_) {}
   }
   String hintFor(String path) => _genreHint[path] ?? '';
 
@@ -1032,7 +1039,7 @@ class AutoFetch extends ChangeNotifier {
           if (f.dl.state == DlState.done && f.dl.savedPath != null) {
             if (_manualRun) {
               _requested.add(f.dl.savedPath!);
-              if (_styleRun) _style.add(f.dl.savedPath!);
+              if (_styleRun) markStyle(f.dl.savedPath!);
             }
             const generic = {'Hardwax', 'RA', 'You like', 'Bandcamp', 'Discogs'};
             if (f.s.reason.isNotEmpty &&
