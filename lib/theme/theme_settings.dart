@@ -142,7 +142,7 @@ class ThemeSettings extends ChangeNotifier {
       case 3:
         return BeveledRectangleBorder(borderRadius: BorderRadius.circular(math.min(12, size / 3)), side: s);
       case 4:
-        return ContinuousRectangleBorder(borderRadius: BorderRadius.circular(math.min(34, size / 2 * 1.15)), side: s);
+        return RoundedSuperellipseBorder(borderRadius: BorderRadius.circular(math.min(26, size / 2)), side: s);
       default:
         return RoundedRectangleBorder(borderRadius: BorderRadius.circular(math.min(4, size / 2)), side: s);
     }
