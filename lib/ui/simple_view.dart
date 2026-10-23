@@ -1635,15 +1635,11 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                             // Hold a track: cue it up as the next track, then blend it in.
                             onLongPress: () {
                               HapticFeedback.mediumImpact();
-                              if (!dj.automixOn) {
-                                _toast('Start Auto DJ first.');
-                                return;
-                              }
                               if (dj.manualMixStart(prefer: t.path)) {
                                 Navigator.pop(ctx);
                                 _toast('Cued up next. Move the blend slider to mix it in.');
                               } else {
-                                _toast('Wait for the current mix to finish.');
+                                _toast(dj.automixOn ? 'Wait for the current mix to finish.' : 'Start Auto DJ first.');
                               }
                             },
                           );
@@ -2381,7 +2377,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                 if (dj.blending) {
                   dj.takeBlend(v); // drag it any time: you take over from where it is
                 } else if (v > 0.02 && !dj.manualPending) {
-                  if (!dj.manualMixStart()) _toast('Start Auto DJ first.');
+                  if (!dj.manualMixStart()) _toast(dj.automixOn ? 'Still finding the next track…' : 'Start Auto DJ first.');
                 }
               },
             ),
@@ -2392,7 +2388,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
               if (dj.blending) {
                 dj.takeBlend(1.0);
               } else if (!dj.manualMixStart()) {
-                _toast('Start Auto DJ first.');
+                _toast(dj.automixOn ? 'Still finding the next track…' : 'Start Auto DJ first.');
               } else {
                 _toast('Bringing the next track in. Move the blend slider.');
               }
