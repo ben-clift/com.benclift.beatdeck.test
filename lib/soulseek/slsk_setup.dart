@@ -177,7 +177,7 @@ class SlskSetup {
     dj?.allowBothKinds = () => AutoFetch.instance.mixKinds;
     dj?.vocalMode = () => AutoFetch.instance.vocal;
     dj?.moodMode = () => AutoFetch.instance.mood;
-    dj?.rejectUnknownKind = () => AppMode.simple.value;
+    dj?.rejectUnknownKind = () => false; // tracks with no genre tag play like any other
     dj?.requestedPath = (path) =>
         AutoFetch.instance.isRequested(path) || (lib.folderPath != null && lib.folderPath!.isNotEmpty && path.startsWith(lib.folderPath!));
     dj?.bandsMode = () => AutoFetch.instance.bandsPicked;

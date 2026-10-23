@@ -19,7 +19,7 @@ namespace analyze_detail {
 // First 60s of the file, mixed to mono. Playback still uses the full
 // file; BPM/key/grid only need a short prefix.
 inline constexpr float kAnalyzeSr = 22050.0f;
-inline constexpr float kAnalyzeWindowSec = 60.0f;
+inline constexpr float kAnalyzeWindowSec = 20.0f; // first 20 s is enough for tempo, key and beat grid
 
 // GetKeyMode chroma max is MIDI 96 (~2.1 kHz). Keep Nyquist above that
 // after the built-in downsample (default 8× at 44.1 kHz).

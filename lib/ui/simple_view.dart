@@ -1244,8 +1244,8 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     if (!widget.dj.automixCut()) _toast('Near the end and no next track is ready yet. Try Skip in a moment.');
   }
 
-  bool _unknownKind(DjController dj, String path) =>
-      genreFamily(dj.genreOf?.call(path) ?? '') == null && !(AutoFetch.instance.isRequested(path));
+  // Tracks with no genre tag now play like any other, so nothing is flagged.
+  bool _unknownKind(DjController dj, String path) => false;
 
   void _skip() {
     final dj = widget.dj;
