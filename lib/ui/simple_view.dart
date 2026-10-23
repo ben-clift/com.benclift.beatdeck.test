@@ -1497,6 +1497,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                       label: Text(dj.playlistActive ? 'Restart ${shown.length}' : 'Play ${shown.length}'),
                       onPressed: () {
                         final msg = dj.automixPlaylist([for (final t in shown) t.path]);
+                        if (msg == null && AutoFetch.instance.running) AutoFetch.instance.stop(); // playlist: no searching
                         if (msg != null) {
                           _toast(msg);
                         } else {
