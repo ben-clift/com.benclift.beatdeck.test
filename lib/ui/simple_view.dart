@@ -1183,7 +1183,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                   const Icon(Ph.libraryMusic),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text('Library (${shown.length}${shown.length == all.length ? '' : ' of ${all.length}'})',
+                    child: Text('Library (${shown.length}${shown.length == all.length ? '' : ' of ${all.length}'})  ·  hold to delete',
                         style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
                   ),
                   Builder(builder: (_) {
@@ -1303,6 +1303,34 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                               Navigator.pop(ctx);
                               final msg = dj.automixPlayTrack(t.path);
                               if (msg != null) _toast(msg);
+                            },
+                            // Hold a track to delete it from the phone.
+                            onLongPress: () async {
+                              HapticFeedback.mediumImpact();
+                              if (Ratings.instance.starsOf(t.path) > 0) {
+                                _toast('That track is starred. Un-star it first to delete it.');
+                                return;
+                              }
+                              if (dj.deck(0).path == t.path || dj.deck(1).path == t.path || dj.automixUpcoming.contains(t.path)) {
+                                _toast('That track is playing or waiting. Delete it once it has played.');
+                                return;
+                              }
+                              final ok = await showDialog<bool>(
+                                context: ctx,
+                                builder: (dc) => AlertDialog(
+                                  title: const Text('Delete from phone?'),
+                                  content: Text('${t.artist.isEmpty ? '' : '${t.artist} - '}${t.title}\n\nThe file is deleted from this phone and the library.'),
+                                  actions: [
+                                    TextButton(onPressed: () => Navigator.pop(dc, false), child: const Text('Cancel')),
+                                    FilledButton(onPressed: () => Navigator.pop(dc, true), child: const Text('Delete')),
+                                  ],
+                                ),
+                              );
+                              if (ok == true) {
+                                final n = await lib.deleteTracks([t]);
+                                _toast(n > 0 ? 'Deleted.' : 'Could not delete it.');
+                                setS(() {});
+                              }
                             },
                           );
                         },
