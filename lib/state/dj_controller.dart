@@ -433,7 +433,8 @@ class DjController extends ChangeNotifier {
       recordSeconds = _engine.recordSeconds();
       dirty = true;
     }
-    if (!ScreenBrightness.lowPower.value && (spectrumOn || effectsOn || stripOn)) {
+    // Dark mode still shows the bars, so the Booth keeps them moving; the other effects stay off.
+    if (spectrumOn || (!ScreenBrightness.lowPower.value && (effectsOn || stripOn))) {
       _updateSpectrum();
       dirty = true;
     }

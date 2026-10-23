@@ -2127,14 +2127,14 @@ class _WinampPainter extends CustomPainter {
         final f = j / (segs - 1);
         final on = j < lit;
         final base = f < 0.55
-            ? const Color(0xFF7BC96F)
-            : (f < 0.82 ? const Color(0xFFE8D840) : const Color(0xFFE5483C));
-        paint.color = on ? base : base.withValues(alpha: 0.10);
+            ? const Color(0xFF5C8A57)
+            : (f < 0.82 ? const Color(0xFFB0A04A) : const Color(0xFFA9503F));
+        paint.color = on ? base : base.withValues(alpha: 0.08);
         final y = size.height - (j + 1) * segH;
         canvas.drawRect(Rect.fromLTWH(x, y + 1, barW, segH - 2), paint);
       }
       final pk = (peaks[i].clamp(0.0, 1.0) * segs).round().clamp(1, segs);
-      paint.color = Colors.white70;
+      paint.color = const Color(0x99C9C3B5);
       canvas.drawRect(Rect.fromLTWH(x, size.height - pk * segH + 1, barW, 2), paint);
     }
   }
