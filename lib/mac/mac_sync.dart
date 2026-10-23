@@ -68,7 +68,21 @@ class MacSync extends ChangeNotifier {
     await prefs.setString('mac_used', jsonEncode(_used));
   }
 
-  Future<bool> isMacPath(String path) async => p.isWithin((await _rootDir()).path, path);
+  String _prefix = '';
+
+  /// Call once at start so the library can tell Mac tracks apart.
+  Future<void> init() async {
+    final r = await _rootDir();
+    _prefix = r.path + Platform.pathSeparator;
+    await _loadState();
+    notifyListeners();
+  }
+
+  /// A track that came from the Mac.
+  bool isMac(String path) => _prefix.isNotEmpty && path.startsWith(_prefix);
+
+  /// A Mac track that is still on the Mac (streams when played).
+  bool isStub(String path) => _stubs.contains(path);
 
   /// Makes sure [path] is a real file before a deck loads it: if it is a
   /// stub, it is fetched from the Mac now. Returns false if it cannot be.

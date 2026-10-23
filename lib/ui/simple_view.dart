@@ -1387,6 +1387,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     String q = '', genre = '';
     int decade = 0;
     bool msOnly = false;
+    bool macOnly = false;
     int sortMode = 0; // 0 A to Z, 1 BPM low to high, 2 BPM high to low
     RangeValues? bpm;
     showModalBottomSheet<void>(
@@ -1413,6 +1414,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
             final range = bpm == null ? null : RangeValues(bpm!.start.clamp(lo, hi), bpm!.end.clamp(lo, hi));
             bool passes(LibraryTrack t) =>
                 (!msOnly || AutoFetch.instance.isStyle(t.path)) &&
+                (!macOnly || MacSync.instance.isMac(t.path)) &&
                 (q.isEmpty || '${t.artist} ${t.title}'.toLowerCase().contains(q.toLowerCase())) &&
                 (decade == 0 || (t.year >= decade && t.year <= decade + 9)) &&
                 (range == null || ((t.bpm ?? 0) >= range.start && (t.bpm ?? 0) <= range.end));
@@ -1450,8 +1452,19 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                   const Icon(Ph.libraryMusic),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text('Library (${shown.length}${shown.length == all.length ? '' : ' of ${all.length}'})  ·  swipe right to delete, hold to cue next',
-                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text('Library (${shown.length}${shown.length == all.length ? '' : ' of ${all.length}'})',
+                          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+                      Text('swipe right to delete · hold to cue next', style: TextStyle(fontSize: 11, color: _dim)),
+                    ]),
+                  ),
+                  FilterChip(
+                    avatar: const Icon(Icons.cloud_outlined, size: 16),
+                    label: Text('MAC ${all.where((t) => MacSync.instance.isMac(t.path)).length}'),
+                    tooltip: 'Only tracks streamed from your Mac',
+                    selected: macOnly,
+                    visualDensity: VisualDensity.compact,
+                    onSelected: (v) => setS(() => macOnly = v),
                   ),
                   FilterChip(
                     label: Text('MS ${all.where((t) => AutoFetch.instance.isStyle(t.path)).length}'),
@@ -1625,7 +1638,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                             selected: now,
                             selectedColor: SideDeckTheme.accentA,
                             selectedTileColor: const Color(0xFF3A2218),
-                            leading: Icon(now ? Ph.equalizer : (dj.playedRecently(t.path) ? Ph.checkCircleOutline : Ph.playArrow)),
+                            leading: Icon(now ? Ph.equalizer : (MacSync.instance.isStub(t.path) ? Icons.cloud_outlined : (dj.playedRecently(t.path) ? Ph.checkCircleOutline : Ph.playArrow))),
                             trailing: inList && !now ? Text('${dj.playlist!.indexOf(t.path) + 1}', style: TextStyle(fontFamily: SideDeckTheme.mono, color: _dim)) : null,
                             title: Text((AutoFetch.instance.isStyle(t.path) ? 'MS  ' : '') + t.title, maxLines: 1, overflow: TextOverflow.ellipsis),
                             subtitle: sub.isEmpty ? null : Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis),

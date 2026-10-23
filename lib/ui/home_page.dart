@@ -17,6 +17,7 @@ import 'package:flutter/services.dart';
 import 'package:sidedeck/engine/music_utils.dart';
 import 'package:sidedeck/engine/usb_output.dart';
 import 'package:sidedeck/state/dj_controller.dart';
+import 'package:sidedeck/mac/mac_sync.dart';
 import 'package:sidedeck/state/library_controller.dart';
 import 'package:sidedeck/state/look_controller.dart';
 import 'package:sidedeck/theme/sidedeck_theme.dart';
@@ -71,6 +72,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     _dj.loadBreakBass();
     _dj.loadAutoFx();
     _dj.loadAutoSync();
+    MacSync.instance.init();
     ShazamWatcher.instance.start(_library);
     ScreenBrightness.load();
     AppMode.load();
