@@ -138,6 +138,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
       _refill();
       _styleFallback();
       _libraryFallback();
+      _autoDedupe();
       _autoClean();
     });
   }
@@ -145,6 +146,27 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
   Future<void> _loadStyle() => StyleSettings.instance.load();
   DateTime _lastStyle = DateTime.fromMillisecondsSinceEpoch(0);
   DateTime _lastLib = DateTime.fromMillisecondsSinceEpoch(0);
+  DateTime _lastDedupe = DateTime.now().subtract(const Duration(minutes: 9, seconds: 30)); // first sweep ~30 s after start
+
+  /// Deletes extra copies of songs already in the library, every 10 minutes.
+  /// Never touches a track that is playing or waiting, or a starred one.
+  Future<void> _autoDedupe() async {
+    if (!mounted || DateTime.now().difference(_lastDedupe).inMinutes < 10) return;
+    _lastDedupe = DateTime.now();
+    final dj = widget.dj;
+    final busy = <String>{
+      for (var i = 0; i < 2; i++)
+        if (dj.deck(i).path != null) dj.deck(i).path!,
+      ...dj.automixUpcoming,
+    };
+    final extras = widget.library
+        .duplicateTracks()
+        .where((t) => !busy.contains(t.path) && Ratings.instance.starsOf(t.path) == 0)
+        .toList();
+    if (extras.isEmpty) return;
+    final n = await widget.library.deleteTracks(extras);
+    DebugLog.add('library', 'auto-deleted $n duplicate track${n == 1 ? '' : 's'} already in the library');
+  }
   DateTime _lastClean = DateTime.now().subtract(const Duration(minutes: 4, seconds: 30)); // first pass ~30 s after start
   bool _cleaning = false;
 
