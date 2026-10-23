@@ -516,6 +516,27 @@ class DjController extends ChangeNotifier {
     return msg;
   }
 
+  /// Takes a waiting track out of the queue (and the playlist). Returns false
+  /// when it cannot be removed: it is the one being mixed in right now.
+  bool automixRemove(String path) {
+    if (_automixFading && _automixNextTarget >= 0 && _automixNextTarget < _automixQueue.length && _automixQueue[_automixNextTarget] == path) {
+      return false;
+    }
+    _plist?.remove(path);
+    for (var i = _automixQueue.length - 1; i > _automixIndex; i--) {
+      if (_automixQueue[i] == path) _automixQueue.removeAt(i);
+    }
+    if (_upNext == path) {
+      _upNext = null;
+      _automixPreloaded = false;
+    }
+    _flowNext = null;
+    if (_forcePath == path) _forcePath = null;
+    _fresh.remove(path);
+    notifyListeners();
+    return true;
+  }
+
   void automixPlaylistStop() {
     if (_plist == null) return;
     _plist = null;

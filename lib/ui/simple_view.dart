@@ -226,6 +226,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     StyleSettings.instance.load();
     _loadIntro();
     _keepAhead = Timer.periodic(const Duration(seconds: 8), (_) {
+      _flushDeletes();
       if (widget.dj.playlistActive) return;
       _styleFallback();
       _refill();
@@ -265,6 +266,67 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
   /// Deletes extra copies of tracks already in the library, from the phone.
   /// Never touches a track that is loaded on a deck or waiting in the queue,
   /// a starred track, or a track with a different length (another mix).
+  // Tracks to delete from the phone as soon as no deck is using them.
+  final Set<String> _pendingDelete = {};
+
+  Future<void> _flushDeletes() async {
+    if (_pendingDelete.isEmpty || !mounted) return;
+    final dj = widget.dj;
+    final inUse = {for (var i = 0; i < 2; i++) if (dj.deck(i).path != null) dj.deck(i).path!};
+    final ready = _pendingDelete.where((p) => !inUse.contains(p)).toList();
+    if (ready.isEmpty) return;
+    final tracks = [for (final t in widget.library.tracks) if (ready.contains(t.path)) t];
+    _pendingDelete.removeAll(ready);
+    if (tracks.isEmpty) return;
+    final n = await widget.library.deleteTracks(tracks);
+    DebugLog.add('library', 'deleted $n track${n == 1 ? '' : 's'} from the phone on request');
+    if (mounted) setState(() {});
+  }
+
+  /// Delete a track even if it is playing or waiting: a playing one is skipped
+  /// first and deleted once it has faded out; a waiting one leaves the queue.
+  void _deleteNow(String path) {
+    final dj = widget.dj;
+    Dislikes.instance.add(path);
+    dj.automixRemove(path);
+    _pendingDelete.add(path);
+    final playingDeck = dj.automixPlayingDeck.clamp(0, 1);
+    if (dj.automixOn && dj.deck(playingDeck).path == path) {
+      final msg = dj.automixSkip(playingDeck);
+      if (msg != null) _toast(msg);
+    }
+    _flushDeletes();
+  }
+
+  /// Hold a row in the Booth queue: take it out of the queue, or delete it.
+  Future<void> _queueMenu(String path, {bool playing = false}) async {
+    final nm = _nameOf(path);
+    final starred = Ratings.instance.starsOf(path) > 0;
+    final pick = await showDialog<String>(
+      context: context,
+      builder: (dc) => SimpleDialog(
+        title: Text(nm.title, maxLines: 2, overflow: TextOverflow.ellipsis),
+        children: [
+          if (!playing) SimpleDialogOption(onPressed: () => Navigator.pop(dc, 'queue'), child: const Text('Remove from the queue')),
+          if (playing) SimpleDialogOption(onPressed: () => Navigator.pop(dc, 'skip'), child: const Text('Skip it (keep the file)')),
+          if (!starred) SimpleDialogOption(onPressed: () => Navigator.pop(dc, 'delete'), child: Text(playing ? 'Skip it and delete from the phone' : 'Delete from the phone')),
+          if (starred) const Padding(padding: EdgeInsets.fromLTRB(24, 8, 24, 8), child: Text('Starred, so it cannot be deleted. Un-star it first.', style: TextStyle(color: _dim))),
+        ],
+      ),
+    );
+    if (!mounted || pick == null) return;
+    final dj = widget.dj;
+    if (pick == 'queue') {
+      if (!dj.automixRemove(path)) _toast('That one is being mixed in right now.');
+    } else if (pick == 'skip') {
+      final msg = dj.automixSkip(dj.automixPlayingDeck);
+      if (msg != null) _toast(msg);
+    } else if (pick == 'delete') {
+      _deleteNow(path);
+      _toast('Deleted.');
+    }
+  }
+
   Future<void> _autoClean() async {
     if (!mounted || _cleaning || DateTime.now().difference(_lastClean).inMinutes < 5) return;
     _cleaning = true;
@@ -1465,15 +1527,11 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                                 _toast('That track is starred. Un-star it first to delete it.');
                                 return;
                               }
-                              if (dj.deck(0).path == t.path || dj.deck(1).path == t.path || dj.automixUpcoming.contains(t.path)) {
-                                _toast('That track is playing or waiting. Delete it once it has played.');
-                                return;
-                              }
                               final ok = await showDialog<bool>(
                                 context: ctx,
                                 builder: (dc) => AlertDialog(
                                   title: const Text('Delete from phone?'),
-                                  content: Text('${t.artist.isEmpty ? '' : '${t.artist} - '}${t.title}\n\nThe file is deleted from this phone and the library.'),
+                                  content: Text('${t.artist.isEmpty ? '' : '${t.artist} - '}${t.title}\n\n${(dj.deck(0).path == t.path || dj.deck(1).path == t.path) ? 'It is playing: it will be skipped, then deleted from this phone.' : (dj.automixUpcoming.contains(t.path) ? 'It is waiting in the queue: it will leave the queue and be deleted from this phone.' : 'The file is deleted from this phone and the library.')}'),
                                   actions: [
                                     TextButton(onPressed: () => Navigator.pop(dc, false), child: const Text('Cancel')),
                                     FilledButton(onPressed: () => Navigator.pop(dc, true), child: const Text('Delete')),
@@ -1481,8 +1539,8 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                                 ),
                               );
                               if (ok == true) {
-                                final n = await lib.deleteTracks([t]);
-                                _toast(n > 0 ? 'Deleted.' : 'Could not delete it.');
+                                _deleteNow(t.path);
+                                _toast('Deleted.');
                                 setS(() {});
                               }
                             },
@@ -2176,14 +2234,17 @@ Container(
               ),
             ]),
             const SizedBox(height: 10),
-            Row(children: [
-              const Icon(Ph.equalizer, color: _green),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(d.loaded ? ((d.path != null && AutoFetch.instance.isStyle(d.path!)) ? 'MS  ${d.title}' : d.title) : '…',
-                    maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _green, fontSize: 16, fontWeight: FontWeight.w700)),
-              ),
-            ]),
+            InkWell(
+              onLongPress: d.path == null ? null : () => _queueMenu(d.path!, playing: true),
+              child: Row(children: [
+                const Icon(Ph.equalizer, color: _green),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(d.loaded ? ((d.path != null && AutoFetch.instance.isStyle(d.path!)) ? 'MS  ${d.title}' : d.title) : '…',
+                      maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _green, fontSize: 16, fontWeight: FontWeight.w700)),
+                ),
+              ]),
+            ),
             if (d.path != null && AutoFetch.instance.isStyle(d.path!))
               Padding(padding: const EdgeInsets.only(left: 32, top: 2), child: _styleTag()),
             const Divider(height: 24, color: Color(0xFF2E2E33)),
@@ -2199,6 +2260,7 @@ Container(
                 padding: const EdgeInsets.symmetric(vertical: 6),
                 child: i < upcoming.length
                     ? InkWell(
+                        onLongPress: () => _queueMenu(upcoming[i]),
                         onTap: () {
                           final msg = dj.automixSkip(dj.automixPlayingDeck, prefer: upcoming[i]);
                           if (msg != null) _toast(msg);
