@@ -12,7 +12,26 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 AUDIO = {'.mp3', '.flac', '.wav', '.aiff', '.aif', '.m4a', '.aac', '.ogg', '.opus'}
 PORT = 8765
-PIN = '%04d' % random.randint(0, 9999)
+def _pin():
+    # The same code every time, so the phone only needs it once.
+    path = os.path.expanduser('~/.beatdeck-share-pin')
+    try:
+        with open(path) as fh:
+            v = fh.read().strip()
+        if len(v) == 4 and v.isdigit():
+            return v
+    except OSError:
+        pass
+    v = '%04d' % random.randint(0, 9999)
+    try:
+        with open(path, 'w') as fh:
+            fh.write(v)
+    except OSError:
+        pass
+    return v
+
+
+PIN = _pin()
 ROOTS = {}  # label -> absolute folder
 
 
