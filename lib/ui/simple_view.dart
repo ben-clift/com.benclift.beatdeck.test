@@ -1835,7 +1835,7 @@ Container(
               filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
               child: Container(
                 color: const Color(0xCC0B0B10),
-                child: ListView(controller: sc, padding: const EdgeInsets.fromLTRB(16, 8, 16, 16), children: [
+                child: ListView(controller: sc, padding: const EdgeInsets.fromLTRB(16, 8, 16, 84), children: [
                   Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)))),
                   const SizedBox(height: 12),
                   title,
@@ -1855,8 +1855,54 @@ Container(
             ),
           ),
         ),
+        Positioned(left: 0, right: 0, bottom: 0, child: _pitchBar(dj)),
       ]);
     });
+  }
+
+  /// Pitch / BPM fader pinned to the bottom of the screen.
+  Widget _pitchBar(DjController dj) {
+    final di = dj.automixPlayingDeck.clamp(0, 1);
+    final d = dj.deck(di);
+    const range = 8.0;
+    final pct = ((d.rate - 1.0) * 100.0).clamp(-range, range).toDouble();
+    final bpm = d.bpm > 1 ? (d.bpm * d.rate).toStringAsFixed(1) : '--';
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 4, 6, 4),
+      decoration: const BoxDecoration(
+        color: Color(0xFF17171A),
+        border: Border(top: BorderSide(color: Color(0xFF2E2E33))),
+      ),
+      child: Row(children: [
+        SizedBox(
+          width: 74,
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('BPM', style: TextStyle(fontFamily: SideDeckTheme.label, fontSize: 12, letterSpacing: 1.4, color: _dim)),
+            Text(bpm, style: const TextStyle(fontFamily: SideDeckTheme.mono, fontSize: 18, fontWeight: FontWeight.w700)),
+          ]),
+        ),
+        Expanded(
+          child: Slider(
+            min: -range,
+            max: range,
+            divisions: 160,
+            value: pct,
+            onChanged: d.bpm > 1 ? (v) => dj.setRate(di, 1.0 + v / 100.0) : null,
+          ),
+        ),
+        SizedBox(
+          width: 58,
+          child: Text('${pct > 0 ? '+' : ''}${pct.toStringAsFixed(1)}%',
+              textAlign: TextAlign.right,
+              style: const TextStyle(fontFamily: SideDeckTheme.mono, fontSize: 13, color: _dim)),
+        ),
+        IconButton(
+          tooltip: 'Reset pitch',
+          icon: const Icon(Ph.restartAlt, size: 20),
+          onPressed: d.bpm > 1 ? () => dj.setRate(di, 1.0) : null,
+        ),
+      ]),
+    );
   }
 
   Widget _chip(String t) => Container(
