@@ -2338,6 +2338,35 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
           ),
         ]),
         Row(children: [
+          lab('BLEND', dj.manualMixing ? '${(dj.manualT * 100).round()}%' : (dj.manualPending ? 'starting…' : 'manual')),
+          Expanded(
+            child: Slider(
+              min: 0,
+              max: 1,
+              value: dj.manualMixing ? dj.manualT.clamp(0.0, 1.0) : 0.0,
+              onChanged: (v) {
+                if (dj.manualMixing) {
+                  dj.setManualT(v);
+                } else if (v > 0.02 && !dj.manualPending) {
+                  if (!dj.manualMixStart()) _toast('Start Auto DJ first.');
+                }
+              },
+            ),
+          ),
+          SizedBox(
+            width: 48,
+            child: _orb(Ph.skipNext, () {
+              if (dj.manualMixing) {
+                dj.setManualT(1.0);
+              } else if (!dj.manualMixStart()) {
+                _toast('Start Auto DJ first.');
+              } else {
+                _toast('Bringing the next track in. Move the blend slider.');
+              }
+            }, tip: 'Play next track, then blend by hand', size: 36, sel: dj.manualMixing || dj.manualPending),
+          ),
+        ]),
+        Row(children: [
           lab('VOLUME', '${(dj.master * 100).round()}%'),
           Expanded(
             child: Slider(min: 0, max: 1, value: dj.master.clamp(0.0, 1.0), onChanged: dj.setMaster),

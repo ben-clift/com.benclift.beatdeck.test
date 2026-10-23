@@ -965,6 +965,31 @@ class DjController extends ChangeNotifier {
 
   bool _forceAnyTempo = false;
   bool _quickNext = false;
+
+  // ---- Manual blend: you move the crossfader, the EQ follows ---------------
+  bool _manualStart = false;
+  bool _manualMix = false;
+  double _manualT = 0;
+  DateTime _manualTouch = DateTime.now();
+  DateTime _manualAsked = DateTime.now();
+
+  /// True while a manual blend is waiting to begin or in progress.
+  bool get manualPending => _manualStart;
+  bool get manualMixing => _manualMix && _automixFading;
+  double get manualT => _manualT;
+
+  /// Bring the next track in now and let the slider drive the blend.
+  bool manualMixStart() {
+    if (!automixOn || _automixDeck < 0 || _automixFading || _manualStart) return false;
+    _manualStart = true;
+    _manualAsked = DateTime.now();
+    return true;
+  }
+
+  void setManualT(double v) {
+    _manualT = v.clamp(0.0, 1.0).toDouble();
+    _manualTouch = DateTime.now();
+  }
   bool _pendingSkip = false;
   String? _pendingPrefer;
 
@@ -2083,7 +2108,8 @@ class DjController extends ChangeNotifier {
       _loadNext(other, _automixQueue[next], tier);
       return false;
     }
-    final mixNow = skipping || (_mixNow && _forcePath != null && _forcePath == _automixQueue[next]);
+    if (_manualStart && DateTime.now().difference(_manualAsked).inSeconds > 40) _manualStart = false;
+    final mixNow = skipping || _manualStart || (_mixNow && _forcePath != null && _forcePath == _automixQueue[next]);
     final early = !mixNow && remaining > _lead + 15 && _endEarly(cur, d);
     // Drop the new track in during a breakdown of the playing one: wait for
     // the break, start on a bar line inside it, and finish before it ends.
@@ -2173,6 +2199,14 @@ class DjController extends ChangeNotifier {
         final phrase = bar * 8;
         final into = (_engine.position(cur) - d.beatOffset) % phrase;
         if (into > 0.07) return false;
+      }
+      if (_manualStart) {
+        _manualStart = false;
+        plan = const TransitionPlan(TransitionKind.smooth, 30.0);
+        _manualMix = true;
+        _manualT = 0;
+        _manualTouch = DateTime.now();
+        DebugLog.add('automix', 'manual blend: crossfader drives the mix, EQ follows');
       }
       _plan = plan;
       _mixNow = false;
@@ -2679,6 +2713,8 @@ class DjController extends ChangeNotifier {
   /// A skip during a mix: undo the mix so far and let it start again from
   /// the new position (the next track stays loaded).
   void _abortFade(int cur, int other) {
+    _manualMix = false;
+    _manualT = 0;
     _mixqReport(cur, other, finished: false);
     _engine.play(other, false);
     deck(other).playing = false;
@@ -2838,8 +2874,14 @@ class DjController extends ChangeNotifier {
   void _automixAdvanceFade() {
     final cur = _automixDeck;
     final other = 1 - cur;
-    final elapsed =
-        DateTime.now().difference(_automixFadeStart).inMilliseconds / 1000.0;
+    if (_manualMix && DateTime.now().difference(_manualTouch).inSeconds > 25) {
+      // Left alone: carry on by itself from where the slider was.
+      _automixFadeStart = DateTime.now().subtract(Duration(milliseconds: (_manualT * _fadeLen * 1000).round()));
+      _manualMix = false;
+    }
+    final elapsed = _manualMix
+        ? _manualT * _fadeLen
+        : DateTime.now().difference(_automixFadeStart).inMilliseconds / 1000.0;
     // The on-screen crossfader moves in a straight line; the sound uses the
     // two channel faders on a smooth curve: the new track rises gently from
     // silence (sin squared) while the old one falls away (cosine).
@@ -2862,6 +2904,8 @@ class DjController extends ChangeNotifier {
       _fixMixPhase(cur, other);
     }
     if (elapsed >= _fadeLen) {
+      _manualMix = false;
+      _manualT = 0;
       _mixqReport(cur, other, finished: true);
       _engine.play(cur, false);
       deck(cur).playing = false;
