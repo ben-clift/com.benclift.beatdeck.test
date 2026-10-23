@@ -183,8 +183,8 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     StyleSettings.instance.load();
     _loadIntro();
     _keepAhead = Timer.periodic(const Duration(seconds: 8), (_) {
-      _refill();
       _styleFallback();
+      _refill();
       _libraryFallback();
       _autoDedupe();
       _autoClean();
@@ -339,24 +339,31 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     final dj = widget.dj;
     final st = StyleSettings.instance;
     final stars = st.chosen();
-    if (!mounted || !dj.automixOn || stars.isEmpty) return;
+    if (!mounted || !dj.automixOn) return;
+    if (stars.isEmpty) {
+      if (force) {
+        st.lastNote.value = 'Star some tracks first. My style copies their sound.';
+        _toast(st.lastNote.value);
+      }
+      return;
+    }
     if (!force && st.mode == 0) return; // off
     final d = dj.deck(dj.automixPlayingDeck.clamp(0, 1));
     if (!force) {
-      if (st.mode == 1) {
-        // only when nothing else is waiting and the end is near
-        if (dj.automixUpcoming.isNotEmpty) return;
-        if (d.duration <= 0 || d.duration - d.position > 120) return;
-        if (DateTime.now().difference(_lastStyle).inSeconds < 40) return;
-      } else {
-        // mixed in regularly: at most one every few minutes
-        if (dj.automixUpcoming.length >= _ahead) return;
-        if (DateTime.now().difference(_lastStyle).inMinutes < st.everyMin) return;
-      }
+      // A My style track is already playing or waiting: one at a time.
+      final af = AutoFetch.instance;
+      if (af.manualPending > 0 || af.isStyleRun) return;
+      if (af.isStyle(d.path ?? '') || dj.automixUpcoming.any(af.isStyle)) return;
+      // Needs an open slot in the queue (the queue is normally kept full, so
+      // waiting for it to be empty meant My style never ran).
+      if (dj.automixUpcoming.length >= _ahead) return;
+      final gap = st.mode == 1 ? 3 : st.everyMin;
+      if (DateTime.now().difference(_lastStyle).inMinutes < gap) return;
     }
     _lastStyle = DateTime.now();
     final genres = {for (final t in stars) if (t.genre.isNotEmpty) t.genre.toLowerCase()};
     final artists = {for (final t in stars) t.artist.toLowerCase()};
+    final useGenre = st.matchGenre && genres.isNotEmpty;
     final bpms = [for (final t in stars) if (t.bpm > 0) t.bpm]..sort();
     final mid = st.bpmFrom > 0 ? (st.bpmFrom + st.bpmTo) ~/ 2 : (bpms.isEmpty ? 0 : bpms[bpms.length ~/ 2]);
     final local = <LibraryTrack>[
@@ -365,7 +372,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
             !((dj.vocalMode?.call() ?? 0) != 0 &&
                 vocalClash(t.path.split(RegExp(r'[\\/]')).last, dj.vocalMode!.call())) &&
             File(t.path).existsSync() &&
-            (!st.matchGenre ||
+            (!useGenre ||
                 genres.contains((t.genre.isNotEmpty ? t.genre : (dj.genreOf?.call(t.path) ?? '')).toLowerCase()) ||
                 artists.contains(t.artist.toLowerCase())) &&
             (st.bpmFrom > 0
@@ -391,7 +398,15 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
       }
       return;
     }
-    if (!st.download || !soulseek.online || AutoFetch.instance.running) return;
+    if (!st.download || !soulseek.online) {
+      DebugLog.add('simple', 'my style: nothing in library fits and downloads are ${!st.download ? 'off' : 'offline (Soulseek not connected)'}');
+      if (force) {
+        st.lastNote.value = !st.download ? 'Nothing in your library fits. Turn on downloads in My style.' : 'Soulseek is not connected yet, so I cannot fetch new music.';
+        _toast(st.lastNote.value);
+      }
+      return;
+    }
+    if (AutoFetch.instance.running && !force) return;
     final rnd = math.Random();
     final seed = stars[rnd.nextInt(stars.length)];
     DebugLog.add('simple', 'looking for artists like ${seed.artist} (adventure ${st.adventure})');
@@ -414,6 +429,9 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     found = found.where((t) => !starKeys.contains('${t.artist}|${t.title}'.toLowerCase())).toList();
     if (found.isEmpty || !mounted) {
       st.lastNote.value = 'Could not find anything new like ${seed.artist}. Will try again.';
+      DebugLog.add('simple', 'my style: no suggestions for ${seed.artist}');
+      if (force) _toast(st.lastNote.value);
+      _lastStyle = DateTime.now().subtract(const Duration(minutes: 2));
       return;
     }
     final pick = found.take(3).toList();
@@ -2749,7 +2767,7 @@ class _StyleBoxState extends State<_StyleBox> {
           Text(
               n == 0
                   ? 'You have no starred tracks yet. Star a few and come back.'
-                  : 'Using $n starred track${n == 1 ? '' : 's'} · ${st.mode == 0 ? 'Off' : (st.mode == 1 ? 'Only when nothing else is waiting' : 'Mixed in about every ${st.everyMin} min')}',
+                  : 'Using $n starred track${n == 1 ? '' : 's'} · ${st.mode == 0 ? 'Off' : (st.mode == 1 ? 'About every 3 min, when a queue slot is free' : 'Mixed in about every ${st.everyMin} min')}',
               style: const TextStyle(color: SideDeckTheme.accentB, fontWeight: FontWeight.w600)),
           ValueListenableBuilder<String>(
             valueListenable: st.lastNote,
@@ -2827,7 +2845,7 @@ class _StyleBoxState extends State<_StyleBox> {
       const SizedBox(height: 8),
       const Text('When to use it', style: TextStyle(fontWeight: FontWeight.w700)),
       Wrap(spacing: 8, children: [
-        for (final e in const [(0, 'Off'), (1, 'When nothing else is waiting'), (2, 'Mixed in regularly')])
+        for (final e in const [(0, 'Off'), (1, 'Every few minutes (about 3)'), (2, 'Mixed in regularly')])
           ChoiceChip(label: Text(e.$2), selected: st.mode == e.$1, onSelected: (_) => _chg(() => st.mode = e.$1)),
       ]),
       if (st.mode == 2) ...[

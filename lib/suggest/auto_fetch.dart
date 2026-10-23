@@ -622,7 +622,12 @@ class AutoFetch extends ChangeNotifier {
   bool get manualBusy => _manual.isNotEmpty || _manualRun;
 
   void enqueueTracks(List<Suggestion> tracks, LibraryController library, {bool style = false}) {
-    if (style) _styleRun = true;
+    if (style) {
+      _styleRun = true;
+      for (final t in tracks) {
+        _styleKeys.add('${t.artist}|${t.title}'.toLowerCase());
+      }
+    }
     _manual.addAll(tracks.where((t) => !Dislikes.instance.hasTrack(t.artist, t.title)));
     _lib = library;
     notifyListeners();
@@ -788,8 +793,10 @@ class AutoFetch extends ChangeNotifier {
   /// Tracks picked by "My style" (library picks and downloads).
   final Set<String> _style = {};
   bool _styleRun = false;
+  final Set<String> _styleKeys = {};
   bool get isStyleRun => _styleRun;
-  bool isStyle(String path) => _style.contains(path);
+  bool isStyle(String path) => path.isNotEmpty && (_style.contains(path) || _style.any((p) => _base(p) == _base(path)));
+  static String _base(String p) => p.split(RegExp(r'[\\/]')).last.toLowerCase();
   void markStyle(String path) {
     if (_style.add(path)) _saveStyle();
     notifyListeners();
@@ -1041,7 +1048,7 @@ class AutoFetch extends ChangeNotifier {
           if (f.dl.state == DlState.done && f.dl.savedPath != null) {
             if (_manualRun) {
               _requested.add(f.dl.savedPath!);
-              if (_styleRun) markStyle(f.dl.savedPath!);
+              if (_styleRun || _styleKeys.contains('${f.s.artist}|${f.s.title}'.toLowerCase())) markStyle(f.dl.savedPath!);
             }
             const generic = {'Hardwax', 'RA', 'You like', 'Bandcamp', 'Discogs'};
             if (f.s.reason.isNotEmpty &&
