@@ -977,6 +977,8 @@ class DjController extends ChangeNotifier {
 
   // ---- Manual blend: you move the crossfader, the EQ follows ---------------
   bool _manualStart = false;
+  bool _deferManual = false;
+  String? _deferPrefer;
   bool _manualMix = false;
   double _manualT = 0;
   DateTime _manualTouch = DateTime.now();
@@ -1001,7 +1003,13 @@ class DjController extends ChangeNotifier {
 
   /// Bring the next track in now and let the slider drive the blend.
   bool manualMixStart({String? prefer}) {
-    if (!automixOn || _automixDeck < 0 || _automixFading || _manualStart) return false;
+    if (!automixOn || _automixDeck < 0) return false;
+    if (_automixFading) {
+      // A mix is running: cue this one and start its hand blend as soon as that mix ends.
+      _deferManual = true;
+      _deferPrefer = prefer;
+      return true;
+    }
     if (prefer != null && File(prefer).existsSync()) {
       // The track you chose goes on the other deck now, then the slider blends it in.
       if (_upNext != prefer) {
@@ -2192,6 +2200,10 @@ class DjController extends ChangeNotifier {
   }
 
   bool _automixTick() {
+    if (_deferManual && !_automixFading) {
+      _deferManual = false;
+      manualMixStart(prefer: _deferPrefer);
+    }
     if (_manualStart && DateTime.now().difference(_manualAsked).inSeconds > 40) {
       _manualStart = false; // nothing was ready in time: stop waiting
       notifyListeners();
