@@ -74,7 +74,7 @@ jobs:
           fi
           exit 0
 
-      - name: Build APK (profile: no debug overflow banners) (arm64 phones)
+      - name: Build profile APK (arm64 phones)
         run: |
           set +e
           flutter build apk --profile --target-platform=android-arm64 --build-name=1.2.${{ github.run_number }} --build-number=${{ github.run_number }} --dart-define=BUILD_EPOCH=$(date +%s) 2>&1 | tee build.txt
