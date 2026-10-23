@@ -1318,6 +1318,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     String q = '', genre = '';
     int decade = 0;
     bool msOnly = false;
+    int sortMode = 0; // 0 A to Z, 1 BPM low to high, 2 BPM high to low
     RangeValues? bpm;
     showModalBottomSheet<void>(
       context: context,
@@ -1362,7 +1363,16 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
             final shown = [
               for (final t in all)
                 if (passes(t) && (genre.isEmpty || gOf(t).trim().toLowerCase() == genre)) t,
-            ]..sort((a, b) => '${a.artist} ${a.title}'.toLowerCase().compareTo('${b.artist} ${b.title}'.toLowerCase()));
+            ]..sort((a, b) {
+                if (sortMode != 0) {
+                  // Tracks with no tempo go last.
+                  final ab = (a.bpm ?? 0) > 0 ? a.bpm! : (sortMode == 1 ? 9999.0 : -1.0);
+                  final bb = (b.bpm ?? 0) > 0 ? b.bpm! : (sortMode == 1 ? 9999.0 : -1.0);
+                  final c = sortMode == 1 ? ab.compareTo(bb) : bb.compareTo(ab);
+                  if (c != 0) return c;
+                }
+                return '${a.artist} ${a.title}'.toLowerCase().compareTo('${b.artist} ${b.title}'.toLowerCase());
+              });
             final playingPath = dj.deck(dj.automixPlayingDeck.clamp(0, 1)).path;
             return ListenableBuilder(listenable: dj, builder: (_, __) => Column(children: [
               Padding(
@@ -1373,6 +1383,17 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                   Expanded(
                     child: Text('Library (${shown.length}${shown.length == all.length ? '' : ' of ${all.length}'})  ·  hold to delete',
                         style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+                  ),
+                  PopupMenuButton<int>(
+                    tooltip: 'Order the list',
+                    icon: Icon(Ph.tune, color: sortMode == 0 ? null : SideDeckTheme.accentA),
+                    initialValue: sortMode,
+                    onSelected: (v) => setS(() => sortMode = v),
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(value: 0, child: Text('A to Z')),
+                      PopupMenuItem(value: 1, child: Text('BPM, slowest first')),
+                      PopupMenuItem(value: 2, child: Text('BPM, fastest first')),
+                    ],
                   ),
                   if (shown.isNotEmpty)
                     FilledButton.icon(
