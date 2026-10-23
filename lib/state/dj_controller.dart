@@ -1069,7 +1069,16 @@ class DjController extends ChangeNotifier {
 
   /// Mix timing while automix runs: [fade] = seconds the blend lasts (starts
   /// that long before the end), [startOffset] = seconds into the next track.
-  void setMixTiming({required double fade, required double startOffset, required double earlyAfter}) {
+  /// How long the blend itself lasts, set by the user; 0 = automatic (the
+  /// "mix out" length decides).
+  double automixBlendSeconds = 0;
+
+  /// Seconds before the end that a mix must begin: the longer of the mix-out
+  /// setting and a chosen blend length (it has to finish by the end).
+  double get _lead => automixBlendSeconds > 0 ? math.max(automixFadeSeconds, automixBlendSeconds) : automixFadeSeconds;
+
+  void setMixTiming({required double fade, required double startOffset, required double earlyAfter, double blend = 0}) {
+    automixBlendSeconds = blend.clamp(0.0, 120.0).toDouble();
     automixFadeSeconds = fade.clamp(4.0, 90.0).toDouble();
     _baseFade = automixFadeSeconds;
     automixStartOffset = startOffset.clamp(0.0, 90.0).toDouble();
@@ -2041,7 +2050,7 @@ class DjController extends ChangeNotifier {
     if (!skipping) _skipAt = null;
     // Relative to the mix length, so a long blend still has a track ready
     // before it must start (fixed 45/20 s left too little time for it).
-    final f = automixFadeSeconds;
+    final f = _lead;
     final tier = skipping ? 1 : (remaining > f + 45 ? 0 : (remaining > f + 20 ? 1 : 2));
     var next = _nextUnplayed(tier: tier);
     // Never silent: with the end near and nothing new yet, replay the track
@@ -2075,8 +2084,8 @@ class DjController extends ChangeNotifier {
       return false;
     }
     final mixNow = skipping || (_mixNow && _forcePath != null && _forcePath == _automixQueue[next]);
-    final early = !mixNow && remaining > automixFadeSeconds + 15 && _endEarly(cur, d);
-    if (mixNow || early || shouldStartFade(remaining: remaining, fadeSeconds: automixFadeSeconds)) {
+    final early = !mixNow && remaining > _lead + 15 && _endEarly(cur, d);
+    if (mixNow || early || shouldStartFade(remaining: remaining, fadeSeconds: _lead)) {
       var breakLeft = 0.0;
       // Tempos as heard: the outgoing speed, and the incoming one after the
       // 8 % stretch limit, so a gap that cannot be closed picks a cut or echo
@@ -2100,7 +2109,7 @@ class DjController extends ChangeNotifier {
         }
       }
       var plan = planFor(automixStyle,
-          outBpm: heardOut, inBpm: heardIn, baseSeconds: skipping ? 8.0 : automixFadeSeconds, breakSeconds: breakLeft);
+          outBpm: heardOut, inBpm: heardIn, baseSeconds: skipping ? 8.0 : (automixBlendSeconds > 0 ? automixBlendSeconds : automixFadeSeconds), breakSeconds: breakLeft);
       // Next / skip: always a real blend, started right now. A bar-line cut, a
       // breakdown swap or a long filter sweep would wait or sound like a restart.
       if (skipping && plan.kind != TransitionKind.smooth && plan.kind != TransitionKind.quick) {
@@ -2479,6 +2488,7 @@ class DjController extends ChangeNotifier {
     // overlapping the beats would clash. Play the new track at its own speed
     // and do a short clean hand-over instead of a long blend.
     var rr = (out.bpm > 1 && inc.bpm > 1) ? out.bpm * out.rate / inc.bpm : 1.0;
+    final rr0 = rr;
     if (rr > 1.85 && rr < 2.15) rr /= 2;
     if (rr > 0.46 && rr < 0.54) rr *= 2;
     final tempoClash = rr < 0.92 || rr > 1.08;
@@ -2539,6 +2549,33 @@ class DjController extends ChangeNotifier {
     inc.playing = true;
     _automixFadeStart = DateTime.now();
     DebugLog.add('automix', 'mixing deck ${cur + 1} into deck ${other + 1}: ${_plan?.label ?? 'blend'}, ${_fadeLen.toStringAsFixed(1)} s (${out.bpm.round()} to ${inc.bpm.round()} BPM)');
+    // Everything that decided this mix, in one line, to tune the quality.
+    {
+      final fo = _flowOf(_automixQueue[_automixIndex]);
+      final fi = _flowOf(_automixQueue[next]);
+      final km = (fo?.key != null && fi?.key != null) ? keyMatch(fo!.key!, fi!.key!) : null;
+      final heardOut0 = out.bpm * (out.rate <= 0 ? 1 : out.rate);
+      final heardIn0 = inc.bpm * (inc.rate <= 0 ? 1 : inc.rate);
+      _mixqOut0 = heardOut0;
+      _mixqIn0 = heardIn0;
+      final rawGap = (out.bpm > 1 && inc.bpm > 1) ? (out.bpm * out.rate / inc.bpm - 1) * 100 : 0.0;
+      final half = (rr0 != rr) ? 'half/double-time match' : 'same-time';
+      final bpmFlags = <String>[
+        if (tempoClash) 'TEMPO CLASH (own speed)',
+        if (rawGap.abs() > 8 && !tempoClash) 'stretched ${rawGap.toStringAsFixed(1)}% to fit',
+        if (out.beatOffset < 0 || inc.beatOffset < 0) 'no beat grid on one deck',
+      ];
+      _mixqWhy = 'blend setting ${automixBlendSeconds > 0 ? '${automixBlendSeconds.round()} s' : 'auto'}, mix-out ${automixFadeSeconds.round()} s, plan ${(_plan?.seconds ?? 0).toStringAsFixed(0)} s, used ${_fadeLen.toStringAsFixed(1)} s, track had ${left.toStringAsFixed(0)} s left';
+      final barOut = out.bpm > 1 ? (((_engine.position(cur) - out.beatOffset) * out.bpm / 60.0) % 4.0 + 4.0) % 4.0 : 0.0;
+      DebugLog.add(
+          'mixq',
+          'PLAN ${_plan?.label ?? 'blend'} | out file ${out.bpm.toStringAsFixed(1)} BPM x${(out.rate <= 0 ? 1 : out.rate).toStringAsFixed(3)} = ${heardOut0.toStringAsFixed(1)} | '
+          'in file ${inc.bpm.toStringAsFixed(1)} BPM x${(inc.rate <= 0 ? 1 : inc.rate).toStringAsFixed(3)} = ${heardIn0.toStringAsFixed(1)} | '
+          'raw gap ${rawGap.toStringAsFixed(1)}% ($half) | '
+          'key ${fo?.key?.code ?? '?'} -> ${fi?.key?.code ?? '?'}${km == null ? '' : ' ${km.score} (${km.label})'} | '
+          'out was ${barOut.toStringAsFixed(2)} beats into its bar | '
+          '$_mixqWhy${bpmFlags.isEmpty ? '' : ' | ${bpmFlags.join(', ')}'}');
+    }
     _mixqErr.clear();
     _mixqNextAt = 0.8;
     _mixqFixMs = 0;
@@ -2608,6 +2645,8 @@ class DjController extends ChangeNotifier {
 
   // ---- Mix quality monitor ---------------------------------------------
   final List<double> _mixqErr = [];
+  double _mixqOut0 = 0, _mixqIn0 = 0; // tempos heard when the mix began
+  String _mixqWhy = '';
   double _mixqNextAt = 0.8;
   double _mixqFixMs = 0;
   String _mixqHead = '';
@@ -2656,6 +2695,8 @@ class DjController extends ChangeNotifier {
         'now ${eo.toStringAsFixed(1)} -> ${ei.toStringAsFixed(1)} BPM (gap ${gap.toStringAsFixed(1)}%) | '
         'incoming speed ${((inc.rate <= 0 ? 1 : inc.rate) * 100 - 100).toStringAsFixed(1)}% | '
         'beat start fix ${_mixqFixMs.round()} ms | beat offset during mix (ms): [$errs] worst ${worst.round()} drift ${drift.round()} | '
+        'tempo during mix: out ${_mixqOut0.toStringAsFixed(1)}->${eo.toStringAsFixed(1)}, in ${_mixqIn0.toStringAsFixed(1)}->${ei.toStringAsFixed(1)}'
+        '${((eo - _mixqOut0).abs() > 0.3 || (ei - _mixqIn0).abs() > 0.3) ? ' (TEMPO MOVED DURING MIX)' : ''} | '
         'grids out ${out.beatOffset.toStringAsFixed(3)} in ${inc.beatOffset.toStringAsFixed(3)} | '
         '"${nm(out)}" -> "${nm(inc)}"');
   }

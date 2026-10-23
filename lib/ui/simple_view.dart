@@ -2742,6 +2742,7 @@ class MixSettings {
   double fade = 24; // seconds of blend, starting this long before the end
   double offset = 10; // seconds into the next track
   double early = 0; // 0 = full tracks, else minimum seconds before an early change
+  double blend = 0; // 0 = automatic, else seconds the blend itself lasts
   bool _loaded = false;
 
   Future<void> load() async {
@@ -2751,6 +2752,7 @@ class MixSettings {
       fade = p.getDouble('mix_fade') ?? 24;
       offset = p.getDouble('mix_offset') ?? 10;
       early = p.getDouble('mix_early') ?? 0;
+      blend = p.getDouble('mix_blend') ?? 0;
       _loaded = true;
     } catch (_) {}
   }
@@ -2761,11 +2763,12 @@ class MixSettings {
       await p.setDouble('mix_fade', fade);
       await p.setDouble('mix_offset', offset);
       await p.setDouble('mix_early', early);
+      await p.setDouble('mix_blend', blend);
     } catch (_) {}
   }
 
   void apply(DjController dj) {
-    if (dj.automixOn) dj.setMixTiming(fade: fade, startOffset: offset, earlyAfter: early);
+    if (dj.automixOn) dj.setMixTiming(fade: fade, startOffset: offset, earlyAfter: early, blend: blend);
     dj.earlyEndAfter = early;
     save();
   }
@@ -2796,10 +2799,15 @@ class _MixBoxState extends State<_MixBox> {
   @override
   Widget build(BuildContext context) {
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      SizedBox(height: 70, child: CustomPaint(painter: _MixPainter(m.fade, m.offset))),
+      SizedBox(height: 70, child: CustomPaint(painter: _MixPainter(m.blend > 0 ? math.max(m.blend, m.fade) : m.fade, m.offset))),
       const SizedBox(height: 8),
       Text('Mix out: starts ${m.fade.round()} s before the end', style: const TextStyle(fontWeight: FontWeight.w700)),
       Slider(value: m.fade, min: 4, max: 60, divisions: 28, label: '${m.fade.round()} s', onChanged: (v) => _chg(() => m.fade = v)),
+      Text(m.blend == 0 ? 'Blend length: auto (matches the mix-out time)' : 'Blend length: ${m.blend.round()} s', style: const TextStyle(fontWeight: FontWeight.w700)),
+      Slider(value: m.blend, min: 0, max: 90, divisions: 45, label: m.blend == 0 ? 'Auto' : '${m.blend.round()} s', onChanged: (v) => _chg(() => m.blend = v)),
+      const Text('How long the two tracks overlap. Short is a quick swap, long is a slow blend. Fast and slow tempos may still shorten it.',
+          style: TextStyle(fontSize: 12, color: Color(0xFF8A857C))),
+      const SizedBox(height: 4),
       Text('Mix in: next track comes in ${m.offset.round()} s from its start', style: const TextStyle(fontWeight: FontWeight.w700)),
       Slider(value: m.offset, min: 0, max: 60, divisions: 30, label: '${m.offset.round()} s', onChanged: (v) => _chg(() => m.offset = v)),
       const SizedBox(height: 4),
