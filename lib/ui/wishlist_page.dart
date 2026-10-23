@@ -61,7 +61,7 @@ class _WishListPageState extends State<WishListPage> {
         listenable: _ctl,
         builder: (context, _) {
           if (_ctl.lists.isEmpty) {
-            return const Center(
+            return Center(
               child: Padding(
                 padding: EdgeInsets.all(28),
                 child: Text(
@@ -266,7 +266,7 @@ class _ImportSheetState extends State<_ImportSheet> {
   Widget _pasteTab() => ListView(
         padding: const EdgeInsets.all(14),
         children: [
-          const Text(
+          Text(
             'Works for any service. Paste one "Artist - Title" per line, or pick '
             'a CSV file exported from your playlist (for example with Exportify '
             'for Spotify, or TuneMyMusic for Tidal and YouTube).',
@@ -310,7 +310,7 @@ class _ImportSheetState extends State<_ImportSheet> {
   Widget _linkTab() => ListView(
         padding: const EdgeInsets.all(14),
         children: [
-          const Text(
+          Text(
             'Paste a public Spotify playlist or album link, or a Beatport '
             'playlist or chart link. No keys or sign in. Then tap '
             '"Download all" on the list to queue every track from Soulseek.',
@@ -332,7 +332,7 @@ class _ImportSheetState extends State<_ImportSheet> {
   Widget _deezerTab() => ListView(
         padding: const EdgeInsets.all(14),
         children: [
-          const Text(
+          Text(
             'Paste the link of a public Deezer playlist. No sign in needed.',
             style: TextStyle(color: SideDeckTheme.muted, fontSize: 12),
           ),

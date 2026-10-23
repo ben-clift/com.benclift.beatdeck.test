@@ -27,16 +27,18 @@ import 'package:sidedeck/suggest/auto_fetch.dart';
 import 'package:sidedeck/suggest/genres.dart';
 import 'package:sidedeck/suggest/shazam_watcher.dart';
 import 'package:sidedeck/suggest/suggest_service.dart';
+import 'package:sidedeck/ui/appearance_page.dart';
 import 'package:sidedeck/ui/equaliser_view.dart';
 import 'package:sidedeck/ui/milkdrop_view.dart';
 import 'package:sidedeck/ui/screenshot_import.dart';
 import 'package:sidedeck/wishlist/wishlist.dart';
 import 'package:sidedeck/theme/sidedeck_theme.dart';
+import 'package:sidedeck/theme/theme_settings.dart';
 
-const _bg = Color(0xFF0D0D0F);
-const _panel = Color(0xFF17171A);
-const _green = Color(0xFFFF5A2B);
-const _dim = Color(0xFF9C9A95);
+Color get _bg => SideDeckTheme.pageBg;
+Color get _panel => SideDeckTheme.panel;
+Color get _green => SideDeckTheme.accentA;
+Color get _dim => SideDeckTheme.muted;
 
 /// Kinds of vocal worth asking for in each genre (name, words to look for).
 const _vocalTypes = <String, List<(String, List<String>)>>{
@@ -312,7 +314,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
           if (!playing) SimpleDialogOption(onPressed: () => Navigator.pop(dc, 'queue'), child: const Text('Remove from the queue')),
           if (playing) SimpleDialogOption(onPressed: () => Navigator.pop(dc, 'skip'), child: const Text('Skip it (keep the file)')),
           if (!starred) SimpleDialogOption(onPressed: () => Navigator.pop(dc, 'delete'), child: Text(playing ? 'Skip it and delete from the phone' : 'Delete from the phone')),
-          if (starred) const Padding(padding: EdgeInsets.fromLTRB(24, 8, 24, 8), child: Text('Starred, so it cannot be deleted. Un-star it first.', style: TextStyle(color: _dim))),
+          if (starred) Padding(padding: EdgeInsets.fromLTRB(24, 8, 24, 8), child: Text('Starred, so it cannot be deleted. Un-star it first.', style: TextStyle(color: _dim))),
         ],
       ),
     );
@@ -789,7 +791,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
           style: TextStyle(fontSize: 12, color: Color(0xFF8A857C))),
       Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-        child: const ExpansionTile(
+        child: ExpansionTile(
           tilePadding: EdgeInsets.zero,
           childrenPadding: EdgeInsets.only(bottom: 8),
           title: Text('How do I import a playlist?', style: TextStyle(fontSize: 14, color: SideDeckTheme.accentB)),
@@ -1539,7 +1541,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
               const Divider(height: 8),
               Expanded(
                 child: shown.isEmpty
-                    ? const Center(child: Text('No tracks match those filters.', style: TextStyle(color: _dim)))
+                    ? Center(child: Text('No tracks match those filters.', style: TextStyle(color: _dim)))
                     : ListView.builder(
                         controller: scroll,
                         itemCount: shown.length,
@@ -1559,7 +1561,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                             selectedColor: SideDeckTheme.accentA,
                             selectedTileColor: const Color(0xFF3A2218),
                             leading: Icon(now ? Ph.equalizer : (dj.playedRecently(t.path) ? Ph.checkCircleOutline : Ph.playArrow)),
-                            trailing: inList && !now ? Text('${dj.playlist!.indexOf(t.path) + 1}', style: const TextStyle(fontFamily: SideDeckTheme.mono, color: _dim)) : null,
+                            trailing: inList && !now ? Text('${dj.playlist!.indexOf(t.path) + 1}', style: TextStyle(fontFamily: SideDeckTheme.mono, color: _dim)) : null,
                             title: Text((AutoFetch.instance.isStyle(t.path) ? 'MS  ' : '') + t.title, maxLines: 1, overflow: TextOverflow.ellipsis),
                             subtitle: sub.isEmpty ? null : Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis),
                             onTap: () {
@@ -1667,7 +1669,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     child: Row(children: [
                       Text(range == null ? 'BPM any' : 'BPM ${range.start.round()}-${range.end.round()}',
-                          style: const TextStyle(color: _dim)),
+                          style: TextStyle(color: _dim)),
                       Expanded(
                         child: RangeSlider(
                           values: range ?? RangeValues(lo, hi),
@@ -1683,7 +1685,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                   child: shown.isEmpty
                       ? Center(
                           child: Text(all.isEmpty ? 'Tap the star on a track you like.' : 'Nothing matches those filters.',
-                              style: const TextStyle(color: _dim)))
+                              style: TextStyle(color: _dim)))
                       : ListView.builder(
                           controller: scroll,
                           itemCount: shown.length,
@@ -1831,6 +1833,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                       onSelected: (v) {
                         if (v == 'log') _copyLog();
                         if (v == 'send') _logSettings();
+                        if (v == 'look') Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AppearancePage()));
                         if (v == 'pro') AppMode.set(false);
                       },
                       itemBuilder: (_) => [
@@ -1842,6 +1845,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                               builder: (_, snap) => Text('Test version: ${snap.data ?? '…'}'),
                             ),
                           ),
+                        const PopupMenuItem(value: 'look', child: Text('Appearance: colours, shapes, 3D')),
                         const PopupMenuItem(value: 'send', child: Text('Send logs to Ben automatically')),
                         const PopupMenuItem(value: 'log', child: Text('Report a problem (copy log)')),
                         const PopupMenuItem(value: 'pro', child: Text('Switch to Pro mode')),
@@ -1872,11 +1876,11 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(14, 8, 6, 8),
           child: Row(children: [
-            const Icon(Ph.equalizer, color: _green),
+            Icon(Ph.equalizer, color: _green),
             const SizedBox(width: 10),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('NOW PLAYING', style: TextStyle(fontSize: 10, letterSpacing: 1.2, color: _dim)),
+                Text('NOW PLAYING', style: TextStyle(fontSize: 10, letterSpacing: 1.2, color: _dim)),
                 Text(d.loaded ? d.title : '…', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700)),
               ]),
             ),
@@ -1898,12 +1902,12 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-        decoration: BoxDecoration(border: Border.all(color: const Color(0xFF2E2E33)), borderRadius: BorderRadius.circular(4)),
+        decoration: ThemeSettings.instance.box(size: 50),
         child: Row(children: [
           Text(title.toUpperCase(),
               style: const TextStyle(fontFamily: SideDeckTheme.label, fontWeight: FontWeight.w700, fontSize: 17, letterSpacing: 1.4)),
           const SizedBox(width: 12),
-          Expanded(child: Text(summary, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _dim))),
+          Expanded(child: Text(summary, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: _dim))),
           Icon(open ? Ph.keyboardArrowUp : Ph.keyboardArrowDown, color: SideDeckTheme.accentB),
         ]),
       ),
@@ -1929,7 +1933,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
         Row(children: [
           const Text('Mood', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
           const Spacer(),
-          Text(names[_mood], style: const TextStyle(color: SideDeckTheme.accentA, fontWeight: FontWeight.w700)),
+          Text(names[_mood], style: TextStyle(color: SideDeckTheme.accentA, fontWeight: FontWeight.w700)),
           const SizedBox(width: 8),
           ChoiceChip(
             label: const Text('Whatever'),
@@ -1940,7 +1944,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
         Opacity(
           opacity: any ? .35 : 1,
           child: Row(children: [
-            const Text('SAD', style: TextStyle(fontFamily: SideDeckTheme.label, fontWeight: FontWeight.w700, letterSpacing: 1.2, color: _dim)),
+            Text('SAD', style: TextStyle(fontFamily: SideDeckTheme.label, fontWeight: FontWeight.w700, letterSpacing: 1.2, color: _dim)),
             Expanded(
               child: Slider(
                 value: any ? 2.5 : (5 - _mood).toDouble(),
@@ -1950,7 +1954,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                 onChanged: _starting ? null : (v) => setState(() => _mood = 5 - v.round()),
               ),
             ),
-            const Text('HAPPY', style: TextStyle(fontFamily: SideDeckTheme.label, fontWeight: FontWeight.w700, letterSpacing: 1.2, color: _dim)),
+            Text('HAPPY', style: TextStyle(fontFamily: SideDeckTheme.label, fontWeight: FontWeight.w700, letterSpacing: 1.2, color: _dim)),
           ]),
         ),
         const Text('Chosen by each track\'s musical key: minor sounds sad, major sounds happy.',
@@ -2009,7 +2013,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
           child: ExpansionTile(
             tilePadding: EdgeInsets.zero,
             childrenPadding: const EdgeInsets.only(bottom: 8),
-            title: const Text('Sub-genres', style: TextStyle(fontSize: 14, color: SideDeckTheme.accentB)),
+            title: Text('Sub-genres', style: TextStyle(fontSize: 14, color: SideDeckTheme.accentB)),
             expandedCrossAxisAlignment: CrossAxisAlignment.start,
             children: [
               for (final i in _picked)
@@ -2053,7 +2057,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
             child: ExpansionTile(
               tilePadding: EdgeInsets.zero,
               childrenPadding: const EdgeInsets.only(bottom: 8),
-              title: const Text('Vocal styles', style: TextStyle(fontSize: 14, color: SideDeckTheme.accentB)),
+              title: Text('Vocal styles', style: TextStyle(fontSize: 14, color: SideDeckTheme.accentB)),
               expandedCrossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 for (final i in _picked)
@@ -2080,7 +2084,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
           const Text('Speed (BPM)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
           const Spacer(),
           Text(_bpmAny ? 'Any' : '${_bpm.start.round()} to ${_bpm.end.round()}',
-              style: const TextStyle(color: SideDeckTheme.accentA, fontWeight: FontWeight.w700)),
+              style: TextStyle(color: SideDeckTheme.accentA, fontWeight: FontWeight.w700)),
           const SizedBox(width: 8),
           Switch(
             value: !_bpmAny,
@@ -2101,7 +2105,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
           const Text('Intensity', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
           const Spacer(),
           Text(const ['Any', 'Medium', 'High', 'Peak'][_intensity.round()],
-              style: const TextStyle(color: SideDeckTheme.accentA, fontWeight: FontWeight.w700)),
+              style: TextStyle(color: SideDeckTheme.accentA, fontWeight: FontWeight.w700)),
         ]),
         Slider(
           value: _intensity,
@@ -2204,13 +2208,13 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     return Expanded(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4),
-        child: Material(
-          color: sel ? const Color(0xFF3A2218) : const Color(0xFF1E1E22),
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(4),
-              side: BorderSide(color: sel ? SideDeckTheme.accentA : const Color(0xFF2E2E33), width: sel ? 1.5 : 1)),
+        child: Container(
+          decoration: ThemeSettings.instance.box(
+              color: sel ? Color.lerp(SideDeckTheme.panelAlt, SideDeckTheme.accentA, 0.22) : SideDeckTheme.panelAlt, hot: sel, size: 60),
+          child: Material(
+          type: MaterialType.transparency,
           child: InkWell(
-            borderRadius: BorderRadius.circular(5),
+            customBorder: ThemeSettings.instance.shapeBorder(size: 60),
             onTap: onTap,
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 2),
@@ -2227,11 +2231,12 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Text(sub, maxLines: 1,
-                        style: const TextStyle(fontFamily: SideDeckTheme.mono, fontSize: 11, color: SideDeckTheme.accentB)),
+                        style: TextStyle(fontFamily: SideDeckTheme.mono, fontSize: 11, color: SideDeckTheme.accentB)),
                   ),
               ]),
             ),
           ),
+        )),
         ),
       ),
     );
@@ -2253,14 +2258,14 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     Widget lab(String t, String v) => SizedBox(
           width: 74,
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-            Text(t, style: const TextStyle(fontFamily: SideDeckTheme.label, fontWeight: FontWeight.w700, fontSize: 13, letterSpacing: 1.2, color: _dim)),
+            Text(t, style: TextStyle(fontFamily: SideDeckTheme.label, fontWeight: FontWeight.w700, fontSize: 13, letterSpacing: 1.2, color: _dim)),
             Text(v, style: const TextStyle(fontFamily: SideDeckTheme.mono, fontSize: 13)),
           ]),
         );
     return Container(
       margin: const EdgeInsets.only(top: 8),
       padding: const EdgeInsets.fromLTRB(12, 6, 8, 6),
-      decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(4), border: Border.all(color: const Color(0xFF2E2E33))),
+      decoration: ThemeSettings.instance.box(size: 120),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         Row(children: [
           GestureDetector(onDoubleTap: () => dj.setRate(di, 1.0), child: lab('PITCH', '$bpm BPM')),
@@ -2277,7 +2282,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
             child: GestureDetector(
               onTap: () => dj.setRate(di, 1.0),
               child: Text('${pct >= 0 ? '+' : ''}${pct.toStringAsFixed(1)}%',
-                  textAlign: TextAlign.right, style: const TextStyle(fontFamily: SideDeckTheme.mono, fontSize: 12, color: _dim)),
+                  textAlign: TextAlign.right, style: TextStyle(fontFamily: SideDeckTheme.mono, fontSize: 12, color: _dim)),
             ),
           ),
         ]),
@@ -2297,7 +2302,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
         margin: const EdgeInsets.only(top: 3),
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
         decoration: BoxDecoration(border: Border.all(color: SideDeckTheme.accentA), borderRadius: BorderRadius.circular(3)),
-        child: const Row(mainAxisSize: MainAxisSize.min, children: [
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
           Icon(Ph.insights, size: 12, color: SideDeckTheme.accentA),
           SizedBox(width: 4),
           Text('MY STYLE',
@@ -2309,7 +2314,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     return
 Container(
           padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(5)),
+          decoration: ThemeSettings.instance.box(size: 300),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               const Text('Queue', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
@@ -2330,15 +2335,15 @@ Container(
                 ),
               ),
             ]),
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             InkWell(
               onLongPress: d.path == null ? null : () => _queueMenu(d.path!, playing: true),
               child: Row(children: [
-                const Icon(Ph.equalizer, color: _green),
+                Icon(Ph.equalizer, color: _green),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(d.loaded ? ((d.path != null && AutoFetch.instance.isStyle(d.path!)) ? 'MS  ${d.title}' : d.title) : '…',
-                      maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _green, fontSize: 16, fontWeight: FontWeight.w700)),
+                      maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: _green, fontSize: 16, fontWeight: FontWeight.w700)),
                 ),
               ]),
             ),
@@ -2346,7 +2351,7 @@ Container(
               Padding(padding: const EdgeInsets.only(left: 32, top: 2), child: _styleTag()),
             const Divider(height: 24, color: Color(0xFF2E2E33)),
             Row(children: [
-              const Text('Next up', style: TextStyle(color: _dim)),
+              Text('Next up', style: TextStyle(color: _dim)),
               const Spacer(),
               Text('${upcoming.length.clamp(0, _ahead)} of $_ahead ready',
                   style: TextStyle(color: upcoming.length >= _ahead ? _green : _dim, fontWeight: FontWeight.w700)),
@@ -2370,7 +2375,7 @@ Container(
                           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                             Text((AutoFetch.instance.isStyle(upcoming[i]) ? 'MS  ' : '') + _nameOf(upcoming[i]).title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16)),
                             if (_nameOf(upcoming[i]).artist.isNotEmpty)
-                              Text(_nameOf(upcoming[i]).artist, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _dim, fontSize: 13)),
+                              Text(_nameOf(upcoming[i]).artist, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: _dim, fontSize: 13)),
                             if (AutoFetch.instance.isStyle(upcoming[i])) _styleTag(),
                             if (_unknownKind(dj, upcoming[i]))
                               const Text('Genre unknown. Tap to play it', style: TextStyle(color: Color(0xFFFFC83D), fontSize: 12)),
@@ -2385,7 +2390,7 @@ Container(
                               i == upcoming.length && status.isNotEmpty ? status : 'Finding track ${i + 1}…',
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(color: _dim)),
+                              style: TextStyle(color: _dim)),
                         ),
                       ]),
               ),
@@ -2431,11 +2436,7 @@ Container(
           filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
           child: Container(
             padding: pad,
-            decoration: BoxDecoration(
-              color: const Color(0xB30B0B10),
-              borderRadius: BorderRadius.circular(r),
-              border: Border.all(color: const Color(0x33FFFFFF)),
-            ),
+            decoration: ThemeSettings.instance.box(color: SideDeckTheme.bg.withValues(alpha: 0.7), size: 120),
             child: child,
           ),
         ),
@@ -2445,12 +2446,12 @@ Container(
   Widget _orb(IconData icon, VoidCallback onTap, {String? tip, Color? color, double size = 46}) => Tooltip(
         message: tip ?? '',
         child: InkWell(
-          customBorder: const CircleBorder(),
+          customBorder: ThemeSettings.instance.shapeBorder(size: size),
           onTap: onTap,
           child: Container(
             width: size,
             height: size,
-            decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: const Color(0x44FFFFFF))),
+            decoration: ThemeSettings.instance.box(color: Colors.black.withValues(alpha: 0.25), size: size),
             child: Icon(icon, size: size * 0.5, color: color ?? Colors.white),
           ),
         ),
@@ -2518,8 +2519,8 @@ Container(
     final tune = _orb(Ph.tune, () => _sheet('Visuals', const _VisualsBox()), tip: 'Visuals settings', size: 40);
     final title = Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
       Text(d.loaded ? d.title : '…', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
-      if (d.artist.isNotEmpty) Text(d.artist, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, color: _dim)),
-      Text('${_mmss(d.position)} / ${_mmss(d.duration)}', style: const TextStyle(fontSize: 12, color: _dim)),
+      if (d.artist.isNotEmpty) Text(d.artist, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 14, color: _dim)),
+      Text('${_mmss(d.position)} / ${_mmss(d.duration)}', style: TextStyle(fontSize: 12, color: _dim)),
     ]);
 
     return LayoutBuilder(builder: (context, box) {
@@ -2582,11 +2583,11 @@ Container(
                     Padding(
                       padding: const EdgeInsets.only(top: 6),
                       child: Row(children: [
-                        const Icon(Ph.libraryMusic, size: 16, color: SideDeckTheme.accentA),
+                        Icon(Ph.libraryMusic, size: 16, color: SideDeckTheme.accentA),
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text('Playlist ${widget.dj.playlistPos} of ${widget.dj.playlist!.length}, in order',
-                              style: const TextStyle(color: SideDeckTheme.accentA, fontWeight: FontWeight.w700)),
+                              style: TextStyle(color: SideDeckTheme.accentA, fontWeight: FontWeight.w700)),
                         ),
                         TextButton(style: _tight, onPressed: widget.dj.automixPlaylistStop, child: const Text('Stop playlist')),
                       ]),
@@ -3003,7 +3004,7 @@ class _StyleBoxState extends State<_StyleBox> {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(border: Border.all(color: SideDeckTheme.accentA), borderRadius: BorderRadius.circular(4)),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('WHAT MY STYLE DOES',
+          Text('WHAT MY STYLE DOES',
               style: TextStyle(fontFamily: SideDeckTheme.label, fontWeight: FontWeight.w700, fontSize: 16, letterSpacing: 1.4, color: SideDeckTheme.accentA)),
           const SizedBox(height: 6),
           const Text(
@@ -3016,7 +3017,7 @@ class _StyleBoxState extends State<_StyleBox> {
               n == 0
                   ? 'You have no starred tracks yet. Star a few and come back.'
                   : 'Using $n starred track${n == 1 ? '' : 's'} · ${st.mode == 0 ? 'Off' : (st.mode == 1 ? 'About every 3 min, when a queue slot is free' : 'Mixed in about every ${st.everyMin} min')}',
-              style: const TextStyle(color: SideDeckTheme.accentB, fontWeight: FontWeight.w600)),
+              style: TextStyle(color: SideDeckTheme.accentB, fontWeight: FontWeight.w600)),
           ValueListenableBuilder<String>(
             valueListenable: st.lastNote,
             builder: (_, v, __) => Padding(

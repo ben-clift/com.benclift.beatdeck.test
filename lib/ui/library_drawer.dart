@@ -829,7 +829,7 @@ class _LibraryOverlayState extends State<LibraryOverlay> {
                     },
                   ),
                   Text('${lib.organised.length} of ${lib.tracks.length} tracks shown',
-                      style: const TextStyle(fontSize: 12, color: SideDeckTheme.muted)),
+                      style: TextStyle(fontSize: 12, color: SideDeckTheme.muted)),
                 ],
               ),
             ),
@@ -871,7 +871,7 @@ class _LibraryOverlayState extends State<LibraryOverlay> {
                       style: const TextStyle(fontSize: 12)),
                   if (asked.isNotEmpty)
                     Text('Downloaded while looking for: $asked',
-                        style: const TextStyle(fontSize: 12, color: SideDeckTheme.muted)),
+                        style: TextStyle(fontSize: 12, color: SideDeckTheme.muted)),
                   const SizedBox(height: 10),
                   TextField(
                     controller: typed,
@@ -921,7 +921,7 @@ class _LibraryOverlayState extends State<LibraryOverlay> {
               Text(t.title, maxLines: 2, overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
               if (t.artist.isNotEmpty)
-                Text(t.artist, style: const TextStyle(fontSize: 12, color: SideDeckTheme.muted)),
+                Text(t.artist, style: TextStyle(fontSize: 12, color: SideDeckTheme.muted)),
               const SizedBox(height: 14),
               FilledButton.icon(
                 onPressed: () async {
@@ -937,7 +937,7 @@ class _LibraryOverlayState extends State<LibraryOverlay> {
                 label: const Text('Backup: keep it and come back to it another time'),
               ),
               const SizedBox(height: 4),
-              const Text(
+              Text(
                 'Keeps the file, puts it in the playlist "Backup tracks" and takes it out of automix for now.',
                 style: TextStyle(fontSize: 11, color: SideDeckTheme.muted),
               ),
@@ -952,7 +952,7 @@ class _LibraryOverlayState extends State<LibraryOverlay> {
                 label: const Text('Delete and never play or search for it again'),
               ),
               const SizedBox(height: 4),
-              const Text(
+              Text(
                 'Removes the file from this phone and your library. Automix will not pick it and auto-fetch will not look for it.',
                 style: TextStyle(fontSize: 11, color: SideDeckTheme.muted),
               ),
@@ -1028,7 +1028,7 @@ class _LibraryOverlayState extends State<LibraryOverlay> {
       line,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-      style: const TextStyle(color: SideDeckTheme.muted, fontSize: 12),
+      style: TextStyle(color: SideDeckTheme.muted, fontSize: 12),
     );
   }
 
@@ -1066,7 +1066,7 @@ class _LibraryOverlayState extends State<LibraryOverlay> {
           if (durationSec > 0 || hasKey)
             Text.rich(
               TextSpan(
-                style: const TextStyle(color: SideDeckTheme.muted, fontSize: 11),
+                style: TextStyle(color: SideDeckTheme.muted, fontSize: 11),
                 children: [
                   if (durationSec > 0) TextSpan(text: formatDuration(durationSec)),
                   if (durationSec > 0 && hasKey) const TextSpan(text: '  '),
@@ -1137,7 +1137,7 @@ class _LibraryOverlayState extends State<LibraryOverlay> {
             '${lib.analyzingPath == null ? '' : ' — ${p.basename(lib.analyzingPath!)}'}',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 11, color: SideDeckTheme.muted),
+            style: TextStyle(fontSize: 11, color: SideDeckTheme.muted),
           ),
         ],
       );
@@ -1156,7 +1156,7 @@ class _LibraryOverlayState extends State<LibraryOverlay> {
             '${widget.dj.loadingDeck == 0 ? 'A' : 'B'}',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 11, color: SideDeckTheme.muted),
+            style: TextStyle(fontSize: 11, color: SideDeckTheme.muted),
           ),
         ),
       ],
@@ -1275,7 +1275,7 @@ class _LibraryOverlayState extends State<LibraryOverlay> {
       return const Center(child: CircularProgressIndicator());
     }
     if (tracks.isEmpty) {
-      return const Center(
+      return Center(
         child: Padding(
           padding: EdgeInsets.all(24),
           child: Text(
@@ -1367,7 +1367,7 @@ class _LibraryOverlayState extends State<LibraryOverlay> {
           ),
           Text(
             '$count tracks',
-            style: const TextStyle(color: SideDeckTheme.muted, fontSize: 12),
+            style: TextStyle(color: SideDeckTheme.muted, fontSize: 12),
           ),
         ],
       ),
@@ -1376,7 +1376,7 @@ class _LibraryOverlayState extends State<LibraryOverlay> {
 
   Widget _playlistList() {
     if (_playlists.isEmpty) {
-      return const Center(
+      return Center(
         child: Text(
           'No playlists on this server yet.\n'
           'Search and press enter to find tracks.',
@@ -1404,9 +1404,9 @@ class _LibraryOverlayState extends State<LibraryOverlay> {
                   subtitle,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: SideDeckTheme.muted, fontSize: 12),
+                  style: TextStyle(color: SideDeckTheme.muted, fontSize: 12),
                 ),
-          trailing: const Icon(Ph.chevronRight, size: 20, color: SideDeckTheme.muted),
+          trailing: Icon(Ph.chevronRight, size: 20, color: SideDeckTheme.muted),
           onTap: () => _openRemotePlaylist(pl),
         );
       },
@@ -1419,7 +1419,7 @@ class _LibraryOverlayState extends State<LibraryOverlay> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
+            Text(
               'Set up a Subsonic server in Settings first.',
               style: TextStyle(color: SideDeckTheme.muted),
             ),
@@ -1450,7 +1450,7 @@ class _LibraryOverlayState extends State<LibraryOverlay> {
               ? 'No matching tracks.\nClear the box to go back to playlists.'
               : 'This playlist is empty.',
           textAlign: TextAlign.center,
-          style: const TextStyle(color: SideDeckTheme.muted),
+          style: TextStyle(color: SideDeckTheme.muted),
         ),
       );
     }

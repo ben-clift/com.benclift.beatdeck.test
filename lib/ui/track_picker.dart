@@ -78,7 +78,7 @@ class _TrackPickerState extends State<_TrackPicker> {
                 children: [
                   Text(
                     'LOAD TO DECK ${widget.deck + 1}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.w800,
                       letterSpacing: 1.5,
                     ),
@@ -104,7 +104,7 @@ class _TrackPickerState extends State<_TrackPicker> {
             ),
             Expanded(
               child: tracks.isEmpty
-                  ? const Center(
+                  ? Center(
                       child: Padding(
                         padding: EdgeInsets.all(24),
                         child: Text(

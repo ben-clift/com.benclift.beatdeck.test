@@ -76,7 +76,7 @@ class _PitchSheetState extends State<_PitchSheet> {
                     if (heard > 0)
                       Text(
                         '${heard.toStringAsFixed(1)} BPM',
-                        style: const TextStyle(color: SideDeckTheme.muted),
+                        style: TextStyle(color: SideDeckTheme.muted),
                       ),
                     const Spacer(),
                     for (final r in _ranges)
@@ -122,7 +122,7 @@ class _PitchSheetState extends State<_PitchSheet> {
                   d.keylock
                       ? 'Key lock is on: the fader changes tempo only, the pitch stays the same.'
                       : 'Key lock is off: the pitch rises and falls with the speed, like a turntable.',
-                  style: const TextStyle(fontSize: 12, color: SideDeckTheme.muted),
+                  style: TextStyle(fontSize: 12, color: SideDeckTheme.muted),
                 ),
               ],
             );

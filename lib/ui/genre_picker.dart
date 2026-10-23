@@ -180,7 +180,7 @@ class _GenrePickerState extends State<GenrePicker> {
           children: [
             _fetchButton(),
             const SizedBox(width: 10),
-            const Expanded(
+            Expanded(
               child: Text('Fetches your ticked genres and mixes the first match in.',
                   style: TextStyle(fontSize: 11, color: SideDeckTheme.muted)),
             ),
@@ -298,7 +298,7 @@ class _GenrePickerState extends State<GenrePicker> {
               ),
           ],
         ),
-        const Padding(
+        Padding(
           padding: EdgeInsets.only(top: 2),
           child: Text(
             'Higher intensity prefers faster tracks and turns down downloads that are quiet or sparse.',
@@ -307,7 +307,7 @@ class _GenrePickerState extends State<GenrePicker> {
         ),
         Text(
           'Genres that fit ${_bpm.start.round()}-${_bpm.end.round()} BPM are lit.',
-          style: const TextStyle(fontSize: 11, color: SideDeckTheme.muted),
+          style: TextStyle(fontSize: 11, color: SideDeckTheme.muted),
         ),
         TextButton.icon(
           icon: const Icon(Ph.helpOutline, size: 18),
@@ -329,7 +329,7 @@ class _GenrePickerState extends State<GenrePicker> {
                       child: Text.rich(TextSpan(children: [
                         TextSpan(text: '$g: ', style: const TextStyle(fontWeight: FontWeight.w700)),
                         TextSpan(text: genreGlossary[g]),
-                      ]), style: const TextStyle(fontSize: 11, color: SideDeckTheme.muted)),
+                      ]), style: TextStyle(fontSize: 11, color: SideDeckTheme.muted)),
                     ),
               ],
             ),
@@ -358,7 +358,7 @@ class _GenrePickerState extends State<GenrePicker> {
         ),
         const SizedBox(height: 6),
         if (_openCats.isEmpty && _sel.isEmpty)
-          const Text(
+          Text(
             'Tap a group above to see its genres (house, techno, garage, breaks, dub, drum and bass, acid…).',
             style: TextStyle(fontSize: 11, color: SideDeckTheme.muted),
           ),
@@ -400,7 +400,7 @@ class _GenrePickerState extends State<GenrePicker> {
                 noSource
                     ? 'No shop ticked: only your own picks and Soulseek search are used.'
                     : (_af.status.isEmpty ? '' : _af.status),
-                style: const TextStyle(fontSize: 11, color: SideDeckTheme.muted),
+                style: TextStyle(fontSize: 11, color: SideDeckTheme.muted),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),

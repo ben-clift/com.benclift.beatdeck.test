@@ -66,7 +66,7 @@ class _SplashGateState extends State<SplashGate> with SingleTickerProviderStateM
                 child: CustomPaint(painter: _RecordPainter(t)),
               ),
               const SizedBox(height: 34),
-              const Text('BEATDECK',
+              Text('BEATDECK',
                   style: TextStyle(
                       fontFamily: SideDeckTheme.label,
                       fontSize: 54,
@@ -74,7 +74,7 @@ class _SplashGateState extends State<SplashGate> with SingleTickerProviderStateM
                       letterSpacing: 8,
                       color: SideDeckTheme.text)),
               const SizedBox(height: 4),
-              const Text('YOUR SET, ON ITS OWN',
+              Text('YOUR SET, ON ITS OWN',
                   style: TextStyle(
                       fontFamily: SideDeckTheme.label,
                       fontSize: 16,

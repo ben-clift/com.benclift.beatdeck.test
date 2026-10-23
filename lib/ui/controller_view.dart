@@ -74,7 +74,7 @@ class _ControllerViewState extends State<ControllerView> {
                 const Text('Sampler',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                 const Spacer(),
-                const Text('Tap to fire. Hold to choose a sound.',
+                Text('Tap to fire. Hold to choose a sound.',
                     style: TextStyle(fontSize: 12, color: SideDeckTheme.muted)),
               ]),
               const SizedBox(height: 10),
@@ -137,7 +137,7 @@ class _ControllerViewState extends State<ControllerView> {
                   ),
                 ),
               ]),
-              const Text('Double-tap a pad to stop its sound.',
+              Text('Double-tap a pad to stop its sound.',
                   style: TextStyle(fontSize: 12, color: SideDeckTheme.muted)),
             ],
           ),
@@ -186,7 +186,7 @@ class _ControllerViewState extends State<ControllerView> {
                     : dj.cueMode == 2
                         ? 'Cue goes out on outputs 3 and 4 of a USB audio interface.'
                         : 'Tap the headphone button on a deck to send it to the cue.',
-                style: const TextStyle(fontSize: 12, color: SideDeckTheme.muted),
+                style: TextStyle(fontSize: 12, color: SideDeckTheme.muted),
               ),
               Row(children: [
                 const SizedBox(width: 70, child: Text('Volume')),
@@ -701,7 +701,7 @@ class _DeckPanelState extends State<_DeckPanel> {
                 color: _accent,
                 child: Text(
                   '${i + 1}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: SideDeckTheme.bg,
                     fontWeight: FontWeight.w900,
                     fontSize: 14,
@@ -830,7 +830,7 @@ class _DeckPanelState extends State<_DeckPanel> {
                 color: _accent,
               ),
             ),
-            const Text(' BPM  ',
+            Text(' BPM  ',
                 style: TextStyle(fontSize: 10, color: SideDeckTheme.muted)),
             Text(
               d.key >= 0 ? formatKey(d.soundingKey) : '',
@@ -904,7 +904,7 @@ class _DeckPanelState extends State<_DeckPanel> {
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     Text(n > 0 ? 'Kept  ' : 'Star to keep  ',
-                        style: const TextStyle(fontSize: 10, color: SideDeckTheme.muted)),
+                        style: TextStyle(fontSize: 10, color: SideDeckTheme.muted)),
                     for (var i = 1; i <= 3; i++)
                       GestureDetector(
                         onTap: () => Ratings.instance.tap(path, i),
@@ -1028,7 +1028,7 @@ class _DeckPanelState extends State<_DeckPanel> {
           '${pct >= 0 ? '+' : ''}${pct.toStringAsFixed(1)}%',
           style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800),
         ),
-        const Text('+', style: TextStyle(fontSize: 11, color: SideDeckTheme.muted)),
+        Text('+', style: TextStyle(fontSize: 11, color: SideDeckTheme.muted)),
         Expanded(
           child: LayoutBuilder(
             builder: (context, c) => ControllerFader(
@@ -1044,7 +1044,7 @@ class _DeckPanelState extends State<_DeckPanel> {
             ),
           ),
         ),
-        const Text('-', style: TextStyle(fontSize: 11, color: SideDeckTheme.muted)),
+        Text('-', style: TextStyle(fontSize: 11, color: SideDeckTheme.muted)),
         const SizedBox(height: 2),
         _smallButton(
           '±${(_range * 100).round()}%',
@@ -1347,7 +1347,7 @@ class _DeckPanelState extends State<_DeckPanel> {
           ),
           Text(
             label,
-            style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: SideDeckTheme.muted),
+            style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: SideDeckTheme.muted),
           ),
         ],
       ),
@@ -1531,7 +1531,7 @@ class _MixerPanel extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 4),
-          const Text('CROSSFADER',
+          Text('CROSSFADER',
               style: TextStyle(fontSize: 8, color: SideDeckTheme.muted)),
           SliderTheme(
             data: SliderTheme.of(context).copyWith(

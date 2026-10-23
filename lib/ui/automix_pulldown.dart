@@ -323,7 +323,7 @@ class _AutomixPullDownState extends State<AutomixPullDown> {
           ),
           Padding(
             padding: const EdgeInsets.only(left: 30, top: 2, bottom: 6),
-            child: Text(help, style: const TextStyle(fontSize: 12, color: SideDeckTheme.muted)),
+            child: Text(help, style: TextStyle(fontSize: 12, color: SideDeckTheme.muted)),
           ),
           child,
         ],
@@ -363,7 +363,7 @@ class _AutomixPullDownState extends State<AutomixPullDown> {
                         icon: const Icon(Ph.stop),
                         label: Text(
                           'Stop Auto DJ  ·  track ${dj.automixIndex + 1} of ${dj.automixQueueLength}',
-                          style: const TextStyle(fontSize: 16),
+                          style: TextStyle(fontSize: 16),
                         ),
                       )
                     : FilledButton.icon(
@@ -381,7 +381,7 @@ class _AutomixPullDownState extends State<AutomixPullDown> {
                           ? 'Add music to your library first (folder icon in the Library), then come back.'
                           : (dj.automixStatus ??
                               'It plays your music and mixes each track into the next, all by itself.'),
-                  style: const TextStyle(fontSize: 12, color: SideDeckTheme.muted),
+                  style: TextStyle(fontSize: 12, color: SideDeckTheme.muted),
                 ),
               ),
               _step(
@@ -547,7 +547,7 @@ class _AutomixPullDownState extends State<AutomixPullDown> {
                   childrenPadding: EdgeInsets.zero,
                   title: const Text('More options',
                       style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
-                  subtitle: const Text('Optional. The defaults work well.',
+                  subtitle: Text('Optional. The defaults work well.',
                       style: TextStyle(fontSize: 12, color: SideDeckTheme.muted)),
                   children: [
                     _step(

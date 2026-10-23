@@ -130,7 +130,7 @@ class _SoulseekPageState extends State<SoulseekPage> {
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
-        const Text(
+        Text(
           'Sign in with your Soulseek name. A name that does not exist yet is '
           'created for you the first time you sign in.',
           style: TextStyle(color: SideDeckTheme.muted),
@@ -164,7 +164,7 @@ class _SoulseekPageState extends State<SoulseekPage> {
           Text(soulseek.error!, style: const TextStyle(color: Colors.redAccent)),
         ],
         const SizedBox(height: 20),
-        const Text(
+        Text(
           'Your password is saved on this phone only.',
           style: TextStyle(fontSize: 12, color: SideDeckTheme.muted),
         ),
@@ -418,7 +418,7 @@ class _SoulseekPageState extends State<SoulseekPage> {
                 ? 'Searching. Results appear as people answer.'
                 : 'Search for a track to see what people are sharing.',
             textAlign: TextAlign.center,
-            style: const TextStyle(color: SideDeckTheme.muted),
+            style: TextStyle(color: SideDeckTheme.muted),
           ),
         ),
       );
@@ -433,7 +433,7 @@ class _SoulseekPageState extends State<SoulseekPage> {
                 : (hidden > 0
                     ? '$hidden hidden: formats or files the decks cannot play'
                     : 'Only files the decks can play are shown'),
-            style: const TextStyle(fontSize: 12, color: SideDeckTheme.muted),
+            style: TextStyle(fontSize: 12, color: SideDeckTheme.muted),
           ),
           trailing: Switch(
             value: _showAll,
@@ -502,7 +502,7 @@ class _SoulseekPageState extends State<SoulseekPage> {
   Widget _downloadsList() {
     final list = soulseek.downloads;
     if (list.isEmpty) {
-      return const Center(
+      return Center(
         child: Text(
           'Nothing downloading yet.',
           style: TextStyle(color: SideDeckTheme.muted),

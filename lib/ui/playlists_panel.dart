@@ -235,7 +235,7 @@ class _PlaylistsPanelState extends State<PlaylistsPanel> {
         ),
         Expanded(
           child: lists.isEmpty
-              ? const Center(
+              ? Center(
                   child: Padding(
                     padding: EdgeInsets.all(24),
                     child: Text(
@@ -307,7 +307,7 @@ class _PlaylistsPanelState extends State<PlaylistsPanel> {
         const Divider(height: 1),
         Expanded(
           child: paths.isEmpty
-              ? const Center(
+              ? Center(
                   child: Text(
                     'Empty. Tap Add tracks.',
                     style: TextStyle(color: SideDeckTheme.muted),
@@ -441,7 +441,7 @@ class _PlaylistsPanelState extends State<PlaylistsPanel> {
                   on
                       ? 'Track ${dj.automixIndex + 1} of ${dj.automixQueueLength}'
                       : (status ?? 'Fades tracks together on the beat'),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     color: SideDeckTheme.muted,
                   ),

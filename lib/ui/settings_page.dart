@@ -120,7 +120,7 @@ class _SettingsPageState extends State<SettingsPage> {
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'Turn this on with a USB mixer plugged into the phone. Deck A and Deck B '
             'go out as separate channels so you mix and cue on the hardware — the '
             'on-screen EQ/crossfader hides. Works with devices such as the EP-136 '
@@ -237,7 +237,7 @@ class _SettingsPageState extends State<SettingsPage> {
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'Optional. Tracks download to a local cache, then play like local files. '
             'Use http:// for a server on your LAN. Use https:// if the server is '
             'on the internet — otherwise the login token travels in the clear.',
@@ -318,7 +318,7 @@ class _SettingsPageState extends State<SettingsPage> {
             },
           ),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             'Each Auto DJ mix is checked while it plays and logged: how far apart the beats were, the tempo gap and a clean / loose / off-beat verdict.',
             style: TextStyle(color: SideDeckTheme.muted, fontSize: 12),
           ),
@@ -349,7 +349,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   Expanded(
                     child: Text(
                       ok ? 'Notification access: allowed' : 'Notification access: not allowed yet',
-                      style: const TextStyle(color: SideDeckTheme.muted, fontSize: 12),
+                      style: TextStyle(color: SideDeckTheme.muted, fontSize: 12),
                     ),
                   ),
                   OutlinedButton(
@@ -374,7 +374,7 @@ class _SettingsPageState extends State<SettingsPage> {
             onPressed: _clearCache,
           ),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             'Forgets the saved track analysis and the shop / chart lists. '
             'They are read again when needed. Your music and settings stay.',
             style: TextStyle(color: SideDeckTheme.muted, fontSize: 12),
@@ -386,7 +386,7 @@ class _SettingsPageState extends State<SettingsPage> {
             onPressed: _factoryReset,
           ),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             'Puts every setting back to how it started (Auto DJ, looks, '
             'fetching, logins, Less-of-this list). Your music files, '
             'library folders, playlists, stars, Backup tracks and deleted-track '
@@ -399,7 +399,7 @@ class _SettingsPageState extends State<SettingsPage> {
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'SideDeck 1.1.0\n'
             'Copyright © 2026 SideDeck contributors\n\n'
             'This program is free software under the GNU GPL v3 or later. '

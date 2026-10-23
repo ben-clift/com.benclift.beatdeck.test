@@ -125,7 +125,7 @@ class _SuggestPageState extends State<SuggestPage> {
         listenable: widget.dj,
         builder: (context, _) {
           if (!_d.loaded) {
-            return const Center(
+            return Center(
               child: Padding(
                 padding: EdgeInsets.all(24),
                 child: Text(
@@ -170,7 +170,7 @@ class _SuggestPageState extends State<SuggestPage> {
               const SizedBox(height: 4),
               Text(
                 '${k?.code ?? '?'}  ·  ${formatKey(_d.soundingKey)}  ·  ${_d.bpm.toStringAsFixed(1)} BPM',
-                style: const TextStyle(color: SideDeckTheme.muted),
+                style: TextStyle(color: SideDeckTheme.muted),
               ),
               const SizedBox(height: 4),
               Text(
@@ -185,7 +185,7 @@ class _SuggestPageState extends State<SuggestPage> {
                   style: TextStyle(fontWeight: FontWeight.w700)),
               const SizedBox(height: 6),
               if (k == null)
-                const Text('Key not detected yet for this track.',
+                Text('Key not detected yet for this track.',
                     style: TextStyle(color: SideDeckTheme.muted))
               else
                 Wrap(
@@ -220,7 +220,7 @@ class _SuggestPageState extends State<SuggestPage> {
               Text('In your library (${lib.length})',
                   style: const TextStyle(fontWeight: FontWeight.w700)),
               if (lib.isEmpty)
-                const Padding(
+                Padding(
                   padding: EdgeInsets.symmetric(vertical: 8),
                   child: Text(
                     'Nothing analysed matches yet. Analyse the library from its menu.',
@@ -259,7 +259,7 @@ class _SuggestPageState extends State<SuggestPage> {
                         const Text('Auto-fetch from Soulseek',
                             style: TextStyle(fontWeight: FontWeight.w700)),
                         const SizedBox(height: 4),
-                        const Text(
+                        Text(
                           'Looks up what goes with this track, downloads the best '
                           'match, then carries on from that one, each as soon as '
                           'the last has finished. Only fetch music you have the '
@@ -333,7 +333,7 @@ class _SuggestPageState extends State<SuggestPage> {
                     ),
                 ],
               ),
-              const Padding(
+              Padding(
                 padding: EdgeInsets.symmetric(vertical: 4),
                 child: Text(
                   'Tempo is checked before you download. The key is only known '

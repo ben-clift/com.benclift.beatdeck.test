@@ -202,7 +202,7 @@ class _LookSheet extends StatelessWidget {
                   padding: const EdgeInsets.only(top: 6),
                   child: Text(
                     look.style.blurb,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       color: SideDeckTheme.muted,
                     ),
@@ -256,7 +256,7 @@ class _LookSheet extends StatelessWidget {
       padding: const EdgeInsets.only(top: 12, bottom: 6),
       child: Text(
         label.toUpperCase(),
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 10,
           fontWeight: FontWeight.w800,
           letterSpacing: 1.2,

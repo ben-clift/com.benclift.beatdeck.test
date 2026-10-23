@@ -240,7 +240,7 @@ class _AutoFetchPageState extends State<AutoFetchPage> {
         builder: (context, _) => ListView(
           padding: const EdgeInsets.all(14),
           children: [
-            const Text(
+            Text(
               'Choose a genre and a tempo. It finds tracks that fit online, '
               'searches Soulseek, downloads the best match into your library, '
               'then moves straight on to the next. Only fetch music you have '
@@ -261,9 +261,9 @@ class _AutoFetchPageState extends State<AutoFetchPage> {
                 if (v.first == 'chart' && _tracks.isEmpty) _loadTracks();
               },
             ),
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             if (_source == 'trax')
-              const Text(
+              Text(
                 'Every Traxsource genre Top 100, read once a week and kept on the phone. '
                 'Names, genre and tempo only. AUTO fetches them in random order.',
                 style: TextStyle(fontSize: 12, color: SideDeckTheme.muted),
@@ -449,7 +449,7 @@ class _AutoFetchPageState extends State<AutoFetchPage> {
                   child: Center(child: CircularProgressIndicator()),
                 ),
               if (!_loadingTracks && _loadedFor >= 0 && _tracks.isEmpty)
-                const Text('No new tracks left for this chart and tempo this session.',
+                Text('No new tracks left for this chart and tempo this session.',
                     style: TextStyle(fontSize: 12, color: SideDeckTheme.muted)),
               for (var i = 0; i < _tracks.length; i++)
                 if (_yearShown(_tracks[i]))
@@ -482,7 +482,7 @@ class _AutoFetchPageState extends State<AutoFetchPage> {
                 ),
             ],
             if (_source == 'list') ...[
-              const Text(
+              Text(
                 'Paste a chart or any list, one track per line as "Artist - Title". '
                 'Copy a Beatport or Juno top 100 from their page and paste it here. '
                 'Leading numbers are ignored. It works down the list once.',
@@ -556,7 +556,7 @@ class _AutoFetchPageState extends State<AutoFetchPage> {
             Text(
               'Genres that fit ${_bpm.start.round()}-${_bpm.end.round()} BPM are lit. '
               'Move the tempo and the list follows.',
-              style: const TextStyle(fontSize: 11, color: SideDeckTheme.muted),
+              style: TextStyle(fontSize: 11, color: SideDeckTheme.muted),
             ),
             const SizedBox(height: 6),
             Wrap(

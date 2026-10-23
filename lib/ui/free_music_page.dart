@@ -304,7 +304,7 @@ class _FreeMusicPageState extends State<FreeMusicPage> {
       );
     }
     if (_songs.isEmpty) {
-      return const Center(
+      return Center(
         child: Padding(
           padding: EdgeInsets.all(24),
           child: Text(

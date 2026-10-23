@@ -42,7 +42,7 @@ class _GenreGlossaryPageState extends State<GenreGlossaryPage> {
               onChanged: (v) => setState(() => _q = v),
             ),
           ),
-          const Padding(
+          Padding(
             padding: EdgeInsets.fromLTRB(14, 4, 14, 6),
             child: Text(
               'The numbers are the usual speed in beats per minute (BPM). They are typical, not strict.',

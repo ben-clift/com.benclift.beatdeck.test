@@ -7,22 +7,23 @@ import 'package:sidedeck/theme/sidedeck_theme.dart';
 /// Rotary knob. Drag up to turn it up, drag down to turn it down.
 /// [value] runs from 0 to 1. Double tap resets to [center].
 class ControllerKnob extends StatelessWidget {
-  const ControllerKnob({
+  ControllerKnob({
     super.key,
     required this.value,
     required this.onChanged,
     this.label = '',
     this.size = 44,
     this.center = 0.5,
-    this.accent = SideDeckTheme.accentA,
-  });
+    Color? accent,
+  }) : _accent = accent;
 
   final double value;
   final ValueChanged<double> onChanged;
   final String label;
   final double size;
   final double center;
-  final Color accent;
+  final Color? _accent;
+  Color get accent => _accent ?? SideDeckTheme.accentA;
 
   // A full sweep takes about 160 logical pixels of dragging.
   static const _pixelsForFullTurn = 160.0;
@@ -142,21 +143,22 @@ class _KnobPainter extends CustomPainter {
 /// Vertical fader. Drag up to raise it, drag down to lower it.
 /// [value] runs from 0 (bottom) to 1 (top).
 class ControllerFader extends StatelessWidget {
-  const ControllerFader({
+  ControllerFader({
     super.key,
     required this.value,
     required this.onChanged,
     this.height = 120,
-    this.accent = SideDeckTheme.accentA,
+    Color? accent,
     this.ticks = false,
-  });
+  }) : _accent = accent;
 
   /// Draws a printed scale either side of the slot, like a tempo fader.
   final bool ticks;
   final double value;
   final ValueChanged<double> onChanged;
   final double height;
-  final Color accent;
+  final Color? _accent;
+  Color get accent => _accent ?? SideDeckTheme.accentA;
 
   @override
   Widget build(BuildContext context) {

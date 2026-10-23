@@ -60,7 +60,7 @@ class MixerStrip extends StatelessWidget {
             _iconBtn(Ph.settingsOutlined, 'Settings', onSettings),
           ],
         ),
-        const Text(
+        Text(
           'CROSSFADER',
           style: TextStyle(
             fontSize: 9,
@@ -98,7 +98,7 @@ class MixerStrip extends StatelessWidget {
               _iconBtn(Ph.settingsOutlined, 'Settings', onSettings),
             ],
           ),
-          const Text(
+          Text(
             'EXTERNAL MIXER',
             textAlign: TextAlign.center,
             style: TextStyle(
@@ -113,7 +113,7 @@ class MixerStrip extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 10, color: SideDeckTheme.text),
+              style: TextStyle(fontSize: 10, color: SideDeckTheme.text),
             ),
         ],
       ),
@@ -183,7 +183,7 @@ class MixerStrip extends StatelessWidget {
         ),
         Text(
           label,
-          style: const TextStyle(fontSize: 9, color: SideDeckTheme.muted, letterSpacing: 0.3),
+          style: TextStyle(fontSize: 9, color: SideDeckTheme.muted, letterSpacing: 0.3),
         ),
       ],
     );

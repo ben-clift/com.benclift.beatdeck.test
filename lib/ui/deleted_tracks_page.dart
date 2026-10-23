@@ -61,7 +61,7 @@ class _DeletedTracksPageState extends State<DeletedTracksPage> {
         builder: (context, _) {
           final log = Dislikes.instance.log;
           if (log.isEmpty) {
-            return const Center(
+            return Center(
               child: Padding(
                 padding: EdgeInsets.all(24),
                 child: Text(
@@ -79,7 +79,7 @@ class _DeletedTracksPageState extends State<DeletedTracksPage> {
             itemBuilder: (context, i) => ListTile(
               title: Text(log[i].name, maxLines: 2, overflow: TextOverflow.ellipsis),
               subtitle: Text('Deleted ${_when(log[i].at)}',
-                  style: const TextStyle(fontSize: 12, color: SideDeckTheme.muted)),
+                  style: TextStyle(fontSize: 12, color: SideDeckTheme.muted)),
               trailing: TextButton(
                 onPressed: () => Dislikes.instance.allowAgain(i),
                 child: const Text('Allow again'),

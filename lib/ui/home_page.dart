@@ -704,7 +704,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             padding: const EdgeInsets.symmetric(horizontal: 8),
             child: Text(
               caption,
-              style: const TextStyle(fontSize: 11, color: SideDeckTheme.muted),
+              style: TextStyle(fontSize: 11, color: SideDeckTheme.muted),
             ),
           ),
           right,
