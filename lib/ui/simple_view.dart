@@ -2256,7 +2256,7 @@ Container(
                   const SizedBox(height: 12),
                   title,
                   const SizedBox(height: 14),
-                  Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
+                  Wrap(alignment: WrapAlignment.spaceEvenly, crossAxisAlignment: WrapCrossAlignment.center, spacing: 6, runSpacing: 10, children: [
                     _orb(Ph.arrowBack, () => setState(() => _showChooser = true), tip: 'Back to genres'),
                     _dial(dj, frac, 84),
                     _orb(Ph.skipNext, _skip, tip: 'Next track'),

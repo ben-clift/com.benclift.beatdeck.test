@@ -74,10 +74,10 @@ jobs:
           fi
           exit 0
 
-      - name: Build debug APK (arm64 phones)
+      - name: Build APK (profile: no debug overflow banners) (arm64 phones)
         run: |
           set +e
-          flutter build apk --debug --target-platform=android-arm64 --build-name=1.2.${{ github.run_number }} --build-number=${{ github.run_number }} --dart-define=BUILD_EPOCH=$(date +%s) 2>&1 | tee build.txt
+          flutter build apk --profile --target-platform=android-arm64 --build-name=1.2.${{ github.run_number }} --build-number=${{ github.run_number }} --dart-define=BUILD_EPOCH=$(date +%s) 2>&1 | tee build.txt
           code=${PIPESTATUS[0]}
           if [ "$code" != "0" ]; then
             grep -E 'Error:|error:|FAILURE|What went wrong' -A2 build.txt | head -60 | sed 's/%/%25/g' | awk 'BEGIN{ORS="%0A"}{print}' > errs.txt
@@ -88,7 +88,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: beatdeck-debug-apk
-          path: build/app/outputs/flutter-apk/app-debug.apk
+          path: build/app/outputs/flutter-apk/app-profile.apk
           if-no-files-found: error
 
       # Also publish the newest APK on the Releases page, which is easy to
@@ -101,7 +101,7 @@ jobs:
           VER="1.2.${{ github.run_number }}"
           STAMP=$(TZ=Europe/London date +"%Y-%m-%d %H:%M")
           FILE="BeatDeckTest-v${VER}.apk"
-          cp build/app/outputs/flutter-apk/app-debug.apk "$FILE"
+          cp build/app/outputs/flutter-apk/app-profile.apk "$FILE"
           # Same file under a fixed name, so one permanent download link always works.
           cp "$FILE" BeatDeckFriends.apk
           gh release delete latest --cleanup-tag --yes || true
