@@ -75,6 +75,14 @@ class H(BaseHTTPRequestHandler):
     def do_GET(self):
         u = urllib.parse.urlparse(self.path)
         q = urllib.parse.parse_qs(u.query)
+        if u.path == '/':
+            body = b'BeatDeck Mac share is running. Use the address and code in the app.'
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/plain')
+            self.send_header('Content-Length', str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
         if q.get('pin', [''])[0] != PIN:
             return self._deny()
         if u.path == '/index':
