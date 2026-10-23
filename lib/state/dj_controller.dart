@@ -2076,15 +2076,15 @@ class DjController extends ChangeNotifier {
     // Relative to the mix length, so a long blend still has a track ready
     // before it must start (fixed 45/20 s left too little time for it).
     final f = _lead;
-    final tier = skipping ? 1 : (remaining > f + 45 ? 0 : (remaining > f + 20 ? 1 : 2));
+    final tier = _manualStart ? 2 : (skipping ? 1 : (remaining > f + 45 ? 0 : (remaining > f + 20 ? 1 : 2)));
     var next = _nextUnplayed(tier: tier);
     // Never silent: with the end near and nothing new yet, replay the track
     // played longest ago (never a deleted one) while the helper keeps looking.
-    if (next == null && remaining <= f + 25) next = _pickAnyReady();
-    if (next == null && remaining <= f + 25 && _replayPick() != null) {
+    if (next == null && (remaining <= f + 25 || _manualStart)) next = _pickAnyReady();
+    if (next == null && (remaining <= f + 25 || _manualStart) && _replayPick() != null) {
       next = _nextUnplayed(tier: 2);
     }
-    if (next == null && remaining <= f + 25 && _lastResortPick() != null) {
+    if (next == null && (remaining <= f + 25 || _manualStart) && _lastResortPick() != null) {
       next = _nextUnplayed(tier: 2);
     }
     if (next == null) {
