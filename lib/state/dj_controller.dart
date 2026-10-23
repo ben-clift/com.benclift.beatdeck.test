@@ -3080,6 +3080,19 @@ class DjController extends ChangeNotifier {
 
   void setRate(int deckIndex, double rate) {
     final d = deck(deckIndex);
+    // A tempo change in the middle of a mix moves both tracks together, or the
+    // beats would slide apart for the rest of the blend.
+    if (automixOn && _automixFading && (deckIndex == _automixDeck || deckIndex == 1 - _automixDeck)) {
+      final before = d.rate <= 0 ? 1.0 : d.rate;
+      final f = rate / before;
+      final o = 1 - deckIndex;
+      if (o < 2 && deck(o).loaded && f.isFinite && f > 0 && (f - 1).abs() > 1e-6) {
+        deck(o).rate = (deck(o).rate <= 0 ? 1.0 : deck(o).rate) * f;
+        deck(o).synced = false;
+        _applyRate(o);
+        DebugLog.add('mixq', 'tempo changed during a mix (${((f - 1) * 100).toStringAsFixed(1)}%): both decks moved together');
+      }
+    }
     d.rate = rate;
     d.synced = false;
     _applyRate(deckIndex);
