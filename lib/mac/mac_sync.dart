@@ -206,10 +206,12 @@ class MacSync extends ChangeNotifier {
     try {
       _set('Connecting…');
       final n = (await _index()).length;
+      DebugLog.add('mac', 'test ok: ${_uri('/index').origin}, $n tracks');
       _set('Connected. The Mac is sharing $n tracks.');
       return n;
     } catch (e) {
-      _set(_friendly(e));
+      DebugLog.add('mac', 'test failed (${_uri('/index').origin}): $e');
+      _set('${_friendly(e)}\n(${e.toString().split('\n').first})');
       return null;
     }
   }
@@ -231,6 +233,7 @@ class MacSync extends ChangeNotifier {
   Future<void> start(LibraryController lib) async {
     if (running) return;
     running = true;
+    DebugLog.add('mac', 'sync button pressed: ${url.trim()}');
     _cancel = false;
     done = 0;
     failed = 0;
