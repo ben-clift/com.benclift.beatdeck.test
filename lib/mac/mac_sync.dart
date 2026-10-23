@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -79,6 +80,7 @@ class MacSync extends ChangeNotifier {
     _prefix = r.path + Platform.pathSeparator;
     await _loadState();
     notifyListeners();
+    unawaited(_trim());
   }
 
   /// A track that came from the Mac.
@@ -103,6 +105,7 @@ class MacSync extends ChangeNotifier {
       final f = File(path);
       final want = await f.length();
       final part = File('$path.part');
+      await _trim();
       DebugLog.add('mac', 'streaming from the Mac: $rel');
       await _download(rel, part);
       if (await part.length() != want) {
@@ -141,7 +144,8 @@ class MacSync extends ChangeNotifier {
     final st = await f.stat();
     final mt = _mtime[path] ?? st.modified.millisecondsSinceEpoch;
     final raf = await f.open(mode: FileMode.write);
-    await raf.truncate(st.size); // sparse: same length, no disk used
+    await raf.truncate(0); // free the real data first
+    await raf.truncate(st.size); // then sparse: same length, no disk used
     await raf.close();
     await f.setLastModified(DateTime.fromMillisecondsSinceEpoch(mt));
     _mtime[path] = mt;
@@ -166,7 +170,11 @@ class MacSync extends ChangeNotifier {
         }
       }
       var total = real.values.fold<int>(0, (a, b) => a + b);
-      final cap = (StorageGuard.maxGb * 1024 * 1024 * 1024).round();
+      var cap = (StorageGuard.maxGb * 1024 * 1024 * 1024).round();
+      // Also keep the phone's free space (your reserve) untouched.
+      final free = StorageGuard.freeBytes(root.path);
+      final reserve = (StorageGuard.reserveGb * 1024 * 1024 * 1024).round();
+      if (free != null && free < reserve) cap = math.max(0, total - (reserve - free));
       final recent = DateTime.now().millisecondsSinceEpoch - 15 * 60 * 1000;
       final order = real.keys.toList()..sort((a, b) => (_used[a] ?? 0).compareTo(_used[b] ?? 0));
       for (final path in order) {
