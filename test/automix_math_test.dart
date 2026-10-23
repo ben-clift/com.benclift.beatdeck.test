@@ -32,6 +32,19 @@ void main() {
     expect(pos, closeTo(0.2 + 0.5 * 0.6, 1e-9));
   });
 
+  test('incoming start lines up the bar (beat 1 on beat 1)', () {
+    // Outgoing (120 bpm, grid starts at 1.0 s) is 3 beats into its bar at 2.5 s.
+    // The incoming track (60 bpm, grid starts at 0.5 s) starts 3 beats into its bar.
+    final pos = incomingStartPosition(
+      outPosition: 2.5,
+      outBpm: 120,
+      outBeatOffset: 1.0,
+      inBpm: 60,
+      inBeatOffset: 0.5,
+    );
+    expect(pos, closeTo(0.5 + 3 * 1.0, 1e-9));
+  });
+
   test('incoming start falls back without beat data', () {
     expect(
       incomingStartPosition(

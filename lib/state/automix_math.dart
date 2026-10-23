@@ -28,8 +28,8 @@ double beatPhase({
   return frac < 0 ? frac + 1 : frac;
 }
 
-/// Where to start the incoming track so its beat lines up with the outgoing
-/// track right now. If either track has no beat grid the incoming track simply
+/// Where to start the incoming track so its beats and bars line up with the
+/// outgoing track right now. If either track has no beat grid the incoming track simply
 /// starts from its first beat (or 0).
 double incomingStartPosition({
   required double outPosition,
@@ -40,12 +40,12 @@ double incomingStartPosition({
 }) {
   final inOffset = inBeatOffset < 0 ? 0.0 : inBeatOffset;
   if (outBpm <= 1 || inBpm <= 1) return inOffset;
-  final phase = beatPhase(
-    position: outPosition,
-    bpm: outBpm,
-    beatOffset: outBeatOffset,
-  );
-  return inOffset + phase * 60.0 / inBpm;
+  // Line up the bar, not just the beat: beat 1 of the new track lands on the
+  // same beat of the bar the old track is on (4 beats to the bar), so the kick
+  // pattern and bass phrases fit, like a DJ cueing on the one.
+  var inBar = (outPosition - outBeatOffset) * outBpm / 60.0 % 4.0;
+  if (inBar < 0) inBar += 4.0;
+  return inOffset + inBar * 60.0 / inBpm;
 }
 
 /// Tempo multiplier that makes the incoming track play at the outgoing
