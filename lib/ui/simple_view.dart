@@ -1289,6 +1289,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                   ]),
                   const SizedBox(height: 8),
                   Expanded(child: !_introLoaded ? const SizedBox.shrink() : (!_introDone ? _intro() : (on && !_showChooser ? _playing(dj) : _chooser()))),
+                  if (viz && MediaQuery.of(context).orientation == Orientation.portrait) _bottomBar(dj),
                 ],
               ),
             ),
@@ -1585,6 +1586,54 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
     textStyle: const TextStyle(fontFamily: SideDeckTheme.label, fontWeight: FontWeight.w700, fontSize: 14, letterSpacing: .4),
   );
+
+  /// Pitch (tempo) fader and volume, pinned to the bottom of the Booth.
+  Widget _bottomBar(DjController dj) {
+    final di = dj.automixPlayingDeck.clamp(0, 1);
+    final d = dj.deck(di);
+    final pct = (d.rate - 1) * 100;
+    final bpm = d.bpm > 1 ? (d.bpm * d.rate).toStringAsFixed(1) : '--';
+    Widget lab(String t, String v) => SizedBox(
+          width: 74,
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+            Text(t, style: const TextStyle(fontFamily: SideDeckTheme.label, fontWeight: FontWeight.w700, fontSize: 13, letterSpacing: 1.2, color: _dim)),
+            Text(v, style: const TextStyle(fontFamily: SideDeckTheme.mono, fontSize: 13)),
+          ]),
+        );
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.fromLTRB(12, 6, 8, 6),
+      decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(4), border: Border.all(color: const Color(0xFF2E2E33))),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Row(children: [
+          GestureDetector(onDoubleTap: () => dj.setRate(di, 1.0), child: lab('PITCH', '$bpm BPM')),
+          Expanded(
+            child: Slider(
+              min: -10,
+              max: 10,
+              value: pct.clamp(-10.0, 10.0),
+              onChanged: d.loaded ? (v) => dj.setRate(di, 1 + v / 100) : null,
+            ),
+          ),
+          SizedBox(
+            width: 48,
+            child: GestureDetector(
+              onTap: () => dj.setRate(di, 1.0),
+              child: Text('${pct >= 0 ? '+' : ''}${pct.toStringAsFixed(1)}%',
+                  textAlign: TextAlign.right, style: const TextStyle(fontFamily: SideDeckTheme.mono, fontSize: 12, color: _dim)),
+            ),
+          ),
+        ]),
+        Row(children: [
+          lab('VOLUME', '${(dj.master * 100).round()}%'),
+          Expanded(
+            child: Slider(min: 0, max: 1, value: dj.master.clamp(0.0, 1.0), onChanged: dj.setMaster),
+          ),
+          const SizedBox(width: 48),
+        ]),
+      ]),
+    );
+  }
 
   Widget _queueCard(DjController dj, DeckState d, List<String> upcoming, String status) {
     return
