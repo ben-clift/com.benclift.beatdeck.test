@@ -821,10 +821,12 @@ class DjController extends ChangeNotifier {
     }
     if (!automixOn || _automixDeck < 0) return 'Automix is not running.';
     if (_automixFading) {
-      // Skip during a mix: finish it this instant, the new track takes over.
-      _automixFadeStart = DateTime.now().subtract(Duration(milliseconds: (_fadeLen * 1000).ceil() + 50));
-      _automixAdvanceFade();
-      DebugLog.add('automix', 'skip during a mix: finished it at once, the new track is playing');
+      // Skip during a mix: never chop it. Let it finish, then blend straight
+      // into the next track.
+      _pendingSkip = true;
+      _pendingPrefer = prefer;
+      DebugLog.add('automix', 'skip during a mix: the next blend starts as soon as this one is done');
+      automixStatus = 'Next track blends in right after this mix';
       notifyListeners();
       return null;
     }
@@ -891,6 +893,8 @@ class DjController extends ChangeNotifier {
 
   bool _forceAnyTempo = false;
   bool _quickNext = false;
+  bool _pendingSkip = false;
+  String? _pendingPrefer;
 
   /// Replaces the playing track at once with [path] (a short 3 s hand-over,
   /// or an instant cut if a mix is already running).
@@ -1880,26 +1884,9 @@ class DjController extends ChangeNotifier {
 
   bool automixCut() {
     if (!automixOn || _automixDeck < 0) return false;
-    if (_automixFading) {
-      _automixFadeStart = DateTime.now().subtract(Duration(milliseconds: (_fadeLen * 1000).ceil() + 50));
-      _automixAdvanceFade();
-      notifyListeners();
-      return true;
-    }
-    if (automixUpcoming.isEmpty) return false;
-    final cur = _automixDeck;
-    final path = deck(cur).path;
-    if (automixPaused) {
-      automixPaused = false;
-      _pausedDecks.clear();
-    }
-    _engine.play(cur, false);
-    deck(cur).playing = false;
-    if (path != null) _markPlayed(path);
-    DebugLog.add('automix', 'you cut the playing track: next one starts now');
-    final ok = _automixDeckEnded(cur, 1 - cur);
-    notifyListeners();
-    return ok;
+    if (automixUpcoming.isEmpty && !_automixFading) return false;
+    // Always a blend: never stop the playing track and start another.
+    return automixSkip(_automixDeck) == null;
   }
 
   bool _automixTick() {
@@ -2721,6 +2708,12 @@ class DjController extends ChangeNotifier {
       if (prevTrack != null) _flow?.played(prevTrack, _flowMove);
       _clearUpNext();
       _automixFading = false;
+      if (_pendingSkip) {
+        _pendingSkip = false;
+        final pf = _pendingPrefer;
+        _pendingPrefer = null;
+        Future.microtask(() => automixSkip(_automixDeck, prefer: pf));
+      }
     }
   }
 

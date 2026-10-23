@@ -80,6 +80,10 @@ TransitionPlan planFor(
   }
   final bpm = inBpm > 1 ? inBpm : (outBpm > 1 ? outBpm : 120.0);
   final bar = 4 * 60.0 / bpm;
+  // Always blend: a one-bar cut sounds like a restart, so it becomes a short blend.
+  if (kind == TransitionKind.cut) {
+    return TransitionPlan(TransitionKind.quick, math.max(3.0, math.min(baseSeconds, 4 * bar)));
+  }
   switch (kind) {
     case TransitionKind.smooth:
       return TransitionPlan(kind, baseSeconds);
