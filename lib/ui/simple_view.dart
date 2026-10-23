@@ -1580,13 +1580,6 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     textStyle: const TextStyle(fontFamily: SideDeckTheme.label, fontWeight: FontWeight.w700, fontSize: 14, letterSpacing: .4),
   );
 
-  static final _tight = TextButton.styleFrom(
-    padding: const EdgeInsets.symmetric(horizontal: 6),
-    minimumSize: const Size(0, 36),
-    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-    textStyle: const TextStyle(fontFamily: SideDeckTheme.label, fontWeight: FontWeight.w700, fontSize: 14, letterSpacing: .4),
-  );
-
   /// Pitch (tempo) fader and volume, pinned to the bottom of the Booth.
   Widget _bottomBar(DjController dj) {
     final di = dj.automixPlayingDeck.clamp(0, 1);
@@ -1904,54 +1897,8 @@ Container(
             ),
           ),
         ),
-        Positioned(left: 0, right: 0, bottom: 0, child: _pitchBar(dj)),
       ]);
     });
-  }
-
-  /// Pitch / BPM fader pinned to the bottom of the screen.
-  Widget _pitchBar(DjController dj) {
-    final di = dj.automixPlayingDeck.clamp(0, 1);
-    final d = dj.deck(di);
-    const range = 8.0;
-    final pct = ((d.rate - 1.0) * 100.0).clamp(-range, range).toDouble();
-    final bpm = d.bpm > 1 ? (d.bpm * d.rate).toStringAsFixed(1) : '--';
-    return Container(
-      padding: const EdgeInsets.fromLTRB(14, 4, 6, 4),
-      decoration: const BoxDecoration(
-        color: Color(0xFF17171A),
-        border: Border(top: BorderSide(color: Color(0xFF2E2E33))),
-      ),
-      child: Row(children: [
-        SizedBox(
-          width: 74,
-          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('BPM', style: TextStyle(fontFamily: SideDeckTheme.label, fontSize: 12, letterSpacing: 1.4, color: _dim)),
-            Text(bpm, style: const TextStyle(fontFamily: SideDeckTheme.mono, fontSize: 18, fontWeight: FontWeight.w700)),
-          ]),
-        ),
-        Expanded(
-          child: Slider(
-            min: -range,
-            max: range,
-            divisions: 160,
-            value: pct,
-            onChanged: d.bpm > 1 ? (v) => dj.setRate(di, 1.0 + v / 100.0) : null,
-          ),
-        ),
-        SizedBox(
-          width: 58,
-          child: Text('${pct > 0 ? '+' : ''}${pct.toStringAsFixed(1)}%',
-              textAlign: TextAlign.right,
-              style: const TextStyle(fontFamily: SideDeckTheme.mono, fontSize: 13, color: _dim)),
-        ),
-        IconButton(
-          tooltip: 'Reset pitch',
-          icon: const Icon(Ph.restartAlt, size: 20),
-          onPressed: d.bpm > 1 ? () => dj.setRate(di, 1.0) : null,
-        ),
-      ]),
-    );
   }
 
   Widget _chip(String t) => Container(
