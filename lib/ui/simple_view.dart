@@ -16,6 +16,7 @@ import 'package:sidedeck/state/app_mode.dart';
 import 'package:sidedeck/state/dj_controller.dart';
 import 'package:sidedeck/state/expiry.dart';
 import 'package:sidedeck/state/library_controller.dart';
+import 'package:sidedeck/suggest/harmony.dart';
 import 'package:sidedeck/state/screen_brightness.dart';
 import 'package:sidedeck/state/starred.dart';
 import 'package:sidedeck/suggest/auto_fetch.dart';
@@ -135,11 +136,56 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     _keepAhead = Timer.periodic(const Duration(seconds: 8), (_) {
       _refill();
       _styleFallback();
+      _libraryFallback();
     });
   }
 
   Future<void> _loadStyle() => StyleSettings.instance.load();
   DateTime _lastStyle = DateTime.fromMillisecondsSinceEpoch(0);
+  DateTime _lastLib = DateTime.fromMillisecondsSinceEpoch(0);
+
+  /// Nothing downloaded and waiting? Play something from the library: the
+  /// track whose key mixes best with the one playing (and a close tempo).
+  void _libraryFallback() {
+    final dj = widget.dj;
+    if (!mounted || !dj.automixOn || dj.automixUpcoming.isNotEmpty) return;
+    final d = dj.deck(dj.automixPlayingDeck.clamp(0, 1));
+    if (!d.loaded || d.duration <= 0) return;
+    final left = d.duration - d.position;
+    final st = StyleSettings.instance;
+    final styleActive = st.mode != 0 && st.chosen().isNotEmpty;
+    // My style gets the first go; the library steps in when time is short.
+    if (left > (styleActive ? 45 : 90)) return;
+    if (DateTime.now().difference(_lastLib).inSeconds < 25) return;
+    _lastLib = DateTime.now();
+    final cur = d.key >= 0 ? CamelotKey.fromIndex(d.key) : null;
+    final bpm = d.bpm > 1 ? d.bpm * d.rate : 0.0;
+    LibraryTrack? best;
+    var bestScore = -1e9;
+    for (final t in widget.library.tracks) {
+      if (t.path == d.path || dj.playedRecently(t.path) || !File(t.path).existsSync()) continue;
+      if (!dj.automixFits(t.path)) continue;
+      var score = 0.0;
+      final tk = t.key == null ? null : CamelotKey.fromIndex(t.key!);
+      if (cur != null && tk != null) {
+        score += keyMatch(cur, tk).score.toDouble();
+      } else {
+        score += 35; // key not known yet: neutral
+      }
+      if (bpm > 0 && t.bpm != null && t.bpm! > 1) {
+        score -= ((t.bpm! - bpm).abs() / bpm * 100).clamp(0, 40).toDouble();
+      }
+      score += math.Random().nextDouble() * 6; // vary ties
+      if (score > bestScore) {
+        bestScore = score;
+        best = t;
+      }
+    }
+    if (best == null) return;
+    DebugLog.add('simple', 'nothing waiting: playing library track ${best.title} (best key match, score ${bestScore.round()})');
+    dj.automixAllow(best.path);
+    dj.automixAppend(best.path);
+  }
 
   /// When there is nothing else to play next, play music in the style of the
   /// starred tracks: first from the library, else related artists from Deezer.
@@ -2028,6 +2074,14 @@ Container(
                     _dial(dj, frac, 84),
                     _orb(Ph.skipNext, _skip, tip: 'Next track'),
                     _starOrb(dj, d),
+                    _orb(Ph.insights, () {
+                      if (StyleSettings.instance.chosen().isEmpty) {
+                        _toast('Star some tracks first. My style copies their sound.');
+                      } else {
+                        _toast('Finding something in your style...');
+                        _styleFallback(force: true);
+                      }
+                    }, tip: 'Play My style now', color: SideDeckTheme.accentA),
                   ]),
                   const SizedBox(height: 16),
                   _actionRow(),

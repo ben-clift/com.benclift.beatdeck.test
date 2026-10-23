@@ -794,6 +794,9 @@ class DjController extends ChangeNotifier {
     return bands ? fam == 'bands' : fam != 'bands';
   }
 
+  /// True when [path] passes the genre, vocal, mood, year and tempo rules.
+  bool automixFits(String path) => _inWindow(path);
+
   bool _inWindow(String path) {
     if (!_kindOk(path)) return false;
     final dr = decadeRange;
