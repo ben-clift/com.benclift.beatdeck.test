@@ -2085,7 +2085,28 @@ class DjController extends ChangeNotifier {
     }
     final mixNow = skipping || (_mixNow && _forcePath != null && _forcePath == _automixQueue[next]);
     final early = !mixNow && remaining > _lead + 15 && _endEarly(cur, d);
-    if (mixNow || early || shouldStartFade(remaining: remaining, fadeSeconds: _lead)) {
+    // Drop the new track in during a breakdown of the playing one: wait for
+    // the break, start on a bar line inside it, and finish before it ends.
+    var dropLeft = 0.0;
+    if (!mixNow && !early && d.bpm > 1 && remaining <= _lead + 120) {
+      final pos0 = _engine.position(cur);
+      final rate0 = d.rate <= 0 ? 1.0 : d.rate;
+      for (final bs in breaksOf(cur)) {
+        if (pos0 >= bs.end) continue;
+        if (pos0 >= bs.start - 0.2) {
+          final left = (bs.end - pos0) / rate0;
+          if (left >= 6 && nearBarLine(pos0, d.bpm, d.beatOffset)) {
+            dropLeft = left;
+          } else if (left >= 6 && remaining > left + 4) {
+            return false; // inside the break: wait for the next bar line
+          }
+        } else if (remaining - (bs.start - pos0) / rate0 >= 12) {
+          return false; // a break is coming: hold the mix for it
+        }
+        break;
+      }
+    }
+    if (mixNow || early || dropLeft > 0 || shouldStartFade(remaining: remaining, fadeSeconds: _lead)) {
       var breakLeft = 0.0;
       // Tempos as heard: the outgoing speed, and the incoming one after the
       // 8 % stretch limit, so a gap that cannot be closed picks a cut or echo
@@ -2110,6 +2131,10 @@ class DjController extends ChangeNotifier {
       }
       var plan = planFor(automixStyle,
           outBpm: heardOut, inBpm: heardIn, baseSeconds: skipping ? 8.0 : (automixBlendSeconds > 0 ? automixBlendSeconds : automixFadeSeconds), breakSeconds: breakLeft);
+      if (dropLeft > 0 && plan.kind != TransitionKind.breakdown) {
+        if (plan.seconds > dropLeft) plan = TransitionPlan(plan.kind, dropLeft);
+        DebugLog.add('automix', 'dropping into a breakdown: ${dropLeft.toStringAsFixed(0)} s of break left, mix ${plan.seconds.toStringAsFixed(0)} s');
+      }
       // Next / skip: always a real blend, started right now. A bar-line cut, a
       // breakdown swap or a long filter sweep would wait or sound like a restart.
       if (skipping && plan.kind != TransitionKind.smooth && plan.kind != TransitionKind.quick) {
