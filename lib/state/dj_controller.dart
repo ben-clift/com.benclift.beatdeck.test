@@ -987,6 +987,18 @@ class DjController extends ChangeNotifier {
   bool get manualMixing => _manualMix && _automixFading;
   double get manualT => _manualT;
 
+  /// How far through the blend we are (0 to 1) while any mix is running.
+  double _fadeProgress = 0;
+  bool get blending => _automixFading;
+  double get blendProgress => _manualMix ? _manualT : _fadeProgress;
+
+  /// Take over an automatic blend from where it is.
+  void takeBlend(double v) {
+    if (!_automixFading) return;
+    _manualMix = true;
+    setManualT(v);
+  }
+
   /// Bring the next track in now and let the slider drive the blend.
   bool manualMixStart({String? prefer}) {
     if (!automixOn || _automixDeck < 0 || _automixFading || _manualStart) return false;
@@ -3026,6 +3038,7 @@ class DjController extends ChangeNotifier {
       );
     }
     final t = (elapsed / _fadeLen).clamp(0.0, 1.0);
+    _fadeProgress = t;
     final (gIn, gOut) = gains(_plan?.kind ?? TransitionKind.smooth, t);
     _engine.setFader(other, _fadeInBase * gIn);
     _engine.setFader(cur, _fadeOutBase * gOut);

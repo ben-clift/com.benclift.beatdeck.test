@@ -2349,15 +2349,15 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
           ),
         ]),
         Row(children: [
-          lab('BLEND', dj.manualMixing ? '${(dj.manualT * 100).round()}%' : (dj.manualPending ? 'starting…' : 'manual')),
+          lab('BLEND', dj.blending ? '${(dj.blendProgress * 100).round()}%' : (dj.manualPending ? 'starting…' : 'manual')),
           Expanded(
             child: Slider(
               min: 0,
               max: 1,
-              value: dj.manualMixing ? dj.manualT.clamp(0.0, 1.0) : 0.0,
+              value: dj.blending ? dj.blendProgress.clamp(0.0, 1.0) : 0.0,
               onChanged: (v) {
-                if (dj.manualMixing) {
-                  dj.setManualT(v);
+                if (dj.blending) {
+                  dj.takeBlend(v); // drag it any time: you take over from where it is
                 } else if (v > 0.02 && !dj.manualPending) {
                   if (!dj.manualMixStart()) _toast('Start Auto DJ first.');
                 }
@@ -2367,8 +2367,8 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
           SizedBox(
             width: 48,
             child: _orb(Ph.skipNext, () {
-              if (dj.manualMixing) {
-                dj.setManualT(1.0);
+              if (dj.blending) {
+                dj.takeBlend(1.0);
               } else if (!dj.manualMixStart()) {
                 _toast('Start Auto DJ first.');
               } else {
