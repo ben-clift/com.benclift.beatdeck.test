@@ -1553,12 +1553,15 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
             borderRadius: BorderRadius.circular(5),
             onTap: onTap,
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 2),
               child: Column(mainAxisSize: MainAxisSize.min, children: [
                 Icon(icon, size: 24),
                 const SizedBox(height: 4),
-                Text(label.toUpperCase(), maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontFamily: SideDeckTheme.label, fontWeight: FontWeight.w600, fontSize: 13, letterSpacing: 1)),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(label.toUpperCase(), maxLines: 1,
+                      style: const TextStyle(fontFamily: SideDeckTheme.label, fontWeight: FontWeight.w600, fontSize: 13, letterSpacing: .6)),
+                ),
               ]),
             ),
           ),
@@ -1566,6 +1569,13 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
       ),
     );
   }
+
+  static final _tight = TextButton.styleFrom(
+    padding: const EdgeInsets.symmetric(horizontal: 6),
+    minimumSize: const Size(0, 36),
+    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    textStyle: const TextStyle(fontFamily: SideDeckTheme.label, fontWeight: FontWeight.w700, fontSize: 14, letterSpacing: .4),
+  );
 
   Widget _queueCard(DjController dj, DeckState d, List<String> upcoming, String status) {
     return
@@ -1577,15 +1587,17 @@ Container(
               const Text('Queue', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
               const Spacer(),
               TextButton.icon(
+                style: _tight,
                 onPressed: _showLibrary,
-                icon: const Icon(Ph.libraryMusic, size: 18),
+                icon: const Icon(Ph.libraryMusic, size: 16),
                 label: ListenableBuilder(listenable: widget.library, builder: (_, __) => Text('Library (${widget.library.tracks.length})')),
               ),
               ListenableBuilder(
                 listenable: Starred.instance,
                 builder: (_, __) => TextButton.icon(
+                  style: _tight,
                   onPressed: _showStarred,
-                  icon: const Icon(Ph.star, size: 18, color: Color(0xFFFFC83D)),
+                  icon: const Icon(Ph.star, size: 16, color: Color(0xFFFFC83D)),
                   label: Text('Starred (${Starred.instance.items.length})'),
                 ),
               ),
