@@ -2012,7 +2012,7 @@ class DjController extends ChangeNotifier {
       final heardOut = d.bpm * d.rate;
       final heardIn = deck(other).bpm *
           incomingRate(outBpm: d.bpm, outRate: d.rate, inBpm: deck(other).bpm);
-      if (kindFor(automixStyle, heardOut, heardIn) == TransitionKind.breakdown) {
+      if (!skipping && kindFor(automixStyle, heardOut, heardIn) == TransitionKind.breakdown) {
         final amp = [
           for (var k = 0; k < math.min(d.waveMax.length, d.waveMin.length); k++)
             (d.waveMax[k] - d.waveMin[k]).toDouble(),
@@ -2027,8 +2027,14 @@ class DjController extends ChangeNotifier {
           breakLeft = (end - pos) / (d.rate <= 0 ? 1 : d.rate);
         }
       }
-      final plan = planFor(automixStyle,
+      var plan = planFor(automixStyle,
           outBpm: heardOut, inBpm: heardIn, baseSeconds: skipping ? 8.0 : automixFadeSeconds, breakSeconds: breakLeft);
+      // Next / skip: always a real blend, started right now. A bar-line cut, a
+      // breakdown swap or a long filter sweep would wait or sound like a restart.
+      if (skipping && plan.kind != TransitionKind.smooth && plan.kind != TransitionKind.quick) {
+        plan = TransitionPlan(TransitionKind.quick, 8.0);
+        DebugLog.add('automix', 'skip: using a quick blend, started now');
+      }
       // A cut lands on the first beat of a bar, so wait for the bar line
       // (unless the track is about to end).
       final bar = d.bpm > 1 ? 4 * 60.0 / d.bpm : 2.0;
