@@ -2941,7 +2941,9 @@ class DjController extends ChangeNotifier {
     final rr0 = rr;
     if (rr > 1.85 && rr < 2.15) rr /= 2;
     if (rr > 0.46 && rr < 0.54) rr *= 2;
-    final tempoClash = rr < 0.88 || rr > 1.12;
+    // Half/double-time pairs are never beat-locked (the grids drift), so they
+    // get the short clean hand-over like any other clash.
+    final tempoClash = rr < 0.88 || rr > 1.12 || rr != rr0;
     if (tempoClash || !autoSyncOn) inc.rate = 1.0;
     inc.synced = false;
     if (!autoSyncOn) DebugLog.add('automix', 'auto sync is off: the new track plays at its own speed');

@@ -557,9 +557,12 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     final useGenre = st.matchGenre && genres.isNotEmpty;
     final bpms = [for (final t in stars) if (t.bpm > 0) t.bpm]..sort();
     final mid = st.bpmFrom > 0 ? (st.bpmFrom + st.bpmTo) ~/ 2 : (bpms.isEmpty ? 0 : bpms[bpms.length ~/ 2]);
+    final playBpm = (dj.automixOn && dj.automixPlayingDeck >= 0) ? dj.deck(dj.automixPlayingDeck).bpm : 0.0;
     final local = <LibraryTrack>[
       for (final t in widget.library.tracks)
         if (!dj.playedRecently(t.path) &&
+            // Close to what is playing (no half/double-time jumps like 91 -> 175).
+            (playBpm <= 1 || t.bpm == null || t.bpm! <= 0 || (t.bpm! - playBpm).abs() <= playBpm * 0.12) &&
             !((dj.vocalMode?.call() ?? 0) != 0 &&
                 vocalClash(t.path.split(RegExp(r'[\\/]')).last, dj.vocalMode!.call())) &&
             File(t.path).existsSync() &&
