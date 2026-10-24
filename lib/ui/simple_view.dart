@@ -1835,9 +1835,10 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
   bool _unknownKind(DjController dj, String path) => false;
 
   void _skip() {
+    // Next track means a blend: the next one comes in over about 30 s and the
+    // BLEND slider follows it (drag it to take over).
     final dj = widget.dj;
-    dj.armSkipBrake();
-    final msg = dj.automixSkip(dj.automixPlayingDeck);
+    final msg = dj.automixSkip(dj.automixPlayingDeck, blend: 30);
     if (msg != null) _toast(msg);
   }
 
@@ -2483,10 +2484,8 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
             child: _orb(Ph.skipNext, () {
               if (dj.blending) {
                 dj.takeBlend(1.0);
-              } else if (!dj.manualMixStart()) {
-                _toast(dj.automixOn ? 'Still finding the next track…' : 'Start Auto DJ first.');
               } else {
-                _toast('Bringing the next track in. Move the blend slider.');
+                _skip();
               }
             }, tip: 'Play next track, then blend by hand', size: 36, sel: dj.manualMixing || dj.manualPending),
           ),
