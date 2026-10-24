@@ -62,9 +62,9 @@ double incomingRate({
   // the very bottom or top of the range: match on the same beat instead.
   if (r > 1.85 && r < 2.15) r /= 2;
   if (r > 0.46 && r < 0.54) r *= 2;
-  // Never stretch a track further than 8 %; beyond that the mix is a blend
+  // Never stretch a track further than 12 %; beyond that the mix is a blend
   // at its own speed rather than a squashed track.
-  return r.clamp(0.92, 1.08).toDouble();
+  return r.clamp(0.88, 1.12).toDouble();
 }
 
 /// True when the incoming track should start now: the outgoing track has

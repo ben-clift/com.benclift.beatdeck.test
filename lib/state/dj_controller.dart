@@ -2816,7 +2816,7 @@ class DjController extends ChangeNotifier {
     final rr0 = rr;
     if (rr > 1.85 && rr < 2.15) rr /= 2;
     if (rr > 0.46 && rr < 0.54) rr *= 2;
-    final tempoClash = rr < 0.92 || rr > 1.08;
+    final tempoClash = rr < 0.88 || rr > 1.12;
     if (tempoClash || !autoSyncOn) inc.rate = 1.0;
     inc.synced = false;
     if (!autoSyncOn) DebugLog.add('automix', 'auto sync is off: the new track plays at its own speed');
@@ -3077,6 +3077,29 @@ class DjController extends ChangeNotifier {
   /// Starting a deck takes a moment, so the new track lands slightly late.
   /// A fraction of a second in, measure how far its beats are from the old
   /// track's and move it onto them (it is still very quiet).
+  DateTime _lastLock = DateTime.now();
+
+  /// Keeps the new track on the beat during the mix: every half second the
+  /// beat gap is measured and the new track is sped up or slowed by a hair
+  /// (at most 1.2 %) until the kicks sit together again. No jumps.
+  void _lockPhase(int cur, int other) {
+    if (DateTime.now().difference(_lastLock).inMilliseconds < 500) return;
+    _lastLock = DateTime.now();
+    final out = deck(cur);
+    final inc = deck(other);
+    if (out.bpm <= 1 || inc.bpm <= 1) return;
+    final heardOut = out.bpm * out.rate;
+    final heardIn = inc.bpm * inc.rate;
+    if ((heardOut - heardIn).abs() / heardOut > 0.02) return; // own speed: nothing to lock
+    final pOut = beatPhase(position: _engine.position(cur), bpm: out.bpm, beatOffset: out.beatOffset);
+    final pIn = beatPhase(position: _engine.position(other), bpm: inc.bpm, beatOffset: inc.beatOffset);
+    var delta = pOut - pIn;
+    if (delta > 0.5) delta -= 1;
+    if (delta < -0.5) delta += 1;
+    _nudgeBend[other] = delta.abs() < 0.01 ? 0.0 : (delta * 0.05).clamp(-0.012, 0.012).toDouble();
+    _applyRate(other);
+  }
+
   void _fixMixPhase(int cur, int other) {
     final out = deck(cur);
     final inc = deck(other);
@@ -3152,12 +3175,17 @@ class DjController extends ChangeNotifier {
     if (!_phaseFixed && elapsed >= 0.35) {
       _phaseFixed = true;
       _fixMixPhase(cur, other);
+      _lastLock = DateTime.now();
+    } else if (_phaseFixed && elapsed < _fadeLen - 1.0) {
+      _lockPhase(cur, other);
     }
     if (elapsed >= _fadeLen) {
       _manualMix = false;
       _manualT = 0;
       _afxClearAll();
       _mixqReport(cur, other, finished: true);
+      _nudgeBend[other] = 0;
+      _applyRate(other);
       _engine.play(cur, false);
       deck(cur).playing = false;
       // Put both faders back and park the crossfader on the new deck.
