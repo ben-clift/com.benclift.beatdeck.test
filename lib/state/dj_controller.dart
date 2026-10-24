@@ -533,6 +533,7 @@ class DjController extends ChangeNotifier {
       return false;
     }
     _plist?.remove(path);
+    _hidden.add(path);
     for (var i = _automixQueue.length - 1; i > _automixIndex; i--) {
       if (_automixQueue[i] == path) _automixQueue.removeAt(i);
     }
@@ -885,6 +886,7 @@ class DjController extends ChangeNotifier {
   List<String> Function()? pickedGenres;
 
   bool _inWindow(String path) {
+    if (_hidden.contains(path)) return false;
     if (!_kindOk(path)) return false;
     final pg = pickedGenres?.call() ?? const <String>[];
     if (pg.isNotEmpty && !_userOk.contains(path) && !(requestedPath?.call(path) ?? false)) {
@@ -905,12 +907,27 @@ class DjController extends ChangeNotifier {
 
   /// Skip: on the playing deck, mix into the next track now; on the waiting
   /// deck, drop that track and choose another.
+  /// Tracks you took out of the queue: they are not chosen again.
+  final Set<String> _hidden = {};
+
+  /// Makes a track you picked by hand playable next: not held back by the
+  /// played, tempo, genre or tried-and-turned-down rules, and in the queue.
+  void _userPick(String path) {
+    final k = _trackKey(path);
+    _hidden.remove(path);
+    _userOk.add(path);
+    _rejected.remove(path);
+    failedPaths.remove(path);
+    _automixPlayed.remove(k);
+    _recentPlayed.remove(k);
+    if (!_automixQueue.contains(path)) _automixQueue.add(path);
+  }
+
   double? _userBlend;
   String? automixSkip(int deckIndex, {String? prefer, double? blend}) {
     if (blend != null) _userBlend = blend;
     if (prefer != null) {
-      _userOk.add(prefer);
-      _rejected.remove(prefer);
+      _userPick(prefer);
     }
     if (!automixOn || _automixDeck < 0) return 'Automix is not running.';
     if (_automixFading) {
@@ -966,6 +983,10 @@ class DjController extends ChangeNotifier {
     }
     final name = best.split(RegExp(r'[\\/]')).last.replaceFirst(RegExp(r'\.[^.]+$'), '');
     DebugLog.add('automix', 'skip: ${onPlaying ? 'mixing into' : 'loading on deck ${deckIndex + 1}'} $name');
+    if (prefer != null && best == prefer) {
+      _forcePath = best;
+      _forceAnyTempo = true;
+    }
     if (best != keep) {
       _clearUpNext(); // (this also empties the turned-down list)
       if (pressed != null && !onPlaying) _rejected.add(pressed);
@@ -1024,6 +1045,9 @@ class DjController extends ChangeNotifier {
     }
     if (prefer != null && File(prefer).existsSync()) {
       // The track you chose goes on the other deck now, then the slider blends it in.
+      _userPick(prefer);
+      _forcePath = prefer;
+      _forceAnyTempo = true;
       if (_upNext != prefer) {
         _clearUpNext();
         _forcePath = prefer;
@@ -1254,7 +1278,10 @@ class DjController extends ChangeNotifier {
   bool playedRecently(String path) => _wasPlayed(path);
 
   /// Lets a library track through the genre filter (it was chosen on purpose).
-  void automixAllow(String path) => _userOk.add(path);
+  void automixAllow(String path) {
+    _userOk.add(path);
+    _hidden.remove(path);
+  }
 
   /// Plays any library track now (even one played earlier), mixing it in.
   String? automixPlayTrack(String path) {
@@ -2301,7 +2328,7 @@ class DjController extends ChangeNotifier {
       _deferManual = false;
       manualMixStart(prefer: _deferPrefer);
     }
-    if (_manualStart && DateTime.now().difference(_manualAsked).inSeconds > 40) {
+    if (_manualStart && DateTime.now().difference(_manualAsked).inSeconds > 120) {
       _manualStart = false; // nothing was ready in time: stop waiting
       notifyListeners();
     }
@@ -2414,7 +2441,7 @@ class DjController extends ChangeNotifier {
       _loadNext(other, _automixQueue[next], tier);
       return false;
     }
-    if (_manualStart && DateTime.now().difference(_manualAsked).inSeconds > 40) _manualStart = false;
+    if (_manualStart && DateTime.now().difference(_manualAsked).inSeconds > 120) _manualStart = false;
     final mixNow = skipping || _manualStart || (_mixNow && _forcePath != null && _forcePath == _automixQueue[next]);
     final early = !mixNow && remaining > _lead + 15 && _endEarly(cur, d);
     // Drop the new track in during a breakdown of the playing one: wait for
@@ -2690,7 +2717,7 @@ class DjController extends ChangeNotifier {
           }
         }
       }
-      if (inc.bpm > 1 && _winFit(inc.bpm) == null) {
+      if (inc.bpm > 1 && !forced && !_userOk.contains(path) && _winFit(inc.bpm) == null) {
         DebugLog.add('automix',
             'turned down ${path.split(RegExp(r'[\\/]')).last}: ${inc.bpm.round()} BPM is outside your tempo range, choosing another');
         _rejected.add(path);
