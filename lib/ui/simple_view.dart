@@ -3127,6 +3127,9 @@ class _MixBoxState extends State<_MixBox> {
   @override
   void initState() {
     super.initState();
+    widget.dj.loadAutoKey().then((_) {
+      if (mounted) setState(() {});
+    });
     m.load().then((_) {
       if (mounted) setState(() {});
     });
@@ -3155,6 +3158,37 @@ class _MixBoxState extends State<_MixBox> {
         value: dj.autoFxOn,
         onChanged: (v) => setState(() => dj.setAutoFx(v)),
       ),
+      SwitchListTile(
+        contentPadding: EdgeInsets.zero,
+        title: const Text('Auto key match', style: TextStyle(fontWeight: FontWeight.w700)),
+        subtitle: const Text('Shift a clashing next track up or down a semitone or two so the keys fit'),
+        value: dj.autoKeyOn,
+        onChanged: (v) => setState(() => dj.setAutoKey(v)),
+      ),
+      const SizedBox(height: 4),
+      for (final e in [(dj.automixPlayingDeck, 'Playing track key'), (1 - dj.automixPlayingDeck, 'Next track key')])
+        ListenableBuilder(
+          listenable: dj,
+          builder: (_, __) {
+            final d = dj.deck(e.$1);
+            return Row(children: [
+              Expanded(child: Text(e.$2, style: const TextStyle(fontWeight: FontWeight.w700))),
+              IconButton(icon: const Icon(Icons.remove_circle_outline), onPressed: () => dj.setKeyShift(e.$1, d.keyShift - 1)),
+              SizedBox(
+                width: 64,
+                child: Center(
+                  child: GestureDetector(
+                    onTap: () => dj.setKeyShift(e.$1, 0),
+                    child: Text(d.keyShift == 0 ? 'Original' : '${d.keyShift > 0 ? '+' : ''}${d.keyShift} key', style: const TextStyle(fontWeight: FontWeight.w700)),
+                  ),
+                ),
+              ),
+              IconButton(icon: const Icon(Icons.add_circle_outline), onPressed: () => dj.setKeyShift(e.$1, d.keyShift + 1)),
+            ]);
+          },
+        ),
+      const Text('Up or down one key (semitone) per press; tap the middle to reset. Tempo stays the same.',
+          style: TextStyle(fontSize: 12, color: Color(0xFF8A857C))),
       const Divider(),
       SizedBox(height: 70, child: CustomPaint(painter: _MixPainter(m.blend > 0 ? math.max(m.blend, m.fade) : m.fade, m.offset))),
       const SizedBox(height: 8),

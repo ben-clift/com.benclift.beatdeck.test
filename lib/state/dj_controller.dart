@@ -1987,6 +1987,25 @@ class DjController extends ChangeNotifier {
   // into the drop, a brake when you skip. Only on one deck at a time, and
   // never on a deck where you have an effect on yourself.
   bool autoFxOn = true;
+
+  /// Shift a clashing incoming track up or down a semitone or two so its key
+  /// fits the one playing (needs key lock, which the shift turns on).
+  bool autoKeyOn = false;
+  final List<bool> _autoKeyed = [false, false, false, false];
+
+  Future<void> loadAutoKey() async {
+    try {
+      autoKeyOn = (await SharedPreferences.getInstance()).getBool('auto_key') ?? false;
+    } catch (_) {}
+  }
+
+  Future<void> setAutoKey(bool v) async {
+    autoKeyOn = v;
+    try {
+      (await SharedPreferences.getInstance()).setBool('auto_key', v);
+    } catch (_) {}
+    notifyListeners();
+  }
   final List<int> _afxBits = [0, 0, 0, 0];
   final List<double> _afxAmt = [0.5, 0.5, 0.5, 0.5];
   DateTime? _afxBrakeAt;
@@ -2975,9 +2994,21 @@ class DjController extends ChangeNotifier {
       _quickNext = false;
       _fadeLen = math.min(_fadeLen, 3.0);
     }
+    if (_autoKeyed[other]) {
+      _autoKeyed[other] = false;
+      setKeyShift(other, 0); // an earlier automatic shift on this deck
+    }
     {
       final ko = _flowOf(_automixQueue[_automixIndex])?.key;
       final ki = _flowOf(_automixQueue[next])?.key;
+      if (autoKeyOn && ko != null && ki != null && inc.keyShift == 0 && keyMatch(ko, ki).score < 60) {
+        final fix = semitoneFix(ko, ki.index);
+        if (fix != null && fix != 0) {
+          setKeyShift(other, fix);
+          _autoKeyed[other] = true;
+          DebugLog.add('automix', 'auto key: next track shifted ${fix > 0 ? '+' : ''}$fix semitone to fit ${ko.code}');
+        }
+      }
       if (ko != null && ki != null && _fadeLen > 12 && keyMatch(ko, ki).score < 40) {
         _fadeLen = 12; // clashing keys: keep the overlap short
         DebugLog.add('automix', 'keys clash: blend kept to 12 s');
