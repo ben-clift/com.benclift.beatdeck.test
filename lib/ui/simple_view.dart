@@ -65,7 +65,8 @@ class _Vibe {
 }
 
 const _vibes = <_Vibe>[
-  _Vibe('House', ['house', 'deep house', 'tech house']),
+  _Vibe('House', ['house', 'deep house', 'tech house', 'minimal house']),
+  _Vibe('2000s house', ['microhouse', 'electro house', 'french house', 'filter house', 'funky house', 'vocal house', 'tribal house', 'progressive house']),
   _Vibe('Garage', ['uk garage', 'speed garage', '2-step', 'garage house']),
   _Vibe('Techno', ['techno', 'minimal techno']),
   _Vibe('Hard techno', ['hard techno', 'hardcore']),
