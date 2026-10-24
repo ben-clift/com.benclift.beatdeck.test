@@ -45,6 +45,7 @@ Color get _dim => SideDeckTheme.muted;
 /// Kinds of vocal worth asking for in each genre (name, words to look for).
 const _vocalTypes = <String, List<(String, List<String>)>>{
   'House': [('Diva / female', ['diva', 'female', 'feat']), ('Soulful / gospel', ['soul', 'gospel', 'choir']), ('Chopped vocal', ['chop', 'sample', 'edit']), ('Male', ['male', 'vs'])],
+  '2000s house': [('Diva / female', ['diva', 'female', 'feat']), ('Soulful / gospel', ['soul', 'gospel', 'choir']), ('Chopped vocal', ['chop', 'sample', 'edit']), ('Male', ['male', 'vs'])],
   'Garage': [('MC', ['mc', 'vs']), ('Female R&B vocal', ['female', 'r&b', 'feat']), ('Vocal VIP', ['vip', 'vocal', 'vox'])],
   'Drum & bass': [('MC', ['mc']), ('Soulful', ['soul', 'feat']), ('Ragga', ['ragga', 'dancehall'])],
   'Jungle': [('MC', ['mc']), ('Ragga', ['ragga', 'dancehall', 'reggae'])],
