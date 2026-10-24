@@ -38,6 +38,12 @@ class MacSync extends ChangeNotifier {
   // ---- Streaming: tracks are kept as empty "stubs" (same name, size and date,
   // no disk used) and fetched from the Mac when a deck needs them. The most
   // recently used real files are kept up to your storage limit.
+  DateTime? _downAt;
+
+  /// The Mac did not answer a moment ago: its tracks are skipped for a while
+  /// so a dead connection never freezes the Booth.
+  bool get down => _downAt != null && DateTime.now().difference(_downAt!).inSeconds < 90;
+
   Set<String> _stubs = {};
   Map<String, int> _mtime = {};
   Map<String, int> _used = {};
@@ -99,6 +105,11 @@ class MacSync extends ChangeNotifier {
       }
       return true;
     }
+    if (down) {
+      status = 'The Mac is not answering. Is the Terminal window open and the phone on the same Wi-Fi?';
+      notifyListeners();
+      return false;
+    }
     try {
       final root = await _rootDir();
       final rel = p.split(p.relative(path, from: root.path)).join('/');
@@ -118,10 +129,12 @@ class MacSync extends ChangeNotifier {
       _stubs.remove(path);
       _used[path] = DateTime.now().millisecondsSinceEpoch;
       await _saveState();
+      _downAt = null;
       unawaited(_trim());
       return true;
     } catch (e) {
-      DebugLog.add('mac', 'could not fetch $path from the Mac: $e');
+      _downAt = DateTime.now();
+      DebugLog.add('mac', 'could not fetch $path from the Mac: $e (Mac tracks paused for 90 s)');
       status = 'Cannot reach the Mac to play this track. Is the Terminal window still open?';
       notifyListeners();
       return false;
@@ -357,11 +370,11 @@ class MacSync extends ChangeNotifier {
   Future<void> _download(String rel, File target) async {
     final client = http.Client();
     try {
-      final resp = await client.send(http.Request('GET', _uri('/file', {'p': rel}))).timeout(const Duration(seconds: 60));
+      final resp = await client.send(http.Request('GET', _uri('/file', {'p': rel}))).timeout(const Duration(seconds: 12));
       if (resp.statusCode != 200) throw 'status ${resp.statusCode}';
       final sink = target.openWrite();
       try {
-        await resp.stream.timeout(const Duration(seconds: 60)).pipe(sink);
+        await resp.stream.timeout(const Duration(seconds: 20)).pipe(sink);
       } catch (_) {
         await sink.close().catchError((_) {});
         rethrow;

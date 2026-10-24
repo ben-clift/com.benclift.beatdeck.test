@@ -280,6 +280,8 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
       }
       if (mounted && (busy || _flashUntil != null)) setState(() {});
     });
+    AutoFetch.instance.inUse = (path) =>
+        widget.dj.deck(0).path == path || widget.dj.deck(1).path == path || widget.dj.automixUpcoming.contains(path);
     _restore();
     Starred.instance.load();
     StyleSettings.instance.load();

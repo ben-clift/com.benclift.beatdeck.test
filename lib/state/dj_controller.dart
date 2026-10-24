@@ -887,6 +887,7 @@ class DjController extends ChangeNotifier {
 
   bool _inWindow(String path) {
     if (_hidden.contains(path)) return false;
+    if (MacSync.instance.down && MacSync.instance.isStub(path)) return false; // the Mac is not answering
     if (!_kindOk(path)) return false;
     final pg = pickedGenres?.call() ?? const <String>[];
     if (pg.isNotEmpty && !_userOk.contains(path) && !(requestedPath?.call(path) ?? false)) {
@@ -2522,7 +2523,7 @@ class DjController extends ChangeNotifier {
         final fo = _flowOf(_automixQueue[_automixIndex]);
         final fi = _flowOf(_automixQueue[next]);
         final km = (fo?.key != null && fi?.key != null) ? keyMatch(fo!.key!, fi!.key!) : null;
-        if (gap > 6 || (km != null && km.score < 60)) {
+        if (gap > 9 || (km != null && km.score < 60)) {
           plan = TransitionPlan(TransitionKind.quick, math.min(plan.seconds, 8.0));
           DebugLog.add('automix', 'poor match (tempo gap ${gap.toStringAsFixed(1)}%${km == null ? '' : ', key ${km.label}'}): short swap instead of a long blend');
         }
@@ -2732,7 +2733,7 @@ class DjController extends ChangeNotifier {
           }
         }
       }
-      if (inc.bpm > 1 && !forced && !_userOk.contains(path) && _winFit(inc.bpm) == null) {
+      if (inc.bpm > 1 && tier < 2 && !forced && !_userOk.contains(path) && _winFit(inc.bpm) == null) {
         DebugLog.add('automix',
             'turned down ${path.split(RegExp(r'[\\/]')).last}: ${inc.bpm.round()} BPM is outside your tempo range, choosing another');
         _rejected.add(path);

@@ -214,6 +214,9 @@ class AutoFetch extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// True for a track a deck holds or the queue is waiting with: never deleted.
+  bool Function(String path)? inUse;
+
   void stop() {
     _stop = true;
     _say('Stopping after the current step');
@@ -1065,7 +1068,7 @@ class AutoFetch extends ChangeNotifier {
               try {
                 tag = (await readTrackTags(f.dl.savedPath!)).genre;
               } catch (_) {}
-              if (tag.isNotEmpty && !genresSimilar(g, tag)) {
+              if (tag.isNotEmpty && !genresSimilar(g, tag) && !(inUse?.call(f.dl.savedPath!) ?? false)) {
                 DebugLog.add('fetch', 'rejected ${f.name}: tagged "$tag", wanted "$g". Deleting it and trying another');
                 flights.remove(f);
                 try {
