@@ -2607,13 +2607,6 @@ Container(
     final wait = _waitText();
     return Row(children: [
           _action(Ph.equalizer, 'EQ', () => _selSheetEq(), sel: _sel == 'EQ'),
-          _action(Ph.skipNext, 'Play next', () => _flash('Play next', () {
-            if (widget.dj.automixUpcoming.isNotEmpty) {
-              _skip();
-            } else {
-              _selSheet('Play next', 'Play something next', _requestBox(running: true));
-            }
-          }), sel: _sel == 'Play next'),
           _action(Ph.search, 'Request', () => _selSheet('Request', 'Request a track', _requestBox(running: true)),
               sel: _sel == 'Request' || busy, sub: busy ? wait : null),
           _action(Ph.playlistAdd, 'Import', () => _selSheet('Import', 'Import a playlist', _importBox()), sel: _sel == 'Import'),
