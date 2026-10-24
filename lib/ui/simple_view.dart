@@ -247,6 +247,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
   final _artist = TextEditingController();
   final _track = TextEditingController();
   double _intensity = 0;
+  int _scene = 0; // 0 any, 1 mainstream, 2 underground
   int _vocal = 0; // 0 any, 1 vocals, 2 instrumental
   int _mood = 0; // 0 whatever, 1 sad .. 4 happy (by musical key)
   bool _genresOpen = false;
@@ -1192,6 +1193,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
       _mood = p.getInt('simple_mood') ?? 0;
       _fetchOn = p.getBool('simple_fetch') ?? true;
       _intensity = (p.getInt('simple_intensity') ?? 0).clamp(0, 3).toDouble();
+      _scene = (p.getInt('simple_scene') ?? 0).clamp(0, 2);
       _decade = p.getInt('simple_decade') ?? 0;
       _bpmAny = p.getBool('simple_bpmany') ?? true;
       final lo = p.getDouble('simple_bpm_lo'), hi = p.getDouble('simple_bpm_hi');
@@ -1264,6 +1266,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
         p.setInt('simple_mood', _mood);
         p.setBool('simple_fetch', _fetchOn);
         p.setInt('simple_intensity', _intensity.round());
+        p.setInt('simple_scene', _scene);
         p.setInt('simple_decade', _decade);
         p.setBool('simple_bpmany', _bpmAny);
         p.setDouble('simple_bpm_lo', _bpm.start);
@@ -1276,6 +1279,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
       af.pinned = true;
       af.mixKinds = false;
       af.intensity = _intensity.round();
+      af.scene = _scene;
       af.useYearRange = _decade != 0;
       if (_decade != 0) {
         af.yearFrom = _decade;
@@ -2124,6 +2128,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     if (!_bpmAny) b.add('${_bpm.start.round()}-${_bpm.end.round()} BPM');
     if (_decade != 0) b.add('${_decade}s');
     if (_intensity.round() > 0) b.add(const ['', 'Medium', 'High', 'Peak'][_intensity.round()]);
+    if (_scene != 0) b.add(_scene == 1 ? 'Mainstream' : 'Underground');
     if (!_fetchOn) b.add('No downloads');
     return b.join(' · ');
   }
@@ -2320,6 +2325,23 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
           label: const ['Any', 'Medium', 'High', 'Peak'][_intensity.round()],
           onChanged: _starting ? null : (v) => setState(() => _intensity = v),
         ),
+        const SizedBox(height: 4),
+        Row(children: [
+          const Text('Scene', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+          const Spacer(),
+          SegmentedButton<int>(
+            showSelectedIcon: false,
+            segments: const [
+              ButtonSegment(value: 0, label: Text('Any')),
+              ButtonSegment(value: 1, label: Text('Mainstream')),
+              ButtonSegment(value: 2, label: Text('Underground')),
+            ],
+            selected: {_scene},
+            onSelectionChanged: _starting ? null : (v) => setState(() => _scene = v.first),
+          ),
+        ]),
+        const Text('Mainstream: Traxsource and NME picks. Underground: Hardwax, Resident Advisor, Bandcamp and Discogs.',
+            style: TextStyle(fontSize: 12, color: Color(0xFF8A857C))),
         const SizedBox(height: 8),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,

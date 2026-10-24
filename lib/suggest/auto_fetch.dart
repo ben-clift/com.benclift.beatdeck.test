@@ -49,6 +49,9 @@ class AutoFetch extends ChangeNotifier {
   /// How hard the tracks should hit: 0 any, 1 medium, 2 high, 3 peak.
   int intensity = 0;
 
+  /// 0 any, 1 mainstream (Traxsource, NME), 2 underground (Hardwax, RA, Bandcamp, Discogs).
+  int scene = 0;
+
   /// 0 any, 1 vocals, 2 instrumental (judged from artist, title and file names).
   int vocal = 0;
   int mood = 0; // 0 whatever, 1 sad .. 4 happy (by key)
@@ -116,6 +119,7 @@ class AutoFetch extends ChangeNotifier {
       } catch (_) {}
       pinned = prefs.getBool('af_pinned') ?? pinned;
       intensity = prefs.getInt('af_intensity') ?? intensity;
+      scene = prefs.getInt('af_scene') ?? scene;
       tempoPinned = prefs.getBool('af_tempo_pin') ?? tempoPinned;
       mixKinds = prefs.getBool('af_mix_kinds') ?? mixKinds;
       useBandcamp = prefs.getBool('af_use_bc') ?? useBandcamp;
@@ -152,6 +156,7 @@ class AutoFetch extends ChangeNotifier {
       await prefs.setStringList('af_genres', genres);
       await prefs.setBool('af_pinned', pinned);
       await prefs.setInt('af_intensity', intensity);
+      await prefs.setInt('af_scene', scene);
       await prefs.setBool('af_tempo_pin', tempoPinned);
       await prefs.setBool('af_mix_kinds', mixKinds);
       await prefs.setBool('af_use_bc', useBandcamp);
@@ -934,6 +939,21 @@ class AutoFetch extends ChangeNotifier {
         dg = [...await Discover.discogs(g)];
       } catch (e) {
         DebugLog.add('fetch', 'Discogs list not available: $e');
+      }
+    }
+    // Mainstream or underground: keep only that side's lists, unless that
+    // would leave almost nothing (then everything stays).
+    if (scene != 0) {
+      final keepMain = scene == 1;
+      final n = (keepMain ? tx.length + nm.length : hw.length + ra.length + bc.length + dg.length);
+      if (n >= 3) {
+        if (keepMain) {
+          hw = []; ra = []; bc = []; dg = [];
+        } else {
+          tx = []; nm = [];
+        }
+      } else {
+        DebugLog.add('fetch', 'not enough ${keepMain ? 'mainstream' : 'underground'} tracks for "$g", using all lists');
       }
     }
     for (final x in tx) { x.source = 'Traxsource'; }
