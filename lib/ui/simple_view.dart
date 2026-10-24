@@ -46,6 +46,7 @@ Color get _dim => SideDeckTheme.muted;
 const _vocalTypes = <String, List<(String, List<String>)>>{
   'House': [('Diva / female', ['diva', 'female', 'feat']), ('Soulful / gospel', ['soul', 'gospel', 'choir']), ('Chopped vocal', ['chop', 'sample', 'edit']), ('Male', ['male', 'vs'])],
   'US house': [('Diva / female', ['diva', 'female', 'feat']), ('Soulful / gospel', ['soul', 'gospel', 'choir']), ('Chopped vocal', ['chop', 'sample', 'edit']), ('Male', ['male', 'vs'])],
+  'Minimal': [('Sparse vocal', ['vocal', 'feat']), ('Chopped vocal', ['chop', 'sample', 'edit']), ('Spoken', ['spoken', 'voice'])],
   '2000s house': [('Diva / female', ['diva', 'female', 'feat']), ('Soulful / gospel', ['soul', 'gospel', 'choir']), ('Chopped vocal', ['chop', 'sample', 'edit']), ('Male', ['male', 'vs'])],
   'Garage': [('MC', ['mc', 'vs']), ('Female R&B vocal', ['female', 'r&b', 'feat']), ('Vocal VIP', ['vip', 'vocal', 'vox'])],
   'Drum & bass': [('MC', ['mc']), ('Soulful', ['soul', 'feat']), ('Ragga', ['ragga', 'dancehall'])],
@@ -70,6 +71,7 @@ class _Vibe {
 const _vibes = <_Vibe>[
   _Vibe('House', ['house', 'deep house', 'tech house', 'minimal house', 'microhouse']),
   _Vibe('2000s house', ['electro house', 'french house', 'filter house', 'funky house', 'vocal house', 'tribal house', 'progressive house']),
+  _Vibe('Minimal', ['minimal house', 'microhouse', 'minimal tech house', 'minimal deep tech', 'deep minimal', 'romanian minimal', 'click house', 'minimal dub', 'minimal funk', 'minimal progressive', 'minimal techno', 'dub techno']),
   _Vibe('US house', ['west coast house', 'new york house', 'new jersey house', 'chicago house', 'detroit house', 'philly house', 'miami house', 'american progressive house', 'acid house', 'hip house']),
   _Vibe('Garage', ['uk garage', 'speed garage', '2-step', 'garage house']),
   _Vibe('Techno', ['techno', 'minimal techno']),
@@ -1255,7 +1257,9 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
       final genres = <String>[];
       for (final v in vibes) {
         final on = v.genres.where((g) => !_subOff.contains(g)).toList();
-        genres.addAll(on.isEmpty ? v.genres : on);
+        for (final g in (on.isEmpty ? v.genres : on)) {
+          if (!genres.contains(g)) genres.add(g);
+        }
       }
       af.vocal = _vocal;
       af.mood = _mood;
