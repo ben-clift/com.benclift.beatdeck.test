@@ -66,8 +66,8 @@ class _Vibe {
 }
 
 const _vibes = <_Vibe>[
-  _Vibe('House', ['house', 'deep house', 'tech house', 'minimal house']),
-  _Vibe('2000s house', ['microhouse', 'electro house', 'french house', 'filter house', 'funky house', 'vocal house', 'tribal house', 'progressive house']),
+  _Vibe('House', ['house', 'deep house', 'tech house', 'minimal house', 'microhouse']),
+  _Vibe('2000s house', ['electro house', 'french house', 'filter house', 'funky house', 'vocal house', 'tribal house', 'progressive house']),
   _Vibe('Garage', ['uk garage', 'speed garage', '2-step', 'garage house']),
   _Vibe('Techno', ['techno', 'minimal techno']),
   _Vibe('Hard techno', ['hard techno', 'hardcore']),
@@ -84,6 +84,7 @@ const _vibes = <_Vibe>[
   _Vibe('Reggae & dub', ['reggae', 'dub']),
   _Vibe('Afrobeats', ['afrobeats', 'amapiano']),
   _Vibe('Chill & ambient', ['downtempo', 'chillout', 'ambient']),
+  _Vibe('Glitch', ['glitch', 'glitch hop', 'glitch pop', 'glitch techno', 'glitchcore', 'idm', 'clicks and cuts', 'experimental electronic']),
   _Vibe('Jazz', ['jazz', 'acid jazz']),
   _Vibe('Rock & indie', ['indie rock', 'rock', 'alternative'], bands: true),
   _Vibe('Punk & metal', ['punk', 'metal'], bands: true),

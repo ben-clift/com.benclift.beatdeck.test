@@ -8,7 +8,7 @@ const _families = <String, List<String>>{
   'breaks': ['breaks', 'breakbeat', 'breakcore', 'electro', 'big beat', 'bigbeat', 'trip hop', 'miami bass', 'broken beat', 'bass', 'dubstep', 'grime', 'uk funky'],
   'dnb': ['drum', 'dnb', 'd&b', 'jungle', 'liquid', 'neurofunk', 'hardcore'],
   'dub': ['dub', 'reggae', 'dancehall', 'roots'],
-  'ambient': ['ambient', 'downtempo', 'chill', 'electronica', 'idm', 'new age', 'trip'],
+  'ambient': ['ambient', 'downtempo', 'chill', 'electronica', 'idm', 'glitch', 'clicks and cuts', 'new age', 'trip'],
   'hiphop': ['hip', 'rap', 'trap', 'r&b', 'rnb', 'soul'],
   'pop': ['pop', 'singer'],
 };
