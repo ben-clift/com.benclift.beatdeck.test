@@ -812,6 +812,63 @@ class AutoFetch extends ChangeNotifier {
   }
   String hintFor(String path) => _genreHint[path] ?? '';
 
+  // Where each downloaded track came from (the list that suggested it).
+  final Map<String, String> _sourceOf = {};
+  bool _sourcesLoaded = false;
+
+  void _noteSource(String path, Suggestion s) {
+    var src = s.source;
+    if (src.isEmpty) {
+      final r = s.reason;
+      if (r == 'Your playlist' || r == 'Your list') {
+        src = 'Your list';
+      } else if (r == 'your request') {
+        src = 'Request';
+      } else if (r == 'You like') {
+        src = 'You like';
+      } else if (r.isNotEmpty && r != 'Fetching again') {
+        src = r.contains('chart') || r == 'Classics' ? 'Deezer' : 'Suggested';
+      }
+    }
+    _sourceOf[_base(path)] = src;
+    _saveSources();
+    notifyListeners();
+  }
+
+  Future<void> loadSources() async {
+    if (_sourcesLoaded) return;
+    _sourcesLoaded = true;
+    try {
+      final p = await SharedPreferences.getInstance();
+      for (final e in p.getStringList('af_source_v1') ?? const <String>[]) {
+        final i = e.lastIndexOf('|');
+        if (i > 0) _sourceOf.putIfAbsent(e.substring(0, i), () => e.substring(i + 1));
+      }
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  Future<void> _saveSources() async {
+    try {
+      final all = _sourceOf.entries.toList();
+      final keep = all.length > 600 ? all.sublist(all.length - 600) : all;
+      (await SharedPreferences.getInstance()).setStringList('af_source_v1', [for (final e in keep) '${e.key}|${e.value}']);
+    } catch (_) {}
+  }
+
+  /// Short label for where a track came from: Mac, Traxsource, Hardwax, RA,
+  /// Bandcamp, Discogs, NME, My style, Soulseek (a download with no list), or
+  /// empty for a plain library track.
+  String sourceLabel(String path) {
+    if (path.isEmpty) return '';
+    if (MacSync.instance.isMac(path)) return 'Mac';
+    final s = _sourceOf[_base(path)];
+    if (s != null && s.isNotEmpty) return isStyle(path) ? 'My style · $s' : s;
+    if (isStyle(path)) return 'My style';
+    if (_fetched.contains(path) || _requested.contains(path)) return 'Soulseek';
+    return '';
+  }
+
 
   Future<List<Suggestion>> _shortlist(String g, double? lo, double? hi, {bool exact = false}) async {
     final lib = _lib;
@@ -879,6 +936,12 @@ class AutoFetch extends ChangeNotifier {
         DebugLog.add('fetch', 'Discogs list not available: $e');
       }
     }
+    for (final x in tx) { x.source = 'Traxsource'; }
+    for (final x in hw) { x.source = 'Hardwax'; }
+    for (final x in ra) { x.source = 'RA'; }
+    for (final x in nm) { x.source = 'NME'; }
+    for (final x in bc) { x.source = 'Bandcamp'; }
+    for (final x in dg) { x.source = 'Discogs'; }
     bc.shuffle();
     dg.shuffle();
     bc = bc.take(15).toList();
@@ -1049,6 +1112,7 @@ class AutoFetch extends ChangeNotifier {
       while (!_stop && winner == null) {
         for (final f in [...flights]) {
           if (f.dl.state == DlState.done && f.dl.savedPath != null) {
+            _noteSource(f.dl.savedPath!, f.s);
             if (_manualRun) {
               _requested.add(f.dl.savedPath!);
               if (_styleRun || _styleKeys.contains('${f.s.artist}|${f.s.title}'.toLowerCase())) markStyle(f.dl.savedPath!);

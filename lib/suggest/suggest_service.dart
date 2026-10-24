@@ -9,6 +9,9 @@ class Suggestion {
   /// Release year, 0 when unknown.
   final int year;
 
+  /// Which list suggested it (Traxsource, Hardwax, RA, Bandcamp...). Set by the shortlist.
+  String source = '';
+
   final String artist;
   final String title;
 

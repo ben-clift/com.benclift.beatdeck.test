@@ -284,6 +284,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
         widget.dj.deck(0).path == path || widget.dj.deck(1).path == path || widget.dj.automixUpcoming.contains(path);
     _restore();
     Starred.instance.load();
+    AutoFetch.instance.loadSources();
     StyleSettings.instance.load();
     _loadIntro();
     _keepAhead = Timer.periodic(const Duration(seconds: 8), (_) {
@@ -2547,6 +2548,20 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
         ]),
       );
 
+  /// Where a track came from: Mac, Traxsource, Hardwax, RA, Bandcamp, My style,
+  /// Soulseek, or Library for a plain library track.
+  Widget _srcTag(String? path) {
+    final label = (path == null || path.isEmpty) ? '' : AutoFetch.instance.sourceLabel(path);
+    final text = label.isEmpty ? 'Library' : label;
+    return Container(
+      margin: const EdgeInsets.only(top: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+      decoration: BoxDecoration(color: const Color(0x22FFFFFF), borderRadius: BorderRadius.circular(3)),
+      child: Text('FROM ${text.toUpperCase()}',
+          style: TextStyle(fontFamily: SideDeckTheme.label, fontWeight: FontWeight.w700, fontSize: 11, letterSpacing: 1, color: _dim)),
+    );
+  }
+
   Widget _queueCard(DjController dj, DeckState d, List<String> upcoming, String status) {
     return
 Container(
@@ -2584,8 +2599,10 @@ Container(
                 ),
               ]),
             ),
-            if (d.path != null && AutoFetch.instance.isStyle(d.path!))
-              Padding(padding: const EdgeInsets.only(left: 32, top: 2), child: _styleTag()),
+            Padding(padding: const EdgeInsets.only(left: 32, top: 2), child: Wrap(spacing: 6, children: [
+              _srcTag(d.path),
+              if (d.path != null && AutoFetch.instance.isStyle(d.path!)) _styleTag(),
+            ])),
             const Divider(height: 24, color: Color(0xFF2E2E33)),
             Row(children: [
               Text('Next up  ·  tap: blend in  ·  swipe left: remove', style: TextStyle(color: _dim, fontSize: 12)),
@@ -2628,7 +2645,10 @@ Container(
                               Text(_nameOf(upcoming[i]).artist, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: _dim, fontSize: 13)),
                             if (dj.queueInfo(upcoming[i]).isNotEmpty)
                               Text(dj.queueInfo(upcoming[i]), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: SideDeckTheme.accentB, fontSize: 12)),
-                            if (AutoFetch.instance.isStyle(upcoming[i])) _styleTag(),
+                            Wrap(spacing: 6, children: [
+                              _srcTag(upcoming[i]),
+                              if (AutoFetch.instance.isStyle(upcoming[i])) _styleTag(),
+                            ]),
                             if (_unknownKind(dj, upcoming[i]))
                               const Text('Genre unknown. Tap to play it', style: TextStyle(color: Color(0xFFFFC83D), fontSize: 12)),
                           ]),
