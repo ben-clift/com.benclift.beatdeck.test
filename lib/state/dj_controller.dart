@@ -2525,7 +2525,9 @@ class DjController extends ChangeNotifier {
   Future<void> _loadNext(int other, String path, int tier) async {
     try {
       // Look at the file first; a bad one never reaches the deck.
-      final bad = await AudioCheck.problem(path);
+      // A Mac track is only an empty stub until it is streamed in: fetch it first.
+      final reach = await MacSync.instance.ensure(path);
+      final bad = reach ? await AudioCheck.problem(path) : 'cannot reach the Mac';
       var ok = false;
       if (bad == null) {
         _quietLoad = true;
