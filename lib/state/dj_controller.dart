@@ -458,6 +458,7 @@ class DjController extends ChangeNotifier {
     }
     if (_breakBassTick()) dirty = true;
     _afxBuildTick();
+    if (_driftTick()) dirty = true;
     if (_automixTick()) dirty = true;
     if (dirty) notifyListeners();
   }
@@ -2101,6 +2102,62 @@ class DjController extends ChangeNotifier {
     _brkActive[i] = null;
   }
 
+  // ---- Silence at the edges ------------------------------------------------
+  final Map<String, (double, double)> _edgeCache = {};
+
+  /// Seconds of near-silence at the start and at the end of the track on [d].
+  (double, double) _silenceEdges(DeckState d) {
+    final n = math.min(d.waveMax.length, d.waveMin.length);
+    if (n < 20 || d.duration <= 0) return (0.0, 0.0);
+    final key = '${d.path}|$n';
+    final c = _edgeCache[key];
+    if (c != null) return c;
+    const thr = 0.03;
+    var a = 0;
+    while (a < n && (d.waveMax[a] - d.waveMin[a]) < thr) {
+      a++;
+    }
+    if (a >= n) return _edgeCache[key] = (0.0, 0.0);
+    var b = n - 1;
+    while (b > a && (d.waveMax[b] - d.waveMin[b]) < thr) {
+      b--;
+    }
+    final lead = math.min(30.0, a / n * d.duration);
+    final tail = math.min(30.0, (n - 1 - b) / n * d.duration);
+    return _edgeCache[key] = (lead, tail);
+  }
+
+  // ---- Tempo easing ----------------------------------------------------------
+  int _driftDeck = -1;
+  double _driftRate = 1.0;
+  DateTime _driftAt = DateTime.now();
+
+  /// After a stretched mix the track slowly returns to its own speed (about
+  /// 0.08 % a second), so the set does not stay squeezed or stretched.
+  bool _driftTick() {
+    final i = _driftDeck;
+    if (i < 0) return false;
+    final now = DateTime.now();
+    final dt = now.difference(_driftAt).inMilliseconds / 1000.0;
+    _driftAt = now;
+    final d = deck(i);
+    if (!automixOn || !d.loaded || (d.rate - _driftRate).abs() > 1e-6 || masterDeck == i) {
+      _driftDeck = -1; // you moved the pitch yourself: leave it
+      return false;
+    }
+    if (_automixFading || !d.playing) return false;
+    if ((d.rate - 1.0).abs() < 0.002) {
+      _driftDeck = -1;
+      return false;
+    }
+    final step = 0.0008 * dt.clamp(0.0, 1.0);
+    d.rate = d.rate > 1 ? math.max(1.0, d.rate - step) : math.min(1.0, d.rate + step);
+    d.synced = false;
+    _driftRate = d.rate;
+    _applyRate(i);
+    return true;
+  }
+
   bool _breakBassTick() {
     var changed = false;
     for (var i = 0; i < deckCount; i++) {
@@ -2293,11 +2350,12 @@ class DjController extends ChangeNotifier {
     if (jump != 0) {
       DebugLog.add('automix', 'you moved the playing track ${jump > 0 ? 'forward' : 'back'} ${jump.abs().toStringAsFixed(0)} s, timing worked out again');
     }
+    final tailSil = _silenceEdges(d).$2;
     final remaining = remainingSeconds(
       position: _engine.position(cur),
       duration: d.duration,
       rate: d.rate,
-    );
+    ) - (tailSil > 2 ? tailSil / (d.rate <= 0 ? 1 : d.rate) : 0.0);
     _checkNeedTrack();
     // The fit relaxes as the end gets close, so something always plays:
     // same genre and tempo, then tempo within 15 %, then anything unplayed.
@@ -2848,6 +2906,14 @@ class DjController extends ChangeNotifier {
       _quickNext = false;
       _fadeLen = math.min(_fadeLen, 3.0);
     }
+    {
+      final ko = _flowOf(_automixQueue[_automixIndex])?.key;
+      final ki = _flowOf(_automixQueue[next])?.key;
+      if (ko != null && ki != null && _fadeLen > 12 && keyMatch(ko, ki).score < 40) {
+        _fadeLen = 12; // clashing keys: keep the overlap short
+        DebugLog.add('automix', 'keys clash: blend kept to 12 s');
+      }
+    }
     if (tempoClash && _fadeLen > 5) {
       _fadeLen = 5;
       DebugLog.add('automix', 'tempos too far apart to match: short clean hand-over at the new track\'s own speed');
@@ -2856,7 +2922,8 @@ class DjController extends ChangeNotifier {
       DebugLog.add('automix', 'only ${left.toStringAsFixed(0)} s left, mix shortened to ${_fadeLen.toStringAsFixed(0)} s');
     }
     final room = math.max(0.0, inc.duration - _fadeLen - 5);
-    final start = math.min(startRaw + offset, room).clamp(0.0, math.max(0.0, inc.duration)).toDouble();
+    final leadSil = _silenceEdges(inc).$1;
+    final start = math.min(math.max(startRaw + offset, leadSil > 1 ? leadSil : 0.0), room).clamp(0.0, math.max(0.0, inc.duration)).toDouble();
     _engine.seek(other, start);
     inc.position = start;
     _automixFadeFrom = crossfaderEndFor(cur);
@@ -3186,6 +3253,9 @@ class DjController extends ChangeNotifier {
       _mixqReport(cur, other, finished: true);
       _nudgeBend[other] = 0;
       _applyRate(other);
+      _driftDeck = other;
+      _driftRate = deck(other).rate;
+      _driftAt = DateTime.now();
       _engine.play(cur, false);
       deck(cur).playing = false;
       // Put both faders back and park the crossfader on the new deck.
