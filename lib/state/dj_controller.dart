@@ -1207,6 +1207,9 @@ class DjController extends ChangeNotifier {
     _baseFade = automixFadeSeconds;
     automixStartOffset = startOffset.clamp(0.0, 90.0).toDouble();
     earlyEndAfter = earlyAfter;
+    // A plan made with the old settings is dropped, so the change counts from
+    // the next decision on (a mix already running is left alone).
+    if (!_automixFading) _plan = null;
     notifyListeners();
   }
   String? automixStatus;
@@ -3312,7 +3315,10 @@ class DjController extends ChangeNotifier {
   void _automixAdvanceFade() {
     final cur = _automixDeck;
     final other = 1 - cur;
-    if (_manualMix && DateTime.now().difference(_manualTouch).inSeconds > 25) {
+    // You moved the crossfader: Auto DJ takes the blend back 1 s after you let
+    // go (25 s if you never touched it).
+    final touched = _manualT > 0.001;
+    if (_manualMix && DateTime.now().difference(_manualTouch).inMilliseconds > (touched ? 1000 : 25000)) {
       // Left alone: carry on by itself from where the slider was.
       _automixFadeStart = DateTime.now().subtract(Duration(milliseconds: (_manualT * _fadeLen * 1000).round()));
       _manualMix = false;

@@ -3131,7 +3131,7 @@ class MixSettings {
   }
 
   void apply(DjController dj) {
-    if (dj.automixOn) dj.setMixTiming(fade: fade, startOffset: offset, earlyAfter: early, blend: blend);
+    dj.setMixTiming(fade: fade, startOffset: offset, earlyAfter: early, blend: blend);
     dj.earlyEndAfter = early;
     save();
   }
