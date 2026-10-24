@@ -885,10 +885,13 @@ class DjController extends ChangeNotifier {
   /// is not chosen (untagged tracks and ones you chose by hand still are).
   List<String> Function()? pickedGenres;
 
+  bool _desperate = false;
+
   bool _inWindow(String path) {
     if (_hidden.contains(path)) return false;
     if (MacSync.instance.down && MacSync.instance.isStub(path)) return false; // the Mac is not answering
     if (!_kindOk(path)) return false;
+    if (_desperate) return true; // last resort: tempo window and genres are dropped
     final pg = pickedGenres?.call() ?? const <String>[];
     if (pg.isNotEmpty && !_userOk.contains(path) && !(requestedPath?.call(path) ?? false)) {
       final tag = (genreOf?.call(path) ?? '').trim();
@@ -2430,11 +2433,16 @@ class DjController extends ChangeNotifier {
     // Never silent: with the end near and nothing new yet, replay the track
     // played longest ago (never a deleted one) while the helper keeps looking.
     if (next == null && (remaining <= f + 25 || _manualStart)) next = _pickAnyReady();
-    if (next == null && (remaining <= f + 25 || _manualStart) && _replayPick() != null) {
-      next = _nextUnplayed(tier: 2);
-    }
-    if (next == null && (remaining <= f + 25 || _manualStart) && _lastResortPick() != null) {
-      next = _nextUnplayed(tier: 2);
+    if (next == null && (remaining <= f + 25 || _manualStart)) {
+      // Last resorts: only the hard rules apply (not the tempo window or
+      // picked genres), so the music never stops with Soulseek down.
+      _desperate = true;
+      try {
+        if (_replayPick() != null) next = _nextUnplayed(tier: 2);
+        if (next == null && _lastResortPick() != null) next = _nextUnplayed(tier: 2);
+      } finally {
+        _desperate = false;
+      }
     }
     if (next == null) {
       // Nothing to put on the other deck yet: say so, and keep asking.
@@ -2840,8 +2848,15 @@ class DjController extends ChangeNotifier {
     // The deck has already ended: silence. Do not wait for a better match
     // while a track is ready; play the best one that is there.
     int? picked = _nextUnplayed(tier: 0) ?? _nextUnplayed(tier: 2) ?? _pickAnyReady();
-    if (picked == null && _replayPick() != null) picked = _nextUnplayed(tier: 2);
-    if (picked == null && _lastResortPick() != null) picked = _nextUnplayed(tier: 2);
+    if (picked == null) {
+      _desperate = true;
+      try {
+        if (_replayPick() != null) picked = _nextUnplayed(tier: 2);
+        if (picked == null && _lastResortPick() != null) picked = _nextUnplayed(tier: 2);
+      } finally {
+        _desperate = false;
+      }
+    }
     if (picked == null) {
       // The deck ended and nothing suitable is queued: stay on, ask for a
       // match, and start it the moment it arrives.
