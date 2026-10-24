@@ -1588,7 +1588,7 @@ class DjController extends ChangeNotifier {
     if (cur != null && cur.bpm > 0 && c != null && c.bpm > 0) {
       if (bpmGapPercent(cur.bpm, c.bpm).abs() > tol) return false;
     }
-    if (tier == 0) {
+    if (tier <= 1) {
       final g = genreOf;
       if (g != null && !genresSimilar(g(curPath), g(path))) return false;
     }
@@ -1716,6 +1716,21 @@ class DjController extends ChangeNotifier {
         if (cur.bpm > 0 && c.bpm > 0) score -= bpmGapPercent(cur.bpm, c.bpm).abs() * 4;
         if (cur.bpm > 0 && c.bpm <= 0) score -= 12; // unknown tempo: after the known fits
         if (cur.key != null && c.key != null) score += keyMatch(cur.key!, c.key!).score * 0.3;
+      }
+      // Same genre first: an exact match beats a similar one, which beats unknown.
+      final g = genreOf;
+      if (g != null && curPath != null) {
+        final ga = g(curPath).trim().toLowerCase();
+        final gb = g(path).trim().toLowerCase();
+        if (ga.isNotEmpty && gb.isNotEmpty) {
+          if (ga == gb) {
+            score += 80;
+          } else if (genresSimilar(ga, gb)) {
+            score += 30;
+          } else {
+            score -= 60;
+          }
+        }
       }
       if (score > bestScore) {
         bestScore = score;
