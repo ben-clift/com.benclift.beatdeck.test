@@ -1996,6 +1996,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
 
   void _copyLog() {
     Clipboard.setData(ClipboardData(text: DebugLog.instance.lines.join("\n")));
+    DebugLog.instance.markCopied();
     _toast('Copied. Paste it into a message to Ben.');
   }
 

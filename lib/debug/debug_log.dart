@@ -8,13 +8,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 enum LogLevel { info, ok, fail }
 
 class LogEntry {
-  LogEntry(this.time, this.level, this.tag, this.msg);
+  LogEntry(this.time, this.level, this.tag, this.msg, [this.raw]);
+  final String? raw; // a line read back from the saved file
   final DateTime time;
   final LogLevel level;
   final String tag;
   final String msg;
 
   String get text {
+    if (raw != null) return raw!;
     String two(int n) => n.toString().padLeft(2, '0');
     final mark = level == LogLevel.ok ? 'OK  ' : (level == LogLevel.fail ? 'FAIL' : 'info');
     return '${two(time.hour)}:${two(time.minute)}:${two(time.second)} $mark [$tag] $msg';
@@ -119,8 +121,21 @@ class DebugLog extends ChangeNotifier {
       final dir = await getApplicationDocumentsDirectory();
       _file = File('${dir.path}/beatdeck_test_log.txt');
       filePath = _file!.path;
-      if (await _file!.exists() && await _file!.length() > 1500000) {
-        await _file!.writeAsString('');
+      // The log is kept across restarts until you copy it (see markCopied):
+      // lines after the last "copied" marker are loaded back.
+      if (await _file!.exists()) {
+        var lines = (await _file!.readAsString()).split('\n').where((l) => l.trim().isNotEmpty).toList();
+        final m = lines.lastIndexOf(_marker);
+        if (m >= 0) lines = lines.sublist(m + 1);
+        if (lines.length > 600) lines = lines.sublist(lines.length - 600);
+        for (final l in lines) {
+          final lv = l.contains(' FAIL ') ? LogLevel.fail : (l.contains(' OK   ') ? LogLevel.ok : LogLevel.info);
+          entries.add(LogEntry(DateTime.now(), lv, '', '', l));
+        }
+        // Keep the file small by trimming its old part, never by wiping it.
+        if (await _file!.length() > 1500000 || m >= 0) {
+          await _file!.writeAsString(lines.isEmpty ? '' : '${lines.join('\n')}\n');
+        }
       }
       add('app', 'started');
     } catch (_) {}
@@ -140,6 +155,16 @@ class DebugLog extends ChangeNotifier {
     final f = _file;
     if (f == null) return;
     f.writeAsString('${e.text}\n', mode: FileMode.append).catchError((_) => f);
+  }
+
+  static const _marker = '--- copied ---';
+
+  /// Call after the log is copied to the clipboard: from the next start the
+  /// lines copied so far are no longer loaded back.
+  void markCopied() {
+    try {
+      _file?.writeAsStringSync('$_marker\n', mode: FileMode.append);
+    } catch (_) {}
   }
 
   void clear() {

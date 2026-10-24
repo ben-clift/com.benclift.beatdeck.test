@@ -31,6 +31,7 @@ class _DebugPageState extends State<DebugPage> {
             tooltip: 'Copy all',
             onPressed: () {
               Clipboard.setData(ClipboardData(text: log.lines.join('\n')));
+              log.markCopied();
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Copied')),
               );
