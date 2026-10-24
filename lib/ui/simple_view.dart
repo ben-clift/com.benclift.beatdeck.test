@@ -2124,11 +2124,11 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
             Text('SAD', style: TextStyle(fontFamily: SideDeckTheme.label, fontWeight: FontWeight.w700, letterSpacing: 1.2, color: _dim)),
             Expanded(
               child: Slider(
-                value: any ? 2.5 : (5 - _mood).toDouble(),
+                value: any ? 2.5 : _mood.toDouble(),
                 min: 1,
                 max: 4,
                 divisions: 3,
-                onChanged: _starting ? null : (v) => setState(() => _mood = 5 - v.round()),
+                onChanged: _starting ? null : (v) => setState(() => _mood = v.round()),
               ),
             ),
             Text('HAPPY', style: TextStyle(fontFamily: SideDeckTheme.label, fontWeight: FontWeight.w700, letterSpacing: 1.2, color: _dim)),
