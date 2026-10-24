@@ -138,7 +138,6 @@ const Map<String, String> genreGlossary = {
   'heavy drum and bass': 'Loud, aggressive drum and bass with huge, heavy basslines.',
   'dub drum and bass': 'Drum and bass with dub echoes, deep sub-bass and reggae touches.',
   'future drum and bass': 'Modern, forward-looking drum and bass with cinematic sound design.',
-  'breakcore': 'Frantic, chopped-up breakbeats played far faster than normal, mixing genres at speed.',
   'old school jungle': 'Original 90s jungle with ragga samples and chopped breaks.',
   'ragga jungle': 'Jungle with reggae and dancehall vocals.',
   'atmospheric jungle': 'Spacious, dreamy jungle with pads and soft textures.',

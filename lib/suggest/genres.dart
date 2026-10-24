@@ -353,7 +353,6 @@ const List<(String, List<GenreInfo>)> genreGroups = [
     GenreInfo('heavy drum and bass', 172, 178),
     GenreInfo('dub drum and bass', 168, 176),
     GenreInfo('future drum and bass', 170, 178),
-    GenreInfo('breakcore', 160, 220),
     GenreInfo('drill and bass', 160, 190),
     GenreInfo('halftime drum and bass', 80, 90),
     GenreInfo('footwork', 155, 165),
