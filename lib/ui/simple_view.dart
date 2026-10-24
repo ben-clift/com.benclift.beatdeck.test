@@ -78,7 +78,7 @@ const _vibes = <_Vibe>[
   _Vibe('Hard techno', ['hard techno', 'hardcore']),
   _Vibe('Trance', ['trance', 'progressive trance']),
   _Vibe('Psytrance', ['psytrance', 'goa trance']),
-  _Vibe('Drum & bass', ['drum and bass', 'liquid drum and bass']),
+  _Vibe('Drum & bass', ['drum and bass', 'liquid drum and bass', 'liquid funk', 'neurofunk', 'jump up', 'techstep', 'darkstep', 'hardstep', 'jazzstep', 'funkstep', 'tech funk', 'drumfunk', 'crossbreed', 'deep drum and bass', 'atmospheric drum and bass', 'ambient drum and bass', 'intelligent drum and bass', 'dancefloor drum and bass', 'rolling drum and bass', 'minimal drum and bass', 'jazz drum and bass', 'dark drum and bass', 'heavy drum and bass', 'dub drum and bass', 'future drum and bass', 'drumstep', 'sambass', 'halftime drum and bass', 'breakcore']),
   _Vibe('Jungle', ['jungle']),
   _Vibe('Breaks', ['breakbeat', 'big beat']),
   _Vibe('Dubstep & grime', ['dubstep', 'grime']),

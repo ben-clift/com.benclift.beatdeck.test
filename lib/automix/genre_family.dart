@@ -37,7 +37,7 @@ String? genreFamily(String genre) {
   // "tech house" is house-family first, "dub techno" is techno-family first,
   // so test the most specific wording before the single words.
   if (g.contains('dub techno')) return 'techno';
-  for (final k in const ['techstep', 'darkstep', 'hardstep', 'jazzstep', 'sambass', 'jump up', 'drill and bass']) {
+  for (final k in const ['techstep', 'darkstep', 'hardstep', 'jazzstep', 'sambass', 'liquid funk', 'funkstep', 'tech funk', 'drumfunk', 'crossbreed', 'neurofunk', 'jump up', 'drill and bass']) {
     if (g.contains(k)) return 'dnb';
   }
   // Band music. Whole words only, so "emo" is not found inside another word.
