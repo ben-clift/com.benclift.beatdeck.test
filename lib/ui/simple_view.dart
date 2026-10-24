@@ -256,6 +256,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
   final Set<String> _subOff = {}; // sub-genres switched off
   int _decade = 0; // 0 = any year, else the first year of the decade
   bool _bpmAny = true;
+  bool _fetchOn = true; // download new tracks from Soulseek as the set runs
   RangeValues _bpm = const RangeValues(120, 130);
   String _note = '';
   int _run = 0;
@@ -295,8 +296,10 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
       }
       if (!widget.dj.macLeft) {
         // Mac tracks come first: no fetching while any are left.
-        _styleFallback();
-        _refill();
+        if (_fetchOn) {
+          _styleFallback();
+          _refill();
+        }
         _libraryFallback();
       }
       _autoDedupe();
@@ -1181,6 +1184,12 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
       final p = await SharedPreferences.getInstance();
       _vocal = p.getInt('simple_vocal') ?? 0;
       _mood = p.getInt('simple_mood') ?? 0;
+      _fetchOn = p.getBool('simple_fetch') ?? true;
+      _intensity = (p.getInt('simple_intensity') ?? 0).clamp(0, 3).toDouble();
+      _decade = p.getInt('simple_decade') ?? 0;
+      _bpmAny = p.getBool('simple_bpmany') ?? true;
+      final lo = p.getDouble('simple_bpm_lo'), hi = p.getDouble('simple_bpm_hi');
+      if (lo != null && hi != null && lo < hi) _bpm = RangeValues(lo.clamp(70, 180).toDouble(), hi.clamp(70, 180).toDouble());
       _subOff.addAll(p.getStringList('simple_suboff') ?? const []);
       _typesOn.addAll(p.getStringList('simple_types') ?? const []);
       final s = p.getStringList('simple_vibes');
@@ -1247,6 +1256,12 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
       SharedPreferences.getInstance().then((p) {
         p.setInt('simple_vocal', _vocal);
         p.setInt('simple_mood', _mood);
+        p.setBool('simple_fetch', _fetchOn);
+        p.setInt('simple_intensity', _intensity.round());
+        p.setInt('simple_decade', _decade);
+        p.setBool('simple_bpmany', _bpmAny);
+        p.setDouble('simple_bpm_lo', _bpm.start);
+        p.setDouble('simple_bpm_hi', _bpm.end);
         p.setStringList('simple_suboff', _subOff.toList());
         p.setStringList('simple_types', _typesOn.toList());
       }).catchError((_) {});
@@ -1285,7 +1300,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
             .setStringList('simple_vibes', [for (final i in _picked) '$i']);
       } catch (_) {}
       await _ensureAccount();
-      await SlskSetup.setAutoFetchForAutomix(true);
+      await SlskSetup.setAutoFetchForAutomix(_fetchOn);
       soulseek.manualDisconnect = false;
       await SlskKeeper.instance.setEnabled(true);
 
@@ -1303,7 +1318,11 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
       if (req && !hadMusic) {
         af.enqueueTracks([Suggestion(reqArtist, reqTrack, 0, 'your request')], widget.library);
       }
-      if (!hadMusic) {
+      if (!hadMusic && !_fetchOn && paths().isEmpty) {
+        setState(() => _note = 'No music on the phone yet. Switch downloads on, or connect your Mac.');
+        return;
+      }
+      if (!hadMusic && _fetchOn) {
         // First time: download a few tracks before anything plays.
         final started = DateTime.now();
         var asked = DateTime.fromMillisecondsSinceEpoch(0);
@@ -2098,6 +2117,8 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     if (_vocal != 0) b.add(_vocal == 1 ? 'Vocal' : 'Instrumental');
     if (!_bpmAny) b.add('${_bpm.start.round()}-${_bpm.end.round()} BPM');
     if (_decade != 0) b.add('${_decade}s');
+    if (_intensity.round() > 0) b.add(const ['', 'Medium', 'High', 'Peak'][_intensity.round()]);
+    if (!_fetchOn) b.add('No downloads');
     return b.join(' · ');
   }
 
@@ -2294,6 +2315,13 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
           onChanged: _starting ? null : (v) => setState(() => _intensity = v),
         ),
         const SizedBox(height: 8),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Download new tracks', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+          subtitle: const Text('Off: only your own music and Mac tracks play', style: TextStyle(fontSize: 12)),
+          value: _fetchOn,
+          onChanged: _starting ? null : (v) => setState(() => _fetchOn = v),
+        ),
         Row(children: [
           const Text('Year', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
           const Spacer(),
@@ -2329,7 +2357,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
           child: FilledButton.icon(
             onPressed: _starting ? null : _start,
             icon: const Icon(Ph.playArrow, size: 30),
-            label: Text(_starting ? 'Starting…' : 'Start',
+            label: Text(_starting ? 'Starting…' : (widget.dj.automixOn ? 'Restart with these' : 'Start'),
                 style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
           ),
         ),
