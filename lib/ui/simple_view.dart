@@ -2570,16 +2570,17 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
         ]),
       );
 
-  /// Where a track came from: Mac, Traxsource, Hardwax, RA, Bandcamp, My style,
-  /// Soulseek, or Library for a plain library track.
+  /// Which list suggested a track: Mac, Traxsource, Hardwax, RA, NME, Bandcamp,
+  /// Discogs, My style or Soulseek. Nothing for a plain library track.
   Widget _srcTag(String? path) {
     final label = (path == null || path.isEmpty) ? '' : AutoFetch.instance.sourceLabel(path);
-    final text = label.isEmpty ? 'Library' : label;
+    if (label.isEmpty) return const SizedBox.shrink(); // plain library tracks show nothing
+    final text = label;
     return Container(
       margin: const EdgeInsets.only(top: 3),
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
       decoration: BoxDecoration(color: const Color(0x22FFFFFF), borderRadius: BorderRadius.circular(3)),
-      child: Text('FROM ${text.toUpperCase()}',
+      child: Text('FOUND ON ${text.toUpperCase()}',
           style: TextStyle(fontFamily: SideDeckTheme.label, fontWeight: FontWeight.w700, fontSize: 11, letterSpacing: 1, color: _dim)),
     );
   }
