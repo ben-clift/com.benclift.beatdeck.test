@@ -2657,7 +2657,20 @@ Container(
               sel: _sel == 'My style' || (busy && AutoFetch.instance.isStyleRun), sub: (busy && AutoFetch.instance.isStyleRun) ? wait : null),
           _action(Ph.tune, 'Mixing', () => _selSheet('Mixing', 'Mixing', _MixBox(dj: widget.dj)), sel: _sel == 'Mixing'),
           _action(Ph.fastForward, 'Jump ahead', () => _flash('Jump ahead', _cut), sel: _sel == 'Jump ahead'),
-          _action(Ph.stopCircleOutlined, 'End set', () => _flash('End set', _stop), sel: _sel == 'End set'),
+          _action(Ph.stopCircleOutlined, 'End set', () async {
+            final ok = await showDialog<bool>(
+              context: context,
+              builder: (dc) => AlertDialog(
+                title: const Text('End the set?'),
+                content: const Text('The music stops and you go back to the genres.'),
+                actions: [
+                  TextButton(onPressed: () => Navigator.pop(dc, false), child: const Text('Keep playing')),
+                  FilledButton(onPressed: () => Navigator.pop(dc, true), child: const Text('End set')),
+                ],
+              ),
+            );
+            if (ok == true) _flash('End set', _stop);
+          }, sel: _sel == 'End set'),
         ]);
   }
 
@@ -2683,19 +2696,30 @@ Container(
       );
 
   /// Round glass button.
-  Widget _orb(IconData icon, VoidCallback onTap, {String? tip, Color? color, double size = 46, bool sel = false}) => Tooltip(
-        message: tip ?? '',
-        child: InkWell(
-          customBorder: ThemeSettings.instance.shapeBorder(size: size),
-          onTap: onTap,
-          child: Container(
-            width: size,
-            height: size,
-            decoration: ThemeSettings.instance.box(color: sel ? Color.lerp(Colors.black, SideDeckTheme.accentA, 0.45)! : Colors.black.withValues(alpha: 0.25), hot: sel, size: size),
-            child: Icon(icon, size: size * 0.5, color: sel ? SideDeckTheme.accentA : (color ?? Colors.white)),
-          ),
+  Widget _orb(IconData icon, VoidCallback onTap, {String? tip, Color? color, double size = 46, bool sel = false, String? label}) {
+    final orb = Tooltip(
+      message: tip ?? '',
+      child: InkWell(
+        customBorder: ThemeSettings.instance.shapeBorder(size: size),
+        onTap: () {
+          HapticFeedback.selectionClick();
+          onTap();
+        },
+        child: Container(
+          width: size,
+          height: size,
+          decoration: ThemeSettings.instance.box(color: sel ? Color.lerp(Colors.black, SideDeckTheme.accentA, 0.45)! : Colors.black.withValues(alpha: 0.25), hot: sel, size: size),
+          child: Icon(icon, size: size * 0.5, color: sel ? SideDeckTheme.accentA : (color ?? Colors.white)),
         ),
-      );
+      ),
+    );
+    if (label == null) return orb;
+    return Column(mainAxisSize: MainAxisSize.min, children: [
+      orb,
+      const SizedBox(height: 3),
+      Text(label.toUpperCase(), style: TextStyle(fontSize: 10, letterSpacing: 0.8, color: sel ? SideDeckTheme.accentA : _dim)),
+    ]);
+  }
 
   /// The dial: a ring that fills as the track plays, with play/pause inside.
   Widget _dial(DjController dj, double frac, double size) => SizedBox(
@@ -2731,7 +2755,7 @@ Container(
           final n = _cleanNames(d);
           final on = Starred.instance.has(n.artist, n.title);
           return _orb(on ? Ph.star : Ph.starBorder, () => _press('star', null, () => _toggleStar(dj), secs: 1), sel: _sel == 'star',
-              tip: on ? 'Remove star' : 'Star this track', color: on ? const Color(0xFFFFC83D) : null);
+              tip: on ? 'Remove star' : 'Star this track', color: on ? const Color(0xFFFFC83D) : null, label: on ? 'Starred' : 'Star');
         },
       );
 
@@ -2834,18 +2858,18 @@ Container(
                     ),
                   const SizedBox(height: 14),
                   Wrap(alignment: WrapAlignment.spaceEvenly, crossAxisAlignment: WrapCrossAlignment.center, spacing: 6, runSpacing: 10, children: [
-                    _orb(Ph.arrowBack, () => _press('back', null, () => setState(() => _showChooser = true), secs: 1), tip: 'Back to genres', sel: _sel == 'back'),
+                    _orb(Ph.arrowBack, () => _press('back', null, () => setState(() => _showChooser = true), secs: 1), tip: 'Back to genres', sel: _sel == 'back', label: 'Genres'),
                     _dial(dj, frac, 84),
-                    _orb(Ph.skipNext, () => _press('skip', 'Mixing to next track', _skip, secs: 8), tip: 'Next track', sel: _sel == 'skip'),
+                    _orb(Ph.skipNext, () => _press('skip', 'Mixing to next track', _skip, secs: 8), tip: 'Next track, blended in', sel: _sel == 'skip', label: 'Next'),
                     _starOrb(dj, d),
-                    _orb(Ph.close, () => _press('swap', 'Swapping this track', _dislikeNow, secs: 8), tip: "Don't like it: swap it now", color: const Color(0xFFB05A4A), sel: _sel == 'swap'),
+                    _orb(Ph.close, () => _press('swap', 'Swapping this track', _dislikeNow, secs: 8), tip: "Don't like it: swap it now", color: const Color(0xFFB05A4A), sel: _sel == 'swap', label: 'Swap'),
                     _orb(Ph.insights, () {
                       if (StyleSettings.instance.chosen().isEmpty) {
                         _toast('Star some tracks first. My style copies their sound.');
                       } else {
                         _press('style', 'Finding something in your style', () => _styleFallback(force: true), secs: 5);
                       }
-                    }, tip: 'Play My style now', color: SideDeckTheme.accentA, sel: _sel == 'style' || AutoFetch.instance.manualBusy),
+                    }, tip: 'Play My style now', color: SideDeckTheme.accentA, sel: _sel == 'style' || AutoFetch.instance.manualBusy, label: 'Style now'),
                   ]),
                   const SizedBox(height: 16),
                   _actionRow(),
