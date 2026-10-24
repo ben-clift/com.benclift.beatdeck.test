@@ -7,7 +7,7 @@ const _families = <String, List<String>>{
   'trance': ['trance', 'progressive', 'psy', 'goa'],
   'breaks': ['breaks', 'breakbeat', 'breakcore', 'electro', 'big beat', 'bigbeat', 'trip hop', 'miami bass', 'broken beat', 'bass', 'dubstep', 'grime', 'uk funky'],
   'dnb': ['drum', 'dnb', 'd&b', 'jungle', 'liquid', 'neurofunk', 'hardcore'],
-  'dub': ['dub', 'reggae', 'dancehall', 'roots'],
+  'dub': ['dub', 'reggae', 'dancehall', 'roots', 'ska', 'rocksteady', 'lovers rock', 'rockers', 'two tone', 'ragga', 'steppers'],
   'ambient': ['ambient', 'downtempo', 'chill', 'electronica', 'idm', 'glitch', 'clicks and cuts', 'new age', 'trip'],
   'hiphop': ['hip', 'rap', 'trap', 'r&b', 'rnb', 'soul'],
   'pop': ['pop', 'singer'],
@@ -28,7 +28,7 @@ const _near = <String, Set<String>>{
 };
 
 final _bandWords = RegExp(
-    r'\b(rock|indie|punk|metal|goth|gothic|grunge|emo|screamo|shoegaze|britpop|madchester|alternative|folk|blues|country|americana|ska|dark ?wave|cold ?wave|new wave|dream pop|acoustic|singer.?songwriter|post-?rock|post-?punk|jangle pop|power pop|glam)\b');
+    r'\b(rock|indie|punk|metal|goth|gothic|grunge|emo|screamo|shoegaze|britpop|madchester|alternative|folk|blues|country|americana|ska punk|ska-punk|dark ?wave|cold ?wave|new wave|dream pop|acoustic|singer.?songwriter|post-?rock|post-?punk|jangle pop|power pop|glam)\b');
 
 /// The family of [genre], or null when unknown or empty.
 String? genreFamily(String genre) {

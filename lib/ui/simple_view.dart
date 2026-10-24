@@ -81,7 +81,7 @@ const _vibes = <_Vibe>[
   _Vibe('Disco & funk', ['disco', 'nu disco', 'funk']),
   _Vibe('Hip hop', ['hip hop', 'boom bap']),
   _Vibe('Soul & R&B', ['soul', 'r&b']),
-  _Vibe('Reggae & dub', ['reggae', 'dub']),
+  _Vibe('Reggae & dub', ['reggae', 'dub', 'dancehall', 'ska', 'rocksteady', 'roots reggae', 'lovers rock', 'two tone', 'ragga', 'digital dancehall', 'uk dub', 'rockers', 'steppers']),
   _Vibe('Afrobeats', ['afrobeats', 'amapiano']),
   _Vibe('Chill & ambient', ['downtempo', 'chillout', 'ambient']),
   _Vibe('Glitch', ['glitch', 'glitch hop', 'glitch pop', 'glitch techno', 'glitchcore', 'idm', 'clicks and cuts', 'experimental electronic']),
