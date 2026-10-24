@@ -1243,6 +1243,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
               if (_typesOn.contains('${v.label}|${t.$1}')) ...t.$2,
       ];
       widget.dj.vocalMode = () => AutoFetch.instance.vocal;
+      widget.dj.pickedGenres = () => AutoFetch.instance.genres;
       SharedPreferences.getInstance().then((p) {
         p.setInt('simple_vocal', _vocal);
         p.setInt('simple_mood', _mood);

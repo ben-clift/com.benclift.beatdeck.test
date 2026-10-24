@@ -880,8 +880,17 @@ class DjController extends ChangeNotifier {
   /// True when [path] passes the genre, vocal, mood, year and tempo rules.
   bool automixFits(String path) => _inWindow(path);
 
+  /// The genres picked on the front page. A track tagged with another genre
+  /// is not chosen (untagged tracks and ones you chose by hand still are).
+  List<String> Function()? pickedGenres;
+
   bool _inWindow(String path) {
     if (!_kindOk(path)) return false;
+    final pg = pickedGenres?.call() ?? const <String>[];
+    if (pg.isNotEmpty && !_userOk.contains(path) && !(requestedPath?.call(path) ?? false)) {
+      final tag = (genreOf?.call(path) ?? '').trim();
+      if (tag.isNotEmpty && !pg.any((g) => genresSimilar(g, tag))) return false;
+    }
     final dr = decadeRange;
     if (dr != null) {
       final y = yearOf?.call(path) ?? 0;
@@ -1646,7 +1655,7 @@ class DjController extends ChangeNotifier {
     if (!automixOn) return false;
     for (var i = _automixIndex + 1; i < _automixQueue.length; i++) {
       final q = _automixQueue[i];
-      if (MacSync.instance.isMac(q) && !_wasPlayed(q) && !failedPaths.contains(q)) return true;
+      if (MacSync.instance.isMac(q) && !_wasPlayed(q) && !failedPaths.contains(q) && _inWindow(q)) return true;
     }
     return false;
   }
@@ -1767,7 +1776,7 @@ class DjController extends ChangeNotifier {
       for (final p in paths)
         if (File(p).existsSync() && !_wasPlayed(p) && seen.add(_trackKey(p))) p,
     ];
-    if (tempoWindow?.call() != null || decadeRange != null || _kindStrict) {
+    if (tempoWindow?.call() != null || decadeRange != null || _kindStrict || (pickedGenres?.call().isNotEmpty ?? false)) {
       // Your tempo range: only tracks that can sit inside it start the set.
       for (final q in _automixQueue) {
         await _flowLearn(q);
