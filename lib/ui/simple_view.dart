@@ -2491,18 +2491,6 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
           ),
         ]),
         Row(children: [
-          lab('AUTO SYNC', dj.autoSyncOn ? 'BPMs match' : 'off'),
-          const Spacer(),
-          Switch(value: dj.autoSyncOn, onChanged: (v) => dj.setAutoSync(v)),
-          const SizedBox(width: 6),
-        ]),
-        Row(children: [
-          lab('AUTO FX', dj.autoFxOn ? 'on' : 'off'),
-          const Spacer(),
-          Switch(value: dj.autoFxOn, onChanged: (v) => dj.setAutoFx(v)),
-          const SizedBox(width: 6),
-        ]),
-        Row(children: [
           lab('VOLUME', '${(dj.master * 100).round()}%'),
           Expanded(
             child: Slider(min: 0, max: 1, value: dj.master.clamp(0.0, 1.0), onChanged: dj.setMaster),
@@ -3066,7 +3054,23 @@ class _MixBoxState extends State<_MixBox> {
 
   @override
   Widget build(BuildContext context) {
+    final dj = widget.dj;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      SwitchListTile(
+        contentPadding: EdgeInsets.zero,
+        title: const Text('Auto sync', style: TextStyle(fontWeight: FontWeight.w700)),
+        subtitle: const Text('Match the BPMs of the two tracks while they mix'),
+        value: dj.autoSyncOn,
+        onChanged: (v) => setState(() => dj.setAutoSync(v)),
+      ),
+      SwitchListTile(
+        contentPadding: EdgeInsets.zero,
+        title: const Text('Auto FX', style: TextStyle(fontWeight: FontWeight.w700)),
+        subtitle: const Text('Add effects to the transitions by itself'),
+        value: dj.autoFxOn,
+        onChanged: (v) => setState(() => dj.setAutoFx(v)),
+      ),
+      const Divider(),
       SizedBox(height: 70, child: CustomPaint(painter: _MixPainter(m.blend > 0 ? math.max(m.blend, m.fade) : m.fade, m.offset))),
       const SizedBox(height: 8),
       Text('Mix out: starts ${m.fade.round()} s before the end', style: const TextStyle(fontWeight: FontWeight.w700)),
