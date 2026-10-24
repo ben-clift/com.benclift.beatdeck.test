@@ -27,6 +27,7 @@ import 'package:sidedeck/suggest/harmony.dart';
 import 'package:sidedeck/wishlist/wishlist.dart';
 import 'package:sidedeck/suggest/suggest_service.dart';
 import 'package:sidedeck/suggest/discover.dart';
+import 'package:sidedeck/mac/mac_sync.dart';
 
 /// Fetches tracks that suit a seed track, one after another: look up what
 /// goes with it, search Soulseek, take the best result, and when it has
