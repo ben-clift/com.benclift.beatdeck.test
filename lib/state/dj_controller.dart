@@ -584,7 +584,7 @@ class DjController extends ChangeNotifier {
   DateTime _needCheck = DateTime.fromMillisecondsSinceEpoch(0);
 
   void _checkNeedTrack() {
-    if (_plist != null) return;
+    if (_plist != null || macLeft) return; // Mac tracks first: no fetching while any are left
     final cb = onNeedTrack;
     if (cb == null || _automixIndex < 0 || _automixIndex >= _automixQueue.length) return;
     final now = DateTime.now();
@@ -1639,7 +1639,19 @@ class DjController extends ChangeNotifier {
     return i;
   }
 
+  /// True while an unplayed track from your Mac is still waiting in the queue.
+  /// Mac tracks come before everything else, and nothing is fetched meanwhile.
+  bool get macLeft {
+    if (!automixOn) return false;
+    for (var i = _automixIndex + 1; i < _automixQueue.length; i++) {
+      final q = _automixQueue[i];
+      if (MacSync.instance.isMac(q) && !_wasPlayed(q) && !failedPaths.contains(q)) return true;
+    }
+    return false;
+  }
+
   int? _pickNext(int tier) {
+    final macFirst = _plist == null && macLeft;
     final pl = _plist;
     if (pl != null) {
       for (final p in pl) {
@@ -1666,6 +1678,7 @@ class DjController extends ChangeNotifier {
         final path = _automixQueue[i];
         if (_wasPlayed(path)) continue;
         if (failedPaths.contains(path)) continue;
+        if (macFirst && !MacSync.instance.isMac(path)) continue;
         if (tier < 2 && _rejected.contains(path)) continue;
         if (_knownTooMild(path, tier)) continue;
         if (!_suits(path, tier: tier)) continue;
@@ -1693,6 +1706,7 @@ class DjController extends ChangeNotifier {
       final path = _automixQueue[i];
       if (_wasPlayed(path)) continue;
       if (failedPaths.contains(path)) continue;
+      if (macFirst && !MacSync.instance.isMac(path)) continue;
       if (tier < 2 && _rejected.contains(path)) continue;
       if (_knownTooMild(path, tier)) continue;
       if (!_suits(path, tier: tier)) continue;

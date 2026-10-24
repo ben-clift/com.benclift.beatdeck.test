@@ -293,9 +293,12 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
         }
         return;
       }
-      _styleFallback();
-      _refill();
-      _libraryFallback();
+      if (!widget.dj.macLeft) {
+        // Mac tracks come first: no fetching while any are left.
+        _styleFallback();
+        _refill();
+        _libraryFallback();
+      }
       _autoDedupe();
       _autoClean();
     });
