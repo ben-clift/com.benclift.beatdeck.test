@@ -45,6 +45,7 @@ Color get _dim => SideDeckTheme.muted;
 /// Kinds of vocal worth asking for in each genre (name, words to look for).
 const _vocalTypes = <String, List<(String, List<String>)>>{
   'House': [('Diva / female', ['diva', 'female', 'feat']), ('Soulful / gospel', ['soul', 'gospel', 'choir']), ('Chopped vocal', ['chop', 'sample', 'edit']), ('Male', ['male', 'vs'])],
+  'US house': [('Diva / female', ['diva', 'female', 'feat']), ('Soulful / gospel', ['soul', 'gospel', 'choir']), ('Chopped vocal', ['chop', 'sample', 'edit']), ('Male', ['male', 'vs'])],
   '2000s house': [('Diva / female', ['diva', 'female', 'feat']), ('Soulful / gospel', ['soul', 'gospel', 'choir']), ('Chopped vocal', ['chop', 'sample', 'edit']), ('Male', ['male', 'vs'])],
   'Garage': [('MC', ['mc', 'vs']), ('Female R&B vocal', ['female', 'r&b', 'feat']), ('Vocal VIP', ['vip', 'vocal', 'vox'])],
   'Drum & bass': [('MC', ['mc']), ('Soulful', ['soul', 'feat']), ('Ragga', ['ragga', 'dancehall'])],
@@ -69,6 +70,7 @@ class _Vibe {
 const _vibes = <_Vibe>[
   _Vibe('House', ['house', 'deep house', 'tech house', 'minimal house', 'microhouse']),
   _Vibe('2000s house', ['electro house', 'french house', 'filter house', 'funky house', 'vocal house', 'tribal house', 'progressive house']),
+  _Vibe('US house', ['west coast house', 'new york house', 'new jersey house', 'chicago house', 'detroit house', 'philly house', 'miami house', 'american progressive house', 'acid house', 'hip house']),
   _Vibe('Garage', ['uk garage', 'speed garage', '2-step', 'garage house']),
   _Vibe('Techno', ['techno', 'minimal techno']),
   _Vibe('Hard techno', ['hard techno', 'hardcore']),
