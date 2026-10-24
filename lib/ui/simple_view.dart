@@ -53,6 +53,7 @@ const _vocalTypes = <String, List<(String, List<String>)>>{
   'Trance': [('Female trance vocal', ['feat', 'female', 'vocal']), ('Uplifting anthem', ['anthem', 'uplifting'])],
   'Hip hop': [('Rap', ['rap', 'mc']), ('Sung hooks', ['feat', 'ft'])],
   'Soul & R&B': [('Female', ['female', 'feat']), ('Male', ['male']), ('Gospel / choir', ['gospel', 'choir'])],
+  'Northern soul': [('Female', ['female', 'feat']), ('Male', ['male']), ('Girl group', ['girls', 'supremes', 'group'])],
   'Disco & funk': [('Diva', ['diva', 'feat']), ('Group vocals', ['band', 'group'])],
   'Reggae & dub': [('Toasting / MC', ['mc', 'toast']), ('Roots singing', ['roots', 'feat'])],
 };
@@ -81,6 +82,7 @@ const _vibes = <_Vibe>[
   _Vibe('Disco & funk', ['disco', 'nu disco', 'funk']),
   _Vibe('Hip hop', ['hip hop', 'boom bap']),
   _Vibe('Soul & R&B', ['soul', 'r&b']),
+  _Vibe('Northern soul', ['northern soul', 'modern soul', 'motown', 'popcorn soul', 'crossover soul', 'rare soul', 'stomper', 'mod soul', 'detroit soul', 'chicago soul', 'philly soul']),
   _Vibe('Reggae & dub', ['reggae', 'dub', 'dancehall', 'ska', 'rocksteady', 'roots reggae', 'lovers rock', 'two tone', 'ragga', 'digital dancehall', 'uk dub', 'rockers', 'steppers']),
   _Vibe('Afrobeats', ['afrobeats', 'amapiano']),
   _Vibe('Chill & ambient', ['downtempo', 'chillout', 'ambient']),
