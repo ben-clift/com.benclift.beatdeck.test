@@ -2583,7 +2583,7 @@ Container(
               Padding(padding: const EdgeInsets.only(left: 32, top: 2), child: _styleTag()),
             const Divider(height: 24, color: Color(0xFF2E2E33)),
             Row(children: [
-              Text('Next up', style: TextStyle(color: _dim)),
+              Text('Next up  ·  tap: blend in  ·  swipe left: remove', style: TextStyle(color: _dim, fontSize: 12)),
               const Spacer(),
               Text('${upcoming.length.clamp(0, _ahead)} of $_ahead ready',
                   style: TextStyle(color: upcoming.length >= _ahead ? _green : _dim, fontWeight: FontWeight.w700)),
@@ -2593,7 +2593,20 @@ Container(
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 6),
                 child: i < upcoming.length
-                    ? InkWell(
+                    ? Dismissible(
+                        key: ValueKey('q-${upcoming[i]}'),
+                        direction: DismissDirection.endToStart,
+                        confirmDismiss: (_) async {
+                          if (!dj.automixRemove(upcoming[i])) _toast('That one is being mixed in right now.');
+                          return false;
+                        },
+                        background: Container(
+                          alignment: Alignment.centerRight,
+                          padding: const EdgeInsets.only(right: 16),
+                          color: const Color(0x33C0392B),
+                          child: const Icon(Ph.deleteOutline),
+                        ),
+                        child: InkWell(
                         onLongPress: () => _queueMenu(upcoming[i]),
                         onTap: () {
                           final msg = dj.automixSkip(dj.automixPlayingDeck, prefer: upcoming[i], blend: 30);
@@ -2608,12 +2621,14 @@ Container(
                             Text((AutoFetch.instance.isStyle(upcoming[i]) ? 'MS  ' : '') + _nameOf(upcoming[i]).title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16)),
                             if (_nameOf(upcoming[i]).artist.isNotEmpty)
                               Text(_nameOf(upcoming[i]).artist, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: _dim, fontSize: 13)),
+                            if (dj.queueInfo(upcoming[i]).isNotEmpty)
+                              Text(dj.queueInfo(upcoming[i]), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: SideDeckTheme.accentB, fontSize: 12)),
                             if (AutoFetch.instance.isStyle(upcoming[i])) _styleTag(),
                             if (_unknownKind(dj, upcoming[i]))
                               const Text('Genre unknown. Tap to play it', style: TextStyle(color: Color(0xFFFFC83D), fontSize: 12)),
                           ]),
                         ),
-                      ]))
+                      ])))
                     : Row(children: [
                         const SizedBox(width: 22, height: 22, child: Padding(padding: EdgeInsets.all(3), child: CircularProgressIndicator(strokeWidth: 2))),
                         const SizedBox(width: 10),

@@ -1571,6 +1571,21 @@ class DjController extends ChangeNotifier {
 
   FlowTrack? _flowOf(String path) => _flowInfo[path];
 
+  /// "128 BPM · 8A" for a track, and how it mixes with the one playing
+  /// ("Perfect", "Compatible"…), for the queue list. Empty when not known yet.
+  String queueInfo(String path) {
+    final c = _flowOf(path);
+    if (c == null) return '';
+    final parts = <String>[
+      if (c.bpm > 1) '${c.bpm.round()} BPM',
+      if (c.key != null) c.key!.code,
+    ];
+    final curPath = _automixIndex >= 0 && _automixIndex < _automixQueue.length ? _automixQueue[_automixIndex] : null;
+    final cur = curPath == null ? null : _flowOf(curPath);
+    if (cur?.key != null && c.key != null) parts.add(keyMatch(cur!.key!, c.key!).label);
+    return parts.join(' · ');
+  }
+
   /// The artist of a track: from the tempo/key read, else the file name.
   String _artistOf(String path) {
     final a = _flowOf(path)?.artist ?? '';
