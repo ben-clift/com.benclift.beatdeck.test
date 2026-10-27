@@ -5,6 +5,7 @@ import 'package:sidedeck/suggest/discover.dart';
 import 'package:sidedeck/suggest/explore.dart';
 import 'package:sidedeck/suggest/taste.dart';
 import 'package:sidedeck/theme/ph.dart';
+import 'package:sidedeck/ui/my_tracks_page.dart';
 import 'package:sidedeck/ui/soulseek_page.dart';
 import 'package:sidedeck/wishlist/wishlist.dart';
 
@@ -13,9 +14,12 @@ import 'package:sidedeck/wishlist/wishlist.dart';
 /// Bandcamp, Traxsource and so on) in the phone's browser; nothing plays or
 /// downloads here until you choose Soulseek on a track.
 class ExplorePage extends StatefulWidget {
-  const ExplorePage({super.key, required this.library});
+  const ExplorePage({super.key, required this.library, this.initialArtist});
 
   final LibraryController library;
+
+  /// When set, the page starts exploring from this artist straight away.
+  final String? initialArtist;
 
   @override
   State<ExplorePage> createState() => _ExplorePageState();
@@ -39,6 +43,13 @@ class _ExplorePageState extends State<ExplorePage> {
       if (mounted) setState(() {});
     });
     Discover.loadToken();
+    final a = widget.initialArtist;
+    if (a != null && a.trim().isNotEmpty) {
+      _name.text = a.trim();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _go();
+      });
+    }
   }
 
   @override
@@ -269,6 +280,13 @@ class _ExplorePageState extends State<ExplorePage> {
       appBar: AppBar(
         title: const Text('Explore'),
         actions: [
+          IconButton(
+            tooltip: 'My tracks',
+            icon: const Icon(Icons.library_music_outlined),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => MyTracksPage(library: widget.library)),
+            ),
+          ),
           PopupMenuButton<String>(
             onSelected: (v) async {
               if (v == 'token') await _tokenDialog();

@@ -27,3 +27,8 @@ Forked from SideDeck 1.1.1 (https://github.com/manueljpy/SideDeck), 20 Oct 2026.
 - Each result has Listen (YouTube, Bandcamp) and Buy (Traxsource, Beatport, Hardwax) links, which are search pages opened in the phone's browser, and a link to the artist's Resident Advisor page. Tap an artist for top tracks with tempo (Deezer), with a BPM filter, add to wish list, and Find on Soulseek.
 - Paced to MusicBrainz's one request a second, at most 30 requests a run, parsed answers kept for a week.
 - Not yet: who plays the same nights (events), remixer links, tempo for artists and labels.
+
+## My tracks (27 Oct 2026)
+- Explore has a "My tracks" page: import screenshots of Finder lists (read on the phone) or paste file names. Scene-style names, track numbers, key/BPM endings, compilation prefixes and `[Label]` endings are cleaned into artist, title, mix and label.
+- Imported tracks count as music you own: Explore hides them and uses their artists and labels as your taste.
+- Each track has Listen (YouTube, Bandcamp) and Buy (Traxsource, Beatport, Hardwax) search links, a direct Deezer link where Deezer has the track ("Find links"), Explore from this artist, wish list and Soulseek.

@@ -9,6 +9,7 @@ import 'package:sidedeck/automix/genre_family.dart';
 import 'package:sidedeck/engine/tags.dart';
 import 'package:sidedeck/state/library_controller.dart';
 import 'package:sidedeck/state/playlist_store.dart';
+import 'package:sidedeck/suggest/track_import.dart';
 
 /// What the DJ likes, read from the playlists saved on the phone: the artists
 /// whose tracks are in them. Used to put those artists first when automix
@@ -70,6 +71,9 @@ class Taste {
   }
 
   static DateTime _lastRead = DateTime.fromMillisecondsSinceEpoch(0);
+
+  /// Makes the next [refresh] read everything again (after an import).
+  static void invalidate() => _lastRead = DateTime.fromMillisecondsSinceEpoch(0);
 
   static Future<void> refresh(LibraryController lib) async {
     // Reading every playlist file again for each track is wasted work.
@@ -141,6 +145,18 @@ class Taste {
           if (ln.length >= 2) foundLabels.add(ln);
         }
       }
+      // Tracks imported from screenshots or pasted names count as owned too.
+      try {
+        for (final t in await MyTracks.instance.loadAll()) {
+          final an = _norm(t.artist);
+          if (an.length >= 2) {
+            found.add(an);
+            _display.putIfAbsent(an, () => t.artist);
+          }
+          final ln = _norm(t.label);
+          if (ln.length >= 2) foundLabels.add(ln);
+        }
+      } catch (_) {}
       artists = found;
       labels = foundLabels;
       DebugLog.add('taste',
