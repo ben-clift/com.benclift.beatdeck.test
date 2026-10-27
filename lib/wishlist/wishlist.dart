@@ -138,7 +138,34 @@ class WishParser {
 
 class WishListController extends ChangeNotifier {
   WishListController() {
-    _load();
+    _loading = _load();
+  }
+
+  late final Future<void> _loading;
+
+  /// Completes once the saved lists have been read from the phone.
+  Future<void> get ready => _loading;
+
+  /// Adds one song to the list called [listName] (made if missing). Returns
+  /// false when the song is already on it.
+  Future<bool> addSong(String listName, String source, String artist, String title) async {
+    await _loading;
+    WishList? l;
+    for (final x in lists) {
+      if (x.name == listName && x.source == source) {
+        l = x;
+        break;
+      }
+    }
+    if (l == null) {
+      l = WishList(DateTime.now().microsecondsSinceEpoch.toString(), listName, source);
+      lists.insert(0, l);
+    }
+    final key = '${artist.toLowerCase()}|${title.toLowerCase()}';
+    if (l.items.any((i) => '${i.artist.toLowerCase()}|${i.title.toLowerCase()}' == key)) return false;
+    l.items.add(WishItem(artist, title));
+    await save();
+    return true;
   }
 
   static const _key = 'wish_lists_v1';

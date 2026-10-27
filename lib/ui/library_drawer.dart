@@ -12,6 +12,7 @@ import 'package:sidedeck/state/dj_controller.dart';
 import 'package:sidedeck/state/library_controller.dart';
 import 'package:sidedeck/state/playlist_controller.dart';
 import 'package:sidedeck/ui/playlists_panel.dart';
+import 'package:sidedeck/ui/explore_page.dart';
 import 'package:sidedeck/ui/free_music_page.dart';
 import 'package:sidedeck/ui/soulseek_page.dart';
 import 'package:sidedeck/ui/suggest_page.dart';
@@ -570,6 +571,16 @@ class _LibraryOverlayState extends State<LibraryOverlay> {
                         ),
                       ),
                       icon: const Icon(Ph.insights, size: 22),
+                    ),
+                    IconButton(
+                      tooltip: 'Explore: find new artists, labels and tracks',
+                      visualDensity: VisualDensity.compact,
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => ExplorePage(library: lib),
+                        ),
+                      ),
+                      icon: const Icon(Icons.explore_outlined, size: 22),
                     ),
                     IconButton(
                       tooltip: 'Free music (Jamendo, Internet Archive)',

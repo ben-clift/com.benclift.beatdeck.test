@@ -20,3 +20,10 @@ Forked from SideDeck 1.1.1 (https://github.com/manueljpy/SideDeck), 20 Oct 2026.
 
 ## Friends build
 - Own app id com.benclift.beatdeck.test. Simple mode is the default: pick a vibe, tap Start. Pro mode (menu) is the full BeatDeck.
+
+## Explore (27 Oct 2026)
+- New Explore page (Pro: compass button in the library toolbar; Simple mode: menu). Start from an artist, a label or a genre and follow the links outward, 1 to 3 hops: artist to their labels (MusicBrainz), label to its artists (MusicBrainz), artist to similar artists (Deezer). Genre starts use the Bandcamp and Discogs lists.
+- Ranked by how many links lead there; labels you own raise the artists on them. Music you already own is marked and hidden by default. "Not for me" hides an artist or label for good (Forget list in the page menu).
+- Each result has Listen (YouTube, Bandcamp) and Buy (Traxsource, Beatport, Hardwax) links, which are search pages opened in the phone's browser, and a link to the artist's Resident Advisor page. Tap an artist for top tracks with tempo (Deezer), with a BPM filter, add to wish list, and Find on Soulseek.
+- Paced to MusicBrainz's one request a second, at most 30 requests a run, parsed answers kept for a week.
+- Not yet: who plays the same nights (events), remixer links, tempo for artists and labels.
