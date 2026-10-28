@@ -6,7 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// time the app has ever seen is remembered.
 class Expiry {
   static const int _built = int.fromEnvironment('BUILD_EPOCH', defaultValue: 0);
-  static const int days = 3;
+  static const int days = 30;
 
   static DateTime? get builtAt => _built == 0 ? null : DateTime.fromMillisecondsSinceEpoch(_built * 1000);
   static DateTime? get expiresAt => builtAt?.add(const Duration(days: days));
