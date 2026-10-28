@@ -17,7 +17,7 @@ class ProjectorOutput extends ChangeNotifier {
   static final ProjectorOutput instance = ProjectorOutput._();
   static const _ch = MethodChannel('beatdeck/projector');
 
-  bool on = false;
+  bool active = false;
   List<String> displays = const [];
   String? name;
   Timer? _t;
@@ -30,7 +30,7 @@ class ProjectorOutput extends ChangeNotifier {
     try {
       final r = await _ch.invokeMethod<List<dynamic>>('displays');
       displays = (r ?? const []).cast<String>();
-      if (on && !(await _ch.invokeMethod<bool>('active') ?? false)) _ended();
+      if (active && !(await _ch.invokeMethod<bool>('active') ?? false)) _ended();
     } catch (_) {
       displays = const [];
     }
@@ -45,8 +45,8 @@ class ProjectorOutput extends ChangeNotifier {
     } catch (_) {
       name = null;
     }
-    on = name != null;
-    if (on) {
+    active = name != null;
+    if (active) {
       _seenPoke = MilkdropSettings.instance.poke;
       MilkdropSettings.instance.addListener(_settings);
       _t?.cancel();
@@ -55,7 +55,7 @@ class ProjectorOutput extends ChangeNotifier {
       _settings();
     }
     await refresh();
-    return on;
+    return active;
   }
 
   Future<void> stop() async {
@@ -67,7 +67,7 @@ class ProjectorOutput extends ChangeNotifier {
   }
 
   void _ended() {
-    on = false;
+    active = false;
     name = null;
     _t?.cancel();
     _t = null;
@@ -152,7 +152,7 @@ class _ProjectorPageState extends State<ProjectorPage> {
           final found = _out.displays;
           return ListView(padding: const EdgeInsets.all(20), children: [
             Text(
-              _out.on
+              _out.active
                   ? 'Showing on ${_out.name}'
                   : (found.isEmpty ? 'No second screen connected' : 'Found: ${found.join(', ')}'),
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
@@ -169,9 +169,9 @@ class _ProjectorPageState extends State<ProjectorPage> {
                 child: SizedBox(
                   height: 56,
                   child: FilledButton.icon(
-                    onPressed: _out.on ? _out.stop : _start,
-                    icon: Icon(_out.on ? Icons.stop_circle_outlined : Icons.cast_connected),
-                    label: Text(_out.on ? 'Stop projecting' : 'Show on second screen',
+                    onPressed: _out.active ? _out.stop : _start,
+                    icon: Icon(_out.active ? Icons.stop_circle_outlined : Icons.cast_connected),
+                    label: Text(_out.active ? 'Stop projecting' : 'Show on second screen',
                         style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
                   ),
                 ),
