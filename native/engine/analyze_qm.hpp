@@ -91,9 +91,12 @@ inline AnalysisResult analyzeTrackQueenMary(const float* interleaved, int frames
       return out;
     }
     out.bpm = analyze_detail::snapDanceBpm((float)tempo.bpm);
+    const double duration = (double)frames / (double)sampleRate;
+    const grid_phase::KickEnvelope tempoEnv =
+        grid_phase::buildKickEnvelope(interleaved, frames, ch, (double)sampleRate);
+    out.bpm = (float)grid_phase::refineTempo(tempoEnv, (double)out.bpm, duration);
 
     const double periodSec = 60.0 / (double)out.bpm;
-    const double duration = (double)frames / (double)sampleRate;
 
     // Queen Mary's phase follows the loudest onset, which is the offbeat hat
     // on a lot of house. Take the period from it and let the kick energy pick

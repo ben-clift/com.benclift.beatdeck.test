@@ -1,0 +1,8 @@
+cmake_minimum_required(VERSION 3.16)
+project(beat_test LANGUAGES C CXX)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_BUILD_TYPE Release)
+add_subdirectory(../../third_party/qm-dsp qm-dsp-build)
+add_executable(beat_test beat_test.cpp)
+target_include_directories(beat_test PRIVATE ../../native/engine)
+target_link_libraries(beat_test qm_dsp)
