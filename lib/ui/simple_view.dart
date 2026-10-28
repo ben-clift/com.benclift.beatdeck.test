@@ -32,6 +32,7 @@ import 'package:sidedeck/suggest/suggest_service.dart';
 import 'package:sidedeck/ui/appearance_page.dart';
 import 'package:sidedeck/ui/equaliser_view.dart';
 import 'package:sidedeck/ui/explore_page.dart';
+import 'package:sidedeck/ui/finder_host_library.dart';
 import 'package:sidedeck/ui/milkdrop_view.dart';
 import 'package:sidedeck/ui/screenshot_import.dart';
 import 'package:sidedeck/wishlist/wishlist.dart';
@@ -2052,7 +2053,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                         if (v == 'log') _copyLog();
                         if (v == 'send') _logSettings();
                         if (v == 'mac') _macSheet();
-                        if (v == 'explore') Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => ExplorePage(library: widget.library)));
+                        if (v == 'explore') Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => ExplorePage(host: fullAppFinderHost(widget.library))));
                         if (v == 'look') Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AppearancePage()));
                         if (v == 'pro') AppMode.set(false);
                       },

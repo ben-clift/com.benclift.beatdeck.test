@@ -32,7 +32,11 @@ android {
     defaultConfig {
         // Own id so BeatDeck installs next to the original SideDeck. The code
         // namespace above stays the same (native code is bound to it).
-        applicationId = "com.benclift.beatdeck.test"
+        // The separate part apps (for example the finder) are built from this
+        // same project with -PappId and -PappName, so they install next to
+        // the Friends app. Without them this is BeatDeck Friends.
+        applicationId = (project.findProperty("appId") as String?) ?: "com.benclift.beatdeck.test"
+        manifestPlaceholders["appName"] = (project.findProperty("appName") as String?) ?: "BeatDeck Friends"
         minSdk = 26
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

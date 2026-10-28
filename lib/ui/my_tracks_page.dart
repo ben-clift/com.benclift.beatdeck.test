@@ -1,21 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:sidedeck/state/library_controller.dart';
 import 'package:sidedeck/suggest/explore.dart';
 import 'package:sidedeck/suggest/taste.dart';
 import 'package:sidedeck/suggest/track_import.dart';
 import 'package:sidedeck/ui/explore_page.dart';
+import 'package:sidedeck/ui/finder_host.dart';
 import 'package:sidedeck/ui/screenshot_import.dart';
-import 'package:sidedeck/ui/soulseek_page.dart';
 import 'package:sidedeck/wishlist/wishlist.dart';
 
 /// The tracks you already have on your Mac, read from screenshots of Finder
 /// or pasted file names. Explore uses them as your taste and hides them from
 /// results. Each one gets links to listen or buy on the sites themselves.
 class MyTracksPage extends StatefulWidget {
-  const MyTracksPage({super.key, required this.library});
+  const MyTracksPage({super.key, this.host = const FinderHost()});
 
-  final LibraryController library;
+  final FinderHost host;
 
   @override
   State<MyTracksPage> createState() => _MyTracksPageState();
@@ -198,9 +197,7 @@ class _MyTracksPageState extends State<MyTracksPage> {
   }
 
   void _soulseek(ImportedTrack t) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => SoulseekPage(library: widget.library, initialQuery: t.linkQuery)),
-    );
+    widget.host.soulseek(context, t.linkQuery);
   }
 
   void _exploreFrom(ImportedTrack t) {
@@ -210,7 +207,7 @@ class _MyTracksPageState extends State<MyTracksPage> {
       return;
     }
     Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => ExplorePage(library: widget.library, initialArtist: a)),
+      MaterialPageRoute<void>(builder: (_) => ExplorePage(host: widget.host, initialArtist: a)),
     );
   }
 
@@ -262,7 +259,7 @@ class _MyTracksPageState extends State<MyTracksPage> {
           const PopupMenuItem(value: 'link:Hardwax', child: Text('Buy: Hardwax')),
           const PopupMenuItem(value: 'explore', child: Text('Explore from this artist')),
           const PopupMenuItem(value: 'wish', child: Text('Add to wish list')),
-          const PopupMenuItem(value: 'soulseek', child: Text('Find on Soulseek')),
+          PopupMenuItem(value: 'soulseek', child: Text(widget.host.hasSoulseek ? 'Find on Soulseek' : 'Copy for Soulseek')),
           const PopupMenuItem(value: 'remove', child: Text('Remove from the list')),
         ],
       ),

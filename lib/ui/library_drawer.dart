@@ -13,6 +13,7 @@ import 'package:sidedeck/state/library_controller.dart';
 import 'package:sidedeck/state/playlist_controller.dart';
 import 'package:sidedeck/ui/playlists_panel.dart';
 import 'package:sidedeck/ui/explore_page.dart';
+import 'package:sidedeck/ui/finder_host_library.dart';
 import 'package:sidedeck/ui/free_music_page.dart';
 import 'package:sidedeck/ui/soulseek_page.dart';
 import 'package:sidedeck/ui/suggest_page.dart';
@@ -577,7 +578,7 @@ class _LibraryOverlayState extends State<LibraryOverlay> {
                       visualDensity: VisualDensity.compact,
                       onPressed: () => Navigator.of(context).push(
                         MaterialPageRoute<void>(
-                          builder: (_) => ExplorePage(library: lib),
+                          builder: (_) => ExplorePage(host: fullAppFinderHost(lib)),
                         ),
                       ),
                       icon: const Icon(Icons.explore_outlined, size: 22),

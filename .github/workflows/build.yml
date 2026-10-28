@@ -108,3 +108,35 @@ jobs:
           gh release create latest "$FILE" BeatDeckFriends.apk --prerelease \
             --title "BeatDeck Friends v${VER} - ${STAMP} (UK time)" \
             --notes "BeatDeck Friends v${VER}, built ${STAMP} UK time, commit $(git rev-parse --short HEAD). Tap the APK to download."
+
+      # The music finder as an app of its own (see lib/apps/finder_main.dart).
+      # A failure here never blocks the Friends release above.
+      - name: Build BeatDeck Finder APK
+        id: finder
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          flutter build apk --profile --target-platform=android-arm64 -t lib/apps/finder_main.dart \
+            --android-project-arg=appId=com.benclift.beatdeck.finder \
+            --android-project-arg="appName=BeatDeck Finder" \
+            --build-name=1.2.${{ github.run_number }} --build-number=${{ github.run_number }} 2>&1 | tee finder.txt
+          cp build/app/outputs/flutter-apk/app-profile.apk BeatDeckFinder.apk
+
+      - name: Publish Finder APK as a release
+        if: steps.finder.outcome == 'success'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VER="1.2.${{ github.run_number }}"
+          STAMP=$(TZ=Europe/London date +"%Y-%m-%d %H:%M")
+          gh release delete finder-latest --cleanup-tag --yes || true
+          gh release create finder-latest BeatDeckFinder.apk --prerelease \
+            --title "BeatDeck Finder v${VER} - ${STAMP} (UK time)" \
+            --notes "BeatDeck Finder v${VER}, built ${STAMP} UK time, commit $(git rev-parse --short HEAD). Tap the APK to download."
+
+      - name: Report a Finder build failure
+        if: steps.finder.outcome == 'failure'
+        run: |
+          body=$(grep -E 'Error:|error:|FAILURE|What went wrong' -A2 finder.txt | head -40 | sed 's/%/%25/g' | awk 'BEGIN{ORS="%0A"}{print}')
+          echo "::error title=Finder APK build failed::$body"

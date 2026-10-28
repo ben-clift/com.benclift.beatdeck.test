@@ -21,6 +21,7 @@ import 'package:sidedeck/suggest/nme.dart';
 import 'package:sidedeck/engine/audio_check.dart';
 import 'package:sidedeck/suggest/ra.dart';
 import 'package:sidedeck/suggest/taste.dart';
+import 'package:sidedeck/suggest/taste_library.dart';
 import 'package:sidedeck/suggest/traxsource.dart';
 import 'package:sidedeck/state/library_controller.dart';
 import 'package:sidedeck/suggest/harmony.dart';
@@ -1115,7 +1116,7 @@ class AutoFetch extends ChangeNotifier {
           return;
         }
       }
-      await Taste.refresh(library);
+      await TasteLibrary.refresh(library);
       _say('Next track: building a shortlist for $g');
       var list = await _shortlist(g, lo, hi, exact: steer);
       if (list.isEmpty && _triedThisSession.isNotEmpty) {

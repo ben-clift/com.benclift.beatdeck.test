@@ -32,3 +32,9 @@ Forked from SideDeck 1.1.1 (https://github.com/manueljpy/SideDeck), 20 Oct 2026.
 - Explore has a "My tracks" page: import screenshots of Finder lists (read on the phone) or paste file names. Scene-style names, track numbers, key/BPM endings, compilation prefixes and `[Label]` endings are cleaned into artist, title, mix and label.
 - Imported tracks count as music you own: Explore hides them and uses their artists and labels as your taste.
 - Each track has Listen (YouTube, Bandcamp) and Buy (Traxsource, Beatport, Hardwax) search links, a direct Deezer link where Deezer has the track ("Find links"), Explore from this artist, wish list and Soulseek.
+
+## Separate part apps (28 Oct 2026)
+- Plan: each part of BeatDeck gets its own app, built from this same repo with its own entry file, then they are put together. Order: finder, Soulseek, decks and mixer, Auto DJ, combined app.
+- BeatDeck Finder (`lib/apps/finder_main.dart`, app id `com.benclift.beatdeck.finder`) is the first: Explore, My tracks, wish list, listen/buy links. No audio engine and no Soulseek (the Soulseek button copies the search text). The CI publishes it as its own release, "BeatDeck Finder".
+- To make that possible, `Taste` no longer reads the music library itself: `taste_library.dart` plugs that in for the full app, and `FinderHost` gives the finder pages their Soulseek button.
+- `test/part_independence_test.dart` fails the build if the finder ever imports the engine, decks or Soulseek.

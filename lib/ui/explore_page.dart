@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:sidedeck/state/library_controller.dart';
 import 'package:sidedeck/suggest/discover.dart';
 import 'package:sidedeck/suggest/explore.dart';
 import 'package:sidedeck/suggest/taste.dart';
 import 'package:sidedeck/theme/ph.dart';
+import 'package:sidedeck/ui/finder_host.dart';
 import 'package:sidedeck/ui/my_tracks_page.dart';
-import 'package:sidedeck/ui/soulseek_page.dart';
 import 'package:sidedeck/wishlist/wishlist.dart';
 
 /// Finds new artists, labels and tracks by following links outward from an
@@ -14,9 +13,9 @@ import 'package:sidedeck/wishlist/wishlist.dart';
 /// Bandcamp, Traxsource and so on) in the phone's browser; nothing plays or
 /// downloads here until you choose Soulseek on a track.
 class ExplorePage extends StatefulWidget {
-  const ExplorePage({super.key, required this.library, this.initialArtist});
+  const ExplorePage({super.key, this.host = const FinderHost(), this.initialArtist});
 
-  final LibraryController library;
+  final FinderHost host;
 
   /// When set, the page starts exploring from this artist straight away.
   final String? initialArtist;
@@ -84,7 +83,7 @@ class _ExplorePageState extends State<ExplorePage> {
       return;
     }
     FocusScope.of(context).unfocus();
-    await Taste.refresh(widget.library);
+    await Taste.refresh();
     await _ex.run(
       kind: _kind,
       name: name,
@@ -95,7 +94,7 @@ class _ExplorePageState extends State<ExplorePage> {
   }
 
   Future<void> _fromLibrary() async {
-    await Taste.refresh(widget.library);
+    await Taste.refresh();
     final pick = Taste.pick(1);
     if (pick.isEmpty) {
       _toast('No artists found in your playlists yet.');
@@ -231,14 +230,10 @@ class _ExplorePageState extends State<ExplorePage> {
           },
         ),
         IconButton(
-          tooltip: 'Find on Soulseek',
+          tooltip: widget.host.hasSoulseek ? 'Find on Soulseek' : 'Copy for Soulseek',
           visualDensity: VisualDensity.compact,
           icon: const Icon(Ph.travelExplore, size: 20),
-          onPressed: () => Navigator.of(ctx).push(
-            MaterialPageRoute<void>(
-              builder: (_) => SoulseekPage(library: widget.library, initialQuery: q),
-            ),
-          ),
+          onPressed: () => widget.host.soulseek(ctx, q),
         ),
       ]),
     );
@@ -284,7 +279,7 @@ class _ExplorePageState extends State<ExplorePage> {
             tooltip: 'My tracks',
             icon: const Icon(Icons.library_music_outlined),
             onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => MyTracksPage(library: widget.library)),
+              MaterialPageRoute<void>(builder: (_) => MyTracksPage(host: widget.host)),
             ),
           ),
           PopupMenuButton<String>(
@@ -386,7 +381,7 @@ class _ExplorePageState extends State<ExplorePage> {
                 const SizedBox(width: 8),
                 OutlinedButton(
                   onPressed: _ex.busy ? null : _fromLibrary,
-                  child: const Text('From my library'),
+                  child: const Text('From my music'),
                 ),
                 if (_ex.busy) ...[
                   const SizedBox(width: 8),
