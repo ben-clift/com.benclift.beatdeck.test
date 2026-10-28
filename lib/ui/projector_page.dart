@@ -219,6 +219,13 @@ class _ProjectorPageState extends State<ProjectorPage> {
               for (final f in const [5, 10, 15, 20, 30, 45, 60])
                 ChoiceChip(label: Text('$f'), selected: m.fps == f, onSelected: (_) => m.set(fpsV: f)),
             ]),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Smooth blending'),
+              subtitle: const Text('At a low speed, fade between pictures instead of jumping'),
+              value: m.blend,
+              onChanged: (v) => m.set(blendV: v),
+            ),
             _label('Change picture'),
             Wrap(spacing: 8, children: [
               for (final s in secs)

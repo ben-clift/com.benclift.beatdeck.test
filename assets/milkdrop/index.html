@@ -1,8 +1,8 @@
 <!doctype html>
 <html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-<style>html,body{margin:0;height:100%;background:#000;overflow:hidden}canvas{width:100%;height:100%;display:block}</style>
-</head><body><canvas id="c"></canvas>
+<style>html,body{margin:0;height:100%;background:#000;overflow:hidden}canvas{width:100%;height:100%;display:block}#c{position:fixed;left:0;top:0;opacity:0;pointer-events:none}</style>
+</head><body><canvas id="c"></canvas><canvas id="o"></canvas>
 <script src="butterchurn.min.js"></script>
 <script src="butterchurnPresets.min.js"></script>
 <script>
@@ -15,6 +15,13 @@
     var W = Math.max(64, Math.round(canvas.clientWidth * ratio));
     var H = Math.max(64, Math.round(canvas.clientHeight * ratio));
     canvas.width = W; canvas.height = H;
+    // The picture is drawn at the chosen rate on the hidden canvas, and shown on
+    // this one. At a low rate each new frame is faded in over the last, so the
+    // motion melts from one picture to the next instead of jumping.
+    var out = document.getElementById('o'), octx = out.getContext('2d');
+    out.width = W; out.height = H;
+    function mk() { var c = document.createElement('canvas'); c.width = W; c.height = H; c.x = c.getContext('2d'); return c; }
+    var fa = mk(), fb = mk(), haveTwo = false, newFrame = false, blendOn = true, blendStart = 0, interval = 200;
     var AC = window.AudioContext || window.webkitAudioContext;
     var ctx = new AC();
     var bc = window.butterchurn.default || window.butterchurn;
@@ -27,10 +34,11 @@
     window.setGain = function (g) { gain = Math.max(0.05, Math.min(1.6, g)); };
     var fps = 15, lastDraw = 0;
     window.setFps = function (f) { fps = Math.max(2, Math.min(60, f)); };
-    window.setDim = function (b) { canvas.style.filter = 'brightness(' + Math.max(0.05, Math.min(1, b)) + ')'; };
+    window.setDim = function (b) { out.style.filter = 'brightness(' + Math.max(0.05, Math.min(1, b)) + ')'; };
     // Projector: mirror left-right and/or upside down (for rear or ceiling projection).
-    window.setFlip = function (h, v) { canvas.style.transform = 'scale(' + (h ? -1 : 1) + ',' + (v ? -1 : 1) + ')'; };
+    window.setFlip = function (h, v) { out.style.transform = 'scale(' + (h ? -1 : 1) + ',' + (v ? -1 : 1) + ')'; };
     // The projector page does not need the cover-art stills.
+    window.setBlend = function (b) { blendOn = !!b; };
     var shots = true;
     window.setShots = function (b) { shots = !!b; };
     window.setAuto = function (s) { autoSecs = s; lastSwitch = performance.now(); };
@@ -47,15 +55,15 @@
     var paused = false;
     // Tap = next visual. Hold = freeze / unfreeze.
     var downAt = 0, holdT = null, held2 = false;
-    canvas.addEventListener('pointerdown', function () {
+    out.addEventListener('pointerdown', function () {
       downAt = performance.now(); held2 = false;
       holdT = setTimeout(function () { held2 = true; paused = !paused; }, 600);
     });
-    canvas.addEventListener('pointerup', function () {
+    out.addEventListener('pointerup', function () {
       clearTimeout(holdT);
       if (!held2) { paused = false; held = null; next(1.0); }
     });
-    canvas.addEventListener('pointercancel', function () { clearTimeout(holdT); });
+    out.addEventListener('pointercancel', function () { clearTimeout(holdT); });
 
     // The app sends 14 band levels (0..1). Make a waveform whose spectrum has
     // that shape so the presets react to bass, mids and treble.
@@ -107,7 +115,21 @@
       }
       if (!held && autoSecs > 0 && now - lastSwitch > autoSecs * 1000) next(2.7);
       var due = now - lastDraw >= 1000 / fps - 2;
-      if (!paused && due) { lastDraw = now; viz.render({ audioLevels: { timeByteArray: tb, timeByteArrayL: tl, timeByteArrayR: tr }, elapsedTime: (now - t0) / 1000 }); shot(now); }
+      if (!paused && due) {
+        lastDraw = now; interval = 1000 / fps;
+        viz.render({ audioLevels: { timeByteArray: tb, timeByteArrayL: tl, timeByteArrayR: tr }, elapsedTime: (now - t0) / 1000 });
+        var sw = fa; fa = fb; fb = sw;
+        fb.x.drawImage(canvas, 0, 0);
+        if (newFrame) haveTwo = true;
+        newFrame = true; blendStart = now; shot(now);
+        if (!(blendOn && fps < 30 && haveTwo)) { octx.globalAlpha = 1; octx.drawImage(fb, 0, 0); }
+      }
+      if (!paused && !fromTimer && blendOn && fps < 30 && haveTwo) {
+        var al = Math.min(1, (now - blendStart) / interval);
+        octx.globalAlpha = 1; octx.drawImage(fa, 0, 0);
+        octx.globalAlpha = al; octx.drawImage(fb, 0, 0);
+        octx.globalAlpha = 1;
+      }
       if (firstFrame) { firstFrame = false; say('ok'); say('names:' + JSON.stringify(names)); }
       if (!fromTimer) requestAnimationFrame(frame);
     }

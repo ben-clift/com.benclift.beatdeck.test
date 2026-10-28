@@ -50,3 +50,7 @@ Forked from SideDeck 1.1.1 (https://github.com/manueljpy/SideDeck), 20 Oct 2026.
 - Not yet checked on a phone with a real projector. Two MilkDrop pages at once (Booth plus projector) may need a lower frame rate on slow phones.
 - Not done: films, TV and games from consoles or PCs (needs a capture card and a separate app; protected streaming video cannot be captured).
 
+## Smooth blending (28 Oct 2026)
+- MilkDrop at a low speed (under 30 frames a second) no longer jumps from one picture to the next: each new frame is faded in over the last one at full screen speed. "Smooth blending" switch in Visuals settings and on the Projector page, on by default. Switch it off for the old sharp frames.
+- The picture is about one frame behind the music (200 ms at 5 frames a second) because it fades towards the newest frame.
+

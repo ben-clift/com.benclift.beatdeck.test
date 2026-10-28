@@ -31,6 +31,9 @@ class MilkdropSettings extends ChangeNotifier {
   bool flipH = false;
   bool flipV = false;
 
+  /// Fade between frames at a low frame rate so the motion is smooth, not jerky.
+  bool blend = true;
+
   /// A fixed preset name, or null to let it shuffle.
   String? preset;
   List<String> names = [];
@@ -46,6 +49,7 @@ class MilkdropSettings extends ChangeNotifier {
       dim = p.getDouble('md_dim') ?? 0.8;
       flipH = p.getBool('md_flip_h') ?? false;
       flipV = p.getBool('md_flip_v') ?? false;
+      blend = p.getBool('md_blend') ?? true;
       preset = p.getString('md_preset');
       notifyListeners();
     } catch (_) {}
@@ -60,6 +64,7 @@ class MilkdropSettings extends ChangeNotifier {
       await p.setDouble('md_dim', dim);
       await p.setBool('md_flip_h', flipH);
       await p.setBool('md_flip_v', flipV);
+      await p.setBool('md_blend', blend);
       if (preset == null) {
         await p.remove('md_preset');
       } else {
@@ -68,13 +73,14 @@ class MilkdropSettings extends ChangeNotifier {
     } catch (_) {}
   }
 
-  void set({double? i, int? fpsV, double? dimV, int? auto, String? pick, bool shuffle = false, bool? flipHV, bool? flipVV}) {
+  void set({double? i, int? fpsV, double? dimV, int? auto, String? pick, bool shuffle = false, bool? flipHV, bool? flipVV, bool? blendV}) {
     if (i != null) intensity = i;
     if (auto != null) autoSecs = auto;
     if (fpsV != null) fps = fpsV;
     if (dimV != null) dim = dimV;
     if (flipHV != null) flipH = flipHV;
     if (flipVV != null) flipV = flipVV;
+    if (blendV != null) blend = blendV;
     if (pick != null) preset = pick;
     if (shuffle) preset = null;
     notifyListeners();
@@ -103,6 +109,7 @@ String milkdropSettingsJs(MilkdropSettings m) {
       'window.setFps&&window.setFps(${m.fps});'
       'window.setDim&&window.setDim(${m.dim.toStringAsFixed(2)});'
       'window.setFlip&&window.setFlip(${m.flipH},${m.flipV});'
+      'window.setBlend&&window.setBlend(${m.blend});'
       'window.loadName&&window.loadName(${jsonEncode(m.preset)});';
 }
 

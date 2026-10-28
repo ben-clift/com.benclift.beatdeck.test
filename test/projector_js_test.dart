@@ -10,6 +10,7 @@ void main() {
     m.autoSecs = 60;
     m.flipH = true;
     m.flipV = false;
+    m.blend = true;
     m.preset = null;
     final js = milkdropSettingsJs(m);
     expect(js, contains('window.setGain'));
@@ -17,6 +18,7 @@ void main() {
     expect(js, contains('window.setDim&&window.setDim(0.40)'));
     expect(js, contains('window.setAuto&&window.setAuto(60)'));
     expect(js, contains('window.setFlip&&window.setFlip(true,false)'));
+    expect(js, contains('window.setBlend&&window.setBlend(true)'));
     expect(js, contains('window.loadName&&window.loadName(null)'));
   });
 

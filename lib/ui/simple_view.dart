@@ -3091,6 +3091,14 @@ class _VisualsBoxState extends State<_VisualsBox> {
             for (final f in const [5, 10, 15, 20, 30, 45, 60])
               ChoiceChip(label: Text('$f'), selected: m.fps == f, onSelected: (_) => m.set(fpsV: f)),
           ]),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            dense: true,
+            title: const Text('Smooth blending'),
+            subtitle: const Text('At a low speed, fade between pictures'),
+            value: m.blend,
+            onChanged: (v) => m.set(blendV: v),
+          ),
           const SizedBox(height: 8),
           const Text('Change picture', style: TextStyle(fontWeight: FontWeight.w700)),
           Wrap(spacing: 8, children: [
