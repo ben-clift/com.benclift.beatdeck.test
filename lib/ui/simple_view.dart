@@ -16,7 +16,10 @@ import 'package:sidedeck/soulseek/storage_guard.dart';
 import 'package:sidedeck/soulseek/slsk_keeper.dart';
 import 'package:sidedeck/soulseek/slsk_setup.dart';
 import 'package:sidedeck/soulseek/soulseek_client.dart';
+import 'package:sidedeck/state/admin.dart';
 import 'package:sidedeck/state/app_mode.dart';
+import 'package:sidedeck/ui/admin_dialog.dart';
+import 'package:sidedeck/ui/admin_hub.dart';
 import 'package:sidedeck/state/dj_controller.dart';
 import 'package:sidedeck/state/expiry.dart';
 import 'package:sidedeck/state/library_controller.dart';
@@ -2043,6 +2046,17 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                     Text(on && !_showChooser ? 'The Booth' : 'BeatDeck',
                         style: const TextStyle(fontFamily: SideDeckTheme.label, fontSize: 26, fontWeight: FontWeight.w700, letterSpacing: 2.2)),
                     const Spacer(),
+                    ValueListenableBuilder<bool>(
+                      valueListenable: Admin.on,
+                      builder: (context, isAdmin, _) => isAdmin
+                          ? TextButton.icon(
+                              onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                                  builder: (_) => AdminHubPage(dj: widget.dj, library: widget.library))),
+                              icon: const Icon(Icons.apps),
+                              label: const Text('Apps'),
+                            )
+                          : const SizedBox.shrink(),
+                    ),
                     IconButton(
                       tooltip: 'Screen brightness',
                       icon: const Icon(Ph.brightness6),
@@ -2056,6 +2070,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                         if (v == 'explore') Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => ExplorePage(host: fullAppFinderHost(widget.library))));
                         if (v == 'look') Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AppearancePage()));
                         if (v == 'pro') AppMode.set(false);
+                        if (v == 'admin') showAdminDialog(context);
                       },
                       itemBuilder: (_) => [
                         if (Expiry.expiresAt != null)
@@ -2072,6 +2087,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                         const PopupMenuItem(value: 'send', child: Text('Send logs to Ben automatically')),
                         const PopupMenuItem(value: 'log', child: Text('Report a problem (copy log)')),
                         const PopupMenuItem(value: 'pro', child: Text('Switch to Pro mode')),
+                        PopupMenuItem(value: 'admin', child: Text(Admin.on.value ? 'Admin: turn off' : 'Admin code')),
                       ],
                     ),
                   ]),

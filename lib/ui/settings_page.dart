@@ -8,6 +8,8 @@ import 'package:sidedeck/debug/log_upload.dart';
 import 'package:sidedeck/ui/debug_page.dart';
 import 'package:sidedeck/ui/deleted_tracks_page.dart';
 import 'package:sidedeck/engine/analysis_cache.dart';
+import 'package:sidedeck/state/admin.dart';
+import 'package:sidedeck/ui/admin_dialog.dart';
 import 'package:sidedeck/state/avoids.dart';
 import 'package:sidedeck/state/dislikes.dart';
 import 'package:sidedeck/state/screen_brightness.dart';
@@ -155,6 +157,18 @@ class _SettingsPageState extends State<SettingsPage> {
               );
               if (mounted) setState(() {});
             },
+          ),
+          ValueListenableBuilder<bool>(
+            valueListenable: Admin.on,
+            builder: (context, isAdmin, _) => ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(isAdmin ? Icons.lock_open : Icons.lock_outline),
+              title: Text(isAdmin ? 'Admin is on' : 'Admin'),
+              subtitle: Text(isAdmin
+                  ? 'The Apps buttons are showing. Tap to turn admin off.'
+                  : 'Enter the admin code to show the Apps buttons.'),
+              onTap: () => showAdminDialog(context),
+            ),
           ),
           ListTile(
             title: const Text('Clear automix play history'),

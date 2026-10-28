@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sidedeck/theme/ph.dart';
 import 'package:sidedeck/state/screen_brightness.dart';
+import 'package:sidedeck/state/admin.dart';
 import 'package:sidedeck/state/app_mode.dart';
 import 'package:sidedeck/state/expiry.dart';
 import 'package:sidedeck/ui/simple_view.dart';
@@ -77,6 +78,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     ShazamWatcher.instance.start(_library);
     ScreenBrightness.load();
     AppMode.load();
+    Admin.load();
     Ratings.instance.load();
     _dj.addListener(_onDjChanged);
     _checkExpiry();

@@ -12,6 +12,8 @@ import 'package:sidedeck/state/dj_controller.dart';
 import 'package:sidedeck/state/library_controller.dart';
 import 'package:sidedeck/state/playlist_controller.dart';
 import 'package:sidedeck/ui/playlists_panel.dart';
+import 'package:sidedeck/state/admin.dart';
+import 'package:sidedeck/ui/admin_hub.dart';
 import 'package:sidedeck/ui/explore_page.dart';
 import 'package:sidedeck/ui/finder_host_library.dart';
 import 'package:sidedeck/ui/free_music_page.dart';
@@ -572,6 +574,19 @@ class _LibraryOverlayState extends State<LibraryOverlay> {
                         ),
                       ),
                       icon: const Icon(Ph.insights, size: 22),
+                    ),
+                    ValueListenableBuilder<bool>(
+                      valueListenable: Admin.on,
+                      builder: (context, isAdmin, _) => isAdmin
+                          ? IconButton(
+                              tooltip: 'Apps: open any part of BeatDeck',
+                              visualDensity: VisualDensity.compact,
+                              onPressed: () => Navigator.of(context).push(
+                                MaterialPageRoute<void>(builder: (_) => AdminHubPage(dj: widget.dj, library: lib)),
+                              ),
+                              icon: const Icon(Icons.apps, size: 22),
+                            )
+                          : const SizedBox.shrink(),
                     ),
                     IconButton(
                       tooltip: 'Explore: find new artists, labels and tracks',
