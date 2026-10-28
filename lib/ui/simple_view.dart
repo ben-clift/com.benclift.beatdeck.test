@@ -2161,7 +2161,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
         width: double.infinity,
         child: FilledButton(
           onPressed: () => setState(() => _welcome = false),
-          child: const Text('Enter', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
+          child: const Text('Start', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
         ),
       ),
       const SizedBox(height: 12),
