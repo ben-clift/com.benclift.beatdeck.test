@@ -43,8 +43,8 @@ class AdminHubPage extends StatelessWidget {
         children: [
           _tile(context, Icons.explore_outlined, 'Finder: Explore',
               'Artists, labels and genres, with listen and buy links', () => _push(context, ExplorePage(host: host))),
-          _tile(context, Icons.library_music_outlined, 'Finder: My tracks',
-              'Tracks you own, from screenshots or pasted names', () => _push(context, MyTracksPage(host: host))),
+          _tile(context, Icons.photo_library_outlined, 'Finder: Screenshots and my tracks',
+              'Add screenshots of your tracks, then find related music', () => _push(context, MyTracksPage(host: host))),
           _tile(context, Icons.favorite_border, 'Finder: Wish list', 'Songs to look for later',
               () => _push(context, WishListPage(library: library))),
           _tile(context, Icons.travel_explore, 'Soulseek', 'Search and download',

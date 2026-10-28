@@ -38,3 +38,7 @@ Forked from SideDeck 1.1.1 (https://github.com/manueljpy/SideDeck), 20 Oct 2026.
 - BeatDeck Finder (`lib/apps/finder_main.dart`, app id `com.benclift.beatdeck.finder`) is the first: Explore, My tracks, wish list, listen/buy links. No audio engine and no Soulseek (the Soulseek button copies the search text). The CI publishes it as its own release, "BeatDeck Finder".
 - To make that possible, `Taste` no longer reads the music library itself: `taste_library.dart` plugs that in for the full app, and `FinderHost` gives the finder pages their Soulseek button.
 - `test/part_independence_test.dart` fails the build if the finder ever imports the engine, decks or Soulseek.
+
+## Screenshots and related music (28 Oct 2026)
+- The My tracks page is now "Screenshots and my tracks": an "Add screenshots" button and a "Find related" button side by side. BeatDeck Finder opens on it.
+- "Find related" starts from the artists and labels that appear most in your tracks (up to 6 artists and 2 labels), looks one step out from each, and ranks what is linked to several of them higher. Results use the Explore list (listen, buy, top tracks, wish list, Soulseek).

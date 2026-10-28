@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sidedeck/suggest/explore.dart';
+import 'package:sidedeck/suggest/track_import.dart';
 
 // Shapes follow MusicBrainz's documented JSON for search and release browse.
 const _artistSearch = '''
@@ -65,5 +66,17 @@ void main() {
   test('a hit key ignores case and punctuation', () {
     expect(ExploreHit('artist', 'Cali Lanauze').key, ExploreHit('artist', 'cali  lanauze!').key);
     expect(ExploreHit('artist', 'Opulence').key, isNot(ExploreHit('label', 'Opulence').key));
+  });
+
+  test('seedsFrom picks the most common artists and labels', () {
+    final tracks = [
+      ImportedTrack(artist: 'Aaa', title: '1', label: 'Lab One'),
+      ImportedTrack(artist: 'Bbb & Ccc', title: '2', label: 'Lab One'),
+      ImportedTrack(artist: 'Bbb', title: '3', label: 'Lab Two'),
+      ImportedTrack(artist: 'Ddd', title: '4'),
+      ImportedTrack(title: 'No artist'),
+    ];
+    final seeds = Explore.seedsFrom(tracks, artists: 2, labels: 1);
+    expect([for (final h in seeds) '${h.kind}:${h.name}'], ['artist:Bbb', 'artist:Aaa', 'label:Lab One']);
   });
 }

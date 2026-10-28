@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:sidedeck/theme/sidedeck_theme.dart';
 import 'package:sidedeck/theme/theme_settings.dart';
-import 'package:sidedeck/ui/explore_page.dart';
+import 'package:sidedeck/ui/my_tracks_page.dart';
 
-/// BeatDeck Finder: the music finder as an app of its own. Explore, My tracks
-/// (screenshot and paste import), wish list and listen/buy links. It has no
+/// BeatDeck Finder: the music finder as an app of its own. It opens on the
+/// screenshots page (add screenshots of your tracks, then find related
+/// music), with Explore, the wish list and listen/buy links one tap away. It has no
 /// audio engine and no Soulseek; the "Soulseek" button copies the search text.
 ///
 /// Build it with:
@@ -27,7 +28,7 @@ class FinderApp extends StatelessWidget {
       title: 'BeatDeck Finder',
       debugShowCheckedModeBanner: false,
       theme: SideDeckTheme.dark(),
-      home: const ExplorePage(),
+      home: const MyTracksPage(),
     );
   }
 }

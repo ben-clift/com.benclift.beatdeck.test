@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sidedeck/debug/debug_log.dart';
 import 'package:sidedeck/suggest/discover.dart';
 import 'package:sidedeck/suggest/taste.dart';
+import 'package:sidedeck/suggest/track_import.dart';
 
 /// Reading of MusicBrainz answers. Plain Dart (no network) so it can be tested.
 abstract class ExploreParse {
@@ -400,6 +401,99 @@ class Explore extends ChangeNotifier {
           ? 'Nothing found. Check the spelling, or try another start.'
           : '${hits.length} found${stoppedAtLimit ? ' (stopped at the $maxRequests request limit)' : ''}.';
       DebugLog.add('explore', '$kind "$name" hops $hops: ${hits.length} results, $_requests requests');
+    } catch (e) {
+      status = 'Could not finish: $e';
+      DebugLog.add('explore', 'failed: $e');
+    } finally {
+      if (me == _run) {
+        busy = false;
+        notifyListeners();
+      }
+    }
+  }
+
+  /// The artists and labels that turn up most in [tracks]: where to start
+  /// when finding music related to what you own. Plain Dart, tested.
+  static List<ExploreHit> seedsFrom(List<ImportedTrack> tracks, {int artists = 6, int labels = 2}) {
+    final aCount = <String, int>{};
+    final aName = <String, String>{};
+    final lCount = <String, int>{};
+    final lName = <String, String>{};
+    for (final t in tracks) {
+      final a = t.artist.split(RegExp(r',|&| feat| ft| x ')).first.trim();
+      final an = ExploreParse.norm(a);
+      if (an.length >= 2) {
+        aCount[an] = (aCount[an] ?? 0) + 1;
+        aName.putIfAbsent(an, () => a);
+      }
+      final ln = ExploreParse.norm(t.label);
+      if (ln.length >= 2) {
+        lCount[ln] = (lCount[ln] ?? 0) + 1;
+        lName.putIfAbsent(ln, () => t.label);
+      }
+    }
+    List<String> top(Map<String, int> m, int n) {
+      final keys = m.keys.toList();
+      // Most often first; keys keep their first-seen order when counts tie.
+      final order = {for (var i = 0; i < keys.length; i++) keys[i]: i};
+      keys.sort((x, y) => m[y]! != m[x]! ? m[y]!.compareTo(m[x]!) : order[x]!.compareTo(order[y]!));
+      return keys.take(n).toList();
+    }
+
+    return [
+      for (final k in top(aCount, artists)) ExploreHit('artist', aName[k]!),
+      for (final k in top(lCount, labels)) ExploreHit('label', lName[k]!),
+    ];
+  }
+
+  /// Finds music related to several starting points at once (one step out
+  /// from each). Something related to more than one of them ranks higher.
+  Future<void> runMany(List<ExploreHit> seeds, {bool hideOwned = true}) async {
+    final me = ++_run;
+    await loadDismissed();
+    busy = true;
+    hits.clear();
+    _requests = 0;
+    status = seeds.isEmpty ? 'Add some tracks first.' : 'Starting from ${seeds.length} of your artists and labels…';
+    notifyListeners();
+    final found = <String, ExploreHit>{};
+    final seedKeys = {for (final h in seeds) h.key};
+    var stoppedAtLimit = false;
+    try {
+      for (final node in seeds) {
+        if (me != _run) return;
+        status = '${node.name}… ($_requests/$maxRequests requests)';
+        notifyListeners();
+        try {
+          for (final e in await _expand(node)) {
+            final key = '${e.kind}:${ExploreParse.norm(e.name)}';
+            if (_dismissed.contains(key) || seedKeys.contains(key)) continue;
+            final h = found.putIfAbsent(key, () => ExploreHit(e.kind, e.name, e.id)..hop = 1);
+            h.score += e.w;
+            h.via.add(node.name);
+            if (h.mbid.isEmpty) h.mbid = e.id;
+          }
+        } on StateError {
+          stoppedAtLimit = true;
+          break;
+        } catch (e) {
+          DebugLog.add('explore', 'could not expand ${node.name}: $e');
+        }
+      }
+      for (final h in found.values) {
+        h.owned = h.kind == 'artist' ? Taste.likes(h.name) : Taste.likesLabel(h.name);
+        // Linked to several of your artists or labels: a stronger lead.
+        if (h.via.length > 1) h.score += h.via.length;
+      }
+      final list = found.values.where((h) => !(hideOwned && h.owned)).toList()
+        ..sort((a, b) => b.score.compareTo(a.score));
+      hits
+        ..clear()
+        ..addAll(list.take(80));
+      status = hits.isEmpty
+          ? 'Nothing found. Try Explore on one artist.'
+          : '${hits.length} related to your tracks${stoppedAtLimit ? ' (stopped at the $maxRequests request limit)' : ''}.';
+      DebugLog.add('explore', 'related to ${seeds.length} seeds: ${hits.length} results, $_requests requests');
     } catch (e) {
       status = 'Could not finish: $e';
       DebugLog.add('explore', 'failed: $e');

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:sidedeck/suggest/discover.dart';
 import 'package:sidedeck/suggest/explore.dart';
 import 'package:sidedeck/suggest/taste.dart';
+import 'package:sidedeck/suggest/track_import.dart';
 import 'package:sidedeck/theme/ph.dart';
 import 'package:sidedeck/ui/finder_host.dart';
 import 'package:sidedeck/ui/my_tracks_page.dart';
@@ -13,12 +14,15 @@ import 'package:sidedeck/wishlist/wishlist.dart';
 /// Bandcamp, Traxsource and so on) in the phone's browser; nothing plays or
 /// downloads here until you choose Soulseek on a track.
 class ExplorePage extends StatefulWidget {
-  const ExplorePage({super.key, this.host = const FinderHost(), this.initialArtist});
+  const ExplorePage({super.key, this.host = const FinderHost(), this.initialArtist, this.fromMyTracks = false});
 
   final FinderHost host;
 
   /// When set, the page starts exploring from this artist straight away.
   final String? initialArtist;
+
+  /// When true, starts by finding music related to the imported My tracks.
+  final bool fromMyTracks;
 
   @override
   State<ExplorePage> createState() => _ExplorePageState();
@@ -42,6 +46,11 @@ class _ExplorePageState extends State<ExplorePage> {
       if (mounted) setState(() {});
     });
     Discover.loadToken();
+    if (widget.fromMyTracks) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _relatedToMyTracks();
+      });
+    }
     final a = widget.initialArtist;
     if (a != null && a.trim().isNotEmpty) {
       _name.text = a.trim();
@@ -91,6 +100,12 @@ class _ExplorePageState extends State<ExplorePage> {
       genre: _kind == 'genre' ? '' : _genre.text.trim(),
       hideOwned: _hideOwned,
     );
+  }
+
+  Future<void> _relatedToMyTracks() async {
+    final tracks = await MyTracks.instance.loadAll();
+    await Taste.refresh();
+    await _ex.runMany(Explore.seedsFrom(tracks), hideOwned: _hideOwned);
   }
 
   Future<void> _fromLibrary() async {

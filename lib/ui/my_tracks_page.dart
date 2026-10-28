@@ -270,8 +270,15 @@ class _MyTracksPageState extends State<MyTracksPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My tracks'),
+        title: const Text('Screenshots and my tracks'),
         actions: [
+          IconButton(
+            tooltip: 'Explore',
+            icon: const Icon(Icons.explore_outlined),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => ExplorePage(host: widget.host)),
+            ),
+          ),
           IconButton(
             tooltip: 'Import from screenshot',
             icon: const Icon(Icons.photo_library_outlined),
@@ -299,8 +306,8 @@ class _MyTracksPageState extends State<MyTracksPage> {
                 padding: const EdgeInsets.all(24),
                 child: Column(mainAxisSize: MainAxisSize.min, children: [
                   const Text(
-                    'Take screenshots of the folders on your Mac (Finder list view works well) and import them here. '
-                    'Explore then treats them as music you own.',
+                    'Add screenshots of the folders on your Mac (Finder list view works well), or paste file names. '
+                    'They count as music you own, and BeatDeck finds artists and labels related to them.',
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 16),
@@ -332,6 +339,28 @@ class _MyTracksPageState extends State<MyTracksPage> {
                   onPressed: (unchecked == 0 && !_finding) ? null : _findLinks,
                   icon: Icon(_finding ? Icons.stop : Icons.link, size: 18),
                   label: Text(_finding ? 'Stop' : 'Find links'),
+                ),
+              ]),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+              child: Row(children: [
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: _busy ? null : _fromScreenshots,
+                    icon: const Icon(Icons.photo_library_outlined),
+                    label: const Text('Add screenshots'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: FilledButton.tonalIcon(
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(builder: (_) => ExplorePage(host: widget.host, fromMyTracks: true)),
+                    ),
+                    icon: const Icon(Icons.hub_outlined),
+                    label: const Text('Find related'),
+                  ),
                 ),
               ]),
             ),
