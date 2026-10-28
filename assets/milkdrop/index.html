@@ -28,6 +28,11 @@
     var fps = 15, lastDraw = 0;
     window.setFps = function (f) { fps = Math.max(2, Math.min(60, f)); };
     window.setDim = function (b) { canvas.style.filter = 'brightness(' + Math.max(0.05, Math.min(1, b)) + ')'; };
+    // Projector: mirror left-right and/or upside down (for rear or ceiling projection).
+    window.setFlip = function (h, v) { canvas.style.transform = 'scale(' + (h ? -1 : 1) + ',' + (v ? -1 : 1) + ')'; };
+    // The projector page does not need the cover-art stills.
+    var shots = true;
+    window.setShots = function (b) { shots = !!b; };
     window.setAuto = function (s) { autoSecs = s; lastSwitch = performance.now(); };
     window.loadName = function (n) {
       if (n && bp[n]) { held = n; viz.loadPreset(bp[n], 1.5); lastSwitch = performance.now(); } else { held = null; }
@@ -69,7 +74,7 @@
     var snap = document.createElement('canvas'); snap.width = 256; snap.height = 256;
     var sctx = snap.getContext('2d'), lastSnap = 0;
     function shot(now) {
-      if (now - lastSnap < 2500) return;
+      if (!shots || now - lastSnap < 2500) return;
       lastSnap = now;
       try {
         var side = Math.min(canvas.width, canvas.height);

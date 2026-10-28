@@ -27,6 +27,10 @@ class MilkdropSettings extends ChangeNotifier {
   /// Seconds between automatic changes; 0 = never change.
   int autoSecs = 30;
 
+  /// Projector: mirror the picture left-right and/or upside down.
+  bool flipH = false;
+  bool flipV = false;
+
   /// A fixed preset name, or null to let it shuffle.
   String? preset;
   List<String> names = [];
@@ -40,6 +44,8 @@ class MilkdropSettings extends ChangeNotifier {
       autoSecs = p.getInt('md_auto') ?? 30;
       fps = p.getInt('md_fps') ?? 15;
       dim = p.getDouble('md_dim') ?? 0.8;
+      flipH = p.getBool('md_flip_h') ?? false;
+      flipV = p.getBool('md_flip_v') ?? false;
       preset = p.getString('md_preset');
       notifyListeners();
     } catch (_) {}
@@ -52,6 +58,8 @@ class MilkdropSettings extends ChangeNotifier {
       await p.setInt('md_auto', autoSecs);
       await p.setInt('md_fps', fps);
       await p.setDouble('md_dim', dim);
+      await p.setBool('md_flip_h', flipH);
+      await p.setBool('md_flip_v', flipV);
       if (preset == null) {
         await p.remove('md_preset');
       } else {
@@ -60,11 +68,13 @@ class MilkdropSettings extends ChangeNotifier {
     } catch (_) {}
   }
 
-  void set({double? i, int? fpsV, double? dimV, int? auto, String? pick, bool shuffle = false}) {
+  void set({double? i, int? fpsV, double? dimV, int? auto, String? pick, bool shuffle = false, bool? flipHV, bool? flipVV}) {
     if (i != null) intensity = i;
     if (auto != null) autoSecs = auto;
     if (fpsV != null) fps = fpsV;
     if (dimV != null) dim = dimV;
+    if (flipHV != null) flipH = flipHV;
+    if (flipVV != null) flipV = flipVV;
     if (pick != null) preset = pick;
     if (shuffle) preset = null;
     notifyListeners();
@@ -82,6 +92,24 @@ class MilkdropSettings extends ChangeNotifier {
     notifyListeners();
     _save();
   }
+}
+
+/// The JavaScript that applies [m] to a MilkDrop page. Used by the in-app view
+/// and by the projector page on a second screen, so both always match.
+String milkdropSettingsJs(MilkdropSettings m) {
+  // Calm (0) .. wild (1) maps to a gentle .. strong picture.
+  return 'window.setGain&&window.setGain(${(0.15 + m.intensity * 1.1).toStringAsFixed(2)});'
+      'window.setAuto&&window.setAuto(${m.autoSecs});'
+      'window.setFps&&window.setFps(${m.fps});'
+      'window.setDim&&window.setDim(${m.dim.toStringAsFixed(2)});'
+      'window.setFlip&&window.setFlip(${m.flipH},${m.flipV});'
+      'window.loadName&&window.loadName(${jsonEncode(m.preset)});';
+}
+
+/// The JavaScript that feeds 14 music levels (0..1) to a MilkDrop page.
+String milkdropLevelsJs(List<double> levels) {
+  final a = levels.map((v) => v.clamp(0.0, 1.0).toStringAsFixed(2)).join(',');
+  return 'window.setLevels&&window.setLevels([$a])';
 }
 
 /// MilkDrop-style visuals (butterchurn, bundled in the app, works offline).
@@ -134,8 +162,7 @@ class _MilkdropViewState extends State<MilkdropView> {
     MilkdropSettings.instance.addListener(_apply);
     _t = Timer.periodic(const Duration(milliseconds: 50), (_) {
       if (!_ready) return;
-      final a = widget.levels.map((v) => v.clamp(0.0, 1.0).toStringAsFixed(2)).join(',');
-      _c.runJavaScript('window.setLevels&&window.setLevels([$a])');
+      _c.runJavaScript(milkdropLevelsJs(widget.levels));
     });
   }
 
@@ -143,12 +170,7 @@ class _MilkdropViewState extends State<MilkdropView> {
   void _apply([bool force = false]) {
     if (!_ready && force != true) return;
     final m = MilkdropSettings.instance;
-    // Calm (0) .. wild (1) maps to a gentle .. strong picture.
-    _c.runJavaScript('window.setGain&&window.setGain(${(0.15 + m.intensity * 1.1).toStringAsFixed(2)});'
-        'window.setAuto&&window.setAuto(${m.autoSecs});'
-        'window.setFps&&window.setFps(${m.fps});'
-        'window.setDim&&window.setDim(${m.dim.toStringAsFixed(2)});'
-        'window.loadName&&window.loadName(${jsonEncode(m.preset)});');
+    _c.runJavaScript(milkdropSettingsJs(m));
     if (m.poke != _seenPoke) {
       _seenPoke = m.poke;
       _c.runJavaScript('window.nextPreset&&window.nextPreset();');

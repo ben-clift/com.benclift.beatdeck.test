@@ -83,6 +83,24 @@ class MainActivity : FlutterActivity() {
                     else -> result.notImplemented()
                 }
             }
+        MethodChannel(messenger, "beatdeck/projector")
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    // Names of the second screens that are connected right now.
+                    "displays" -> result.success(ProjectorPresentation.displays(this).map { it.name })
+                    "start" -> result.success(ProjectorPresentation.start(this))
+                    "stop" -> {
+                        ProjectorPresentation.stop()
+                        result.success(null)
+                    }
+                    "active" -> result.success(ProjectorPresentation.active())
+                    "js" -> {
+                        ProjectorPresentation.js(call.argument<String>("code") ?: "")
+                        result.success(null)
+                    }
+                    else -> result.notImplemented()
+                }
+            }
         MethodChannel(messenger, "beatdeck/shazam_m")
             .setMethodCallHandler { call, result ->
                 when (call.method) {
@@ -115,6 +133,7 @@ class MainActivity : FlutterActivity() {
         nowPlaying = null
         usbHotplug?.stop()
         usbHotplug = null
+        ProjectorPresentation.stop()
         UsbPlayer.stop()
         super.onDestroy()
         // Closing the app (swiped away or backed out) must stop the music. The

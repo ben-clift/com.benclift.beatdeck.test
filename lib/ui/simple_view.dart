@@ -37,6 +37,7 @@ import 'package:sidedeck/ui/equaliser_view.dart';
 import 'package:sidedeck/ui/explore_page.dart';
 import 'package:sidedeck/ui/finder_host_library.dart';
 import 'package:sidedeck/ui/milkdrop_view.dart';
+import 'package:sidedeck/ui/projector_page.dart';
 import 'package:sidedeck/ui/screenshot_import.dart';
 import 'package:sidedeck/wishlist/wishlist.dart';
 import 'package:sidedeck/theme/sidedeck_theme.dart';
@@ -2068,6 +2069,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                         if (v == 'send') _logSettings();
                         if (v == 'mac') _macSheet();
                         if (v == 'explore') Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => ExplorePage(host: fullAppFinderHost(widget.library))));
+                        if (v == 'projector') _openProjector();
                         if (v == 'look') Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AppearancePage()));
                         if (v == 'pro') AppMode.set(false);
                         if (v == 'admin') showAdminDialog(context);
@@ -2082,6 +2084,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                             ),
                           ),
                         const PopupMenuItem(value: 'look', child: Text('Appearance: colours, shapes, 3D')),
+                        const PopupMenuItem(value: 'projector', child: Text('Projector: visuals on a wall or TV')),
                         const PopupMenuItem(value: 'explore', child: Text('Explore: find new artists, labels and tracks')),
                         const PopupMenuItem(value: 'mac', child: Text('Connect my Mac (shared folders)')),
                         const PopupMenuItem(value: 'send', child: Text('Send logs to Ben automatically')),
@@ -2136,7 +2139,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     );
   }
 
-  Widget _sectionLink({required String title, required String summary, required bool open, required VoidCallback onTap}) {
+  Widget _sectionLink({required String title, required String summary, required bool open, required VoidCallback onTap, bool opens = true}) {
     return InkWell(
       onTap: onTap,
       child: Container(
@@ -2147,7 +2150,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
               style: const TextStyle(fontFamily: SideDeckTheme.label, fontWeight: FontWeight.w700, fontSize: 17, letterSpacing: 1.4)),
           const SizedBox(width: 12),
           Expanded(child: Text(summary, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: _dim))),
-          Icon(open ? Ph.keyboardArrowUp : Ph.keyboardArrowDown, color: SideDeckTheme.accentB),
+          Icon(!opens ? Icons.chevron_right : (open ? Ph.keyboardArrowUp : Ph.keyboardArrowDown), color: SideDeckTheme.accentB),
         ]),
       ),
     );
@@ -2203,6 +2206,10 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
             style: TextStyle(fontSize: 12, color: Color(0xFF8A857C))),
       ]),
     );
+  }
+
+  void _openProjector() {
+    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => ProjectorPage(dj: widget.dj)));
   }
 
   Widget _chooser() {
@@ -2411,6 +2418,14 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
           const SizedBox(height: 16),
           _importBox(),
         ],
+        const SizedBox(height: 6),
+        _sectionLink(
+          title: 'Projector',
+          summary: 'Visuals on a wall or TV',
+          open: false,
+          opens: false,
+          onTap: _openProjector,
+        ),
         const SizedBox(height: 20),
         SizedBox(
           height: 64,

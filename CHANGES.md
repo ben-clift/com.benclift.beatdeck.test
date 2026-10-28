@@ -42,3 +42,11 @@ Forked from SideDeck 1.1.1 (https://github.com/manueljpy/SideDeck), 20 Oct 2026.
 ## Screenshots and related music (28 Oct 2026)
 - The My tracks page is now "Screenshots and my tracks": an "Add screenshots" button and a "Find related" button side by side. BeatDeck Finder opens on it.
 - "Find related" starts from the artists and labels that appear most in your tracks (up to 6 artists and 2 labels), looks one step out from each, and ranks what is linked to several of them higher. Results use the Explore list (listen, buy, top tracks, wish list, Soulseek).
+
+## Projector (28 Oct 2026)
+- New "Projector" entrance on the first page (below Request or import) and in the menu. It opens a Projector page that sends the MilkDrop visuals to a second screen (HDMI or USB-C projector, or a wireless display) through a native Android presentation (`ProjectorPresentation.kt`), while the phone keeps the controls. Brightness, intensity, speed, change timer and presets apply to both screens.
+- "Full screen here" shows only the picture, edge to edge, so Cast or screen mirroring shows it on a TV. Tap = next picture, hold = freeze, Back = leave.
+- Mirror left to right and Upside down switches, for a projector behind the screen or on the ceiling.
+- Not yet checked on a phone with a real projector. Two MilkDrop pages at once (Booth plus projector) may need a lower frame rate on slow phones.
+- Not done: films, TV and games from consoles or PCs (needs a capture card and a separate app; protected streaming video cannot be captured).
+
