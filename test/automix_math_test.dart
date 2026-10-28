@@ -68,12 +68,12 @@ void main() {
     );
   });
 
-  test('incomingRate matches heard tempo, limited to 8 %', () {
+  test('incomingRate matches heard tempo, limited to 12 %', () {
     expect(incomingRate(outBpm: 120, outRate: 1.0, inBpm: 112), closeTo(120 / 112, 1e-9));
-    expect(incomingRate(outBpm: 120, outRate: 1.0, inBpm: 100), 1.08);
+    expect(incomingRate(outBpm: 120, outRate: 1.0, inBpm: 100), 1.12);
     expect(incomingRate(outBpm: 120, outRate: 1.05, inBpm: 126), closeTo(1.0, 1e-9));
     expect(incomingRate(outBpm: 0, outRate: 1.0, inBpm: 100), 1.0);
-    expect(incomingRate(outBpm: 200, outRate: 1.0, inBpm: 60), 1.08);
+    expect(incomingRate(outBpm: 200, outRate: 1.0, inBpm: 60), 1.12);
     // half / double-time reads match on the same beat
     expect(incomingRate(outBpm: 65, outRate: 1.0, inBpm: 130), closeTo(1.0, 1e-9));
     expect(incomingRate(outBpm: 130, outRate: 1.0, inBpm: 65), closeTo(1.0, 1e-9));
