@@ -251,6 +251,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
   DateTime _lastAsk = DateTime.fromMillisecondsSinceEpoch(0);
   bool _showChooser = false; // on the genre screen while music plays
   bool _hub = true; // the home screen shown after the splash
+  bool _welcome = true; // the pitch screen between the splash and home
   bool _introLoaded = false;
   bool _introDone = true;
   final _slUser = TextEditingController();
@@ -2103,7 +2104,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                     ),
                   ]),
                   const SizedBox(height: 8),
-                  Expanded(child: !_introLoaded ? const SizedBox.shrink() : (!_introDone ? _intro() : (_hub ? _hubView(dj) : (on && !_showChooser ? _playing(dj) : _chooser())))),
+                  Expanded(child: !_introLoaded ? const SizedBox.shrink() : (!_introDone ? _intro() : (_hub ? (_welcome ? _welcomeView() : _hubView(dj)) : (on && !_showChooser ? _playing(dj) : _chooser())))),
                   if (viz && MediaQuery.of(context).orientation == Orientation.portrait) _bottomBar(dj),
                 ],
               ),
@@ -2112,6 +2113,59 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
         );
       },
     );
+  }
+
+  /// Pitch screen shown after the splash: what BeatDeck does, then Enter.
+  Widget _welcomeView() {
+    Widget point(IconData icon, String title, String body) => Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Icon(icon, color: SideDeckTheme.accentB, size: 28),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 2),
+                Text(body, style: TextStyle(color: _dim, fontSize: 14, height: 1.3)),
+              ]),
+            ),
+          ]),
+        );
+    return Column(children: [
+      Expanded(
+        child: ListView(padding: const EdgeInsets.only(top: 8, bottom: 12), children: [
+          const Text('Your set, on its own.',
+              style: TextStyle(fontFamily: SideDeckTheme.label, fontSize: 30, fontWeight: FontWeight.w700, letterSpacing: 1.2)),
+          const SizedBox(height: 10),
+          Text(
+              'BeatDeck is a DJ in your pocket. Tell it what you feel like, and it finds the music and mixes it for you. '
+              'Or take over and mix by hand.',
+              style: TextStyle(color: _dim, fontSize: 16, height: 1.35)),
+          const SizedBox(height: 22),
+          point(Ph.equalizer, 'Pick a vibe, hear a set',
+              'Choose genres, mood, speed and how hard it hits. Tracks are lined up and blended in time, matched by tempo and key.'),
+          point(Icons.laptop_mac, 'Use your own library',
+              'Connect your Mac and play from your own folders without filling up your phone.'),
+          point(Icons.travel_explore, 'Find new music',
+              'Explore walks outward from an artist, label or genre to find more like it, with links to listen and buy.'),
+          point(Icons.hearing, 'Shazam a song',
+              'Name a song playing around you and BeatDeck fetches it, then more by the same artist.'),
+          point(Icons.cast, 'Visuals for the room',
+              'Put reactive visuals on a wall or TV, and change the look of the whole app.'),
+          point(Icons.tune, 'Go Pro when you want',
+              'Switch to full decks with EQ, effects, loops and hot cues. Simple for a party, Pro for a proper mix.'),
+        ]),
+      ),
+      SizedBox(
+        height: 60,
+        width: double.infinity,
+        child: FilledButton(
+          onPressed: () => setState(() => _welcome = false),
+          child: const Text('Enter', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
+        ),
+      ),
+      const SizedBox(height: 12),
+    ]);
   }
 
   /// Home screen: everything that used to hide in the top-right menu, plus the Booth.
@@ -2143,7 +2197,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     }
 
     final playing = dj.automixOn;
-    return ListView(padding: const EdgeInsets.only(bottom: 24), children: [
+    return ListView(padding: const EdgeInsets.only(top: 8, bottom: 24), children: [
       if (Expiry.expiresAt != null)
         Padding(
           padding: const EdgeInsets.only(bottom: 10, left: 4),
@@ -2170,11 +2224,6 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
           () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => ExplorePage(host: fullAppFinderHost(widget.library))))),
       tile('Connect my Mac', 'Shared folders', Icons.laptop_mac, _macSheet),
       tile('Pro mode', 'Switch to the full decks', Icons.tune, () => AppMode.set(false)),
-      ValueListenableBuilder<bool>(
-        valueListenable: Admin.on,
-        builder: (context, isAdmin, _) => tile(isAdmin ? 'Admin: turn off' : 'Admin code', 'Ben only', Icons.lock_outline,
-            () => showAdminDialog(context)),
-      ),
     ]);
   }
 
