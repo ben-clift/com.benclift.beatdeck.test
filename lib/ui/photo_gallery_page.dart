@@ -31,6 +31,8 @@ class _PhotoGalleryPageState extends State<PhotoGalleryPage> {
   bool _more = true;
   bool _loading = false;
   bool _saving = false;
+  bool _picking = false;
+  int _count = 25;
   final _scroll = ScrollController();
 
   @override
@@ -150,6 +152,49 @@ class _PhotoGalleryPageState extends State<PhotoGalleryPage> {
     }
     _when = w;
     await _loadAlbums();
+  }
+
+  /// Ticks the first photos of the open album, as many as there is room for.
+  Future<void> _selectAllAlbum(int room) async {
+    final al = _album;
+    if (al == null || _picking || room <= 0) return;
+    setState(() => _picking = true);
+    try {
+      final list = await al.getAssetListRange(start: 0, end: room);
+      if (!mounted) return;
+      setState(() {
+        _picked.clear();
+        for (final a in list) {
+          _picked[a.id] = a;
+        }
+      });
+    } catch (_) {}
+    if (mounted) setState(() => _picking = false);
+  }
+
+  /// Ticks a number of photos chosen at random from the whole open album.
+  Future<void> _randomAlbum(int room) async {
+    final al = _album;
+    if (al == null || _picking || room <= 0) return;
+    setState(() => _picking = true);
+    try {
+      final total = await al.assetCountAsync;
+      final n = math.min(_count, math.min(room, total));
+      final idx = List<int>.generate(total, (i) => i)..shuffle(math.Random());
+      final chosen = <AssetEntity>[];
+      for (final i in idx.take(n)) {
+        final one = await al.getAssetListRange(start: i, end: i + 1);
+        if (one.isNotEmpty) chosen.add(one.first);
+      }
+      if (!mounted) return;
+      setState(() {
+        _picked.clear();
+        for (final a in chosen) {
+          _picked[a.id] = a;
+        }
+      });
+    } catch (_) {}
+    if (mounted) setState(() => _picking = false);
   }
 
   String _albumName(AssetPathEntity a) => a.isAll ? 'Everything' : a.name;
@@ -274,6 +319,27 @@ class _PhotoGalleryPageState extends State<PhotoGalleryPage> {
             ),
           ),
           if (_picked.isNotEmpty) TextButton(onPressed: () => setState(_picked.clear), child: const Text('Clear ticks')),
+        ]),
+      ),
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: Wrap(spacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
+          OutlinedButton(
+            onPressed: _picking || _album == null ? null : () => _selectAllAlbum(room),
+            child: Text('Select all (up to $room)'),
+          ),
+          FilledButton.tonalIcon(
+            onPressed: _picking || _album == null ? null : () => _randomAlbum(room),
+            icon: const Icon(Icons.shuffle),
+            label: Text(_picking ? 'Picking…' : 'Random $_count'),
+          ),
+          for (final c in const [10, 25, 50, 100, 200])
+            if (c <= math.max(room, 10))
+              ChoiceChip(
+                label: Text('$c'),
+                selected: _count == c,
+                onSelected: _picking ? null : (_) => setState(() => _count = c),
+              ),
         ]),
       ),
       Expanded(

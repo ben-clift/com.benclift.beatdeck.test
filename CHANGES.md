@@ -81,3 +81,4 @@ Forked from SideDeck 1.1.1 (https://github.com/manueljpy/SideDeck), 20 Oct 2026.
 - Visuals settings, "Your photos": a new "Online archive" button opens The Met's open collection (public domain, no sign-up). Pick a theme (Highlights, Landscapes, Portraits, Flowers, Sea and ships, Cities, Night, Animals, Japanese prints, Photographs, Patterns, Impressionism), tick pictures, or use "Select all" or "Random" with a chosen number (10, 25, 50, 100 or 200). Pictures are copied small onto the phone like your own photos.
 - The photo limit went from 40 to 200.
 - Mostly artworks, with a smaller number of historic photographs. Only pictures marked public domain are used.
+- The phone gallery picker has the same "Select all (up to the room left)" and "Random N" (10, 25, 50, 100, 200), picking from the whole open album and date choice, not just the photos on screen.
