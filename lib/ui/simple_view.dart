@@ -2222,8 +2222,6 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
       tile('Projector', 'Visuals on a wall or TV', Icons.cast, _openProjector),
       tile('Explore', 'Find new artists, labels and tracks', Icons.travel_explore,
           () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => ExplorePage(host: fullAppFinderHost(widget.library))))),
-      tile('Connect my Mac', 'Shared folders', Icons.laptop_mac, _macSheet),
-      tile('Pro mode', 'Switch to the full decks', Icons.tune, () => AppMode.set(false)),
     ]);
   }
 

@@ -67,7 +67,7 @@ Forked from SideDeck 1.1.1 (https://github.com/manueljpy/SideDeck), 20 Oct 2026.
 
 
 ## Home screen (28 Oct 2026)
-- After the splash, the app opens on a new Home screen. It lists everything that was in the top-right menu: Appearance, Projector, Explore, Connect my Mac, Pro mode and Admin code, plus Shazam and the test-version days left. Admin code is only in the top-right menu.
+- After the splash, the app opens on a new Home screen. It lists everything that was in the top-right menu: Appearance, Projector, Explore and Admin code, plus Shazam and the test-version days left. Connect my Mac, Pro mode and Admin code are only in the top-right menu.
 - "The Booth" is the first button on Home. It goes to the genre screen (or straight back to the music if something is playing). A back arrow on the genre screen returns to Home.
 - Sending logs and Report a problem are not on Home; they stay in the top-right menu, which is unchanged.
 
