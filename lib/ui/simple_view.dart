@@ -2162,7 +2162,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
         child: FilledButton.icon(
           onPressed: () => setState(() => _welcome = false),
           icon: const Icon(Ph.playArrow, size: 28),
-          label: const Text('Find music and DJ', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800)),
+          label: const Text('Start your experience', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800)),
         ),
       ),
       const SizedBox(height: 12),

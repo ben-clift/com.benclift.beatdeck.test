@@ -74,7 +74,7 @@ Forked from SideDeck 1.1.1 (https://github.com/manueljpy/SideDeck), 20 Oct 2026.
 - The friends test build now runs for 30 days after it was built (was 3). Builds already installed keep their old end date; install the new build to get the longer time.
 
 ## Welcome screen (28 Oct 2026)
-- After the splash there is now a short pitch screen ("Your set, on its own.") listing what BeatDeck does, with a "Find music and DJ" button that opens Home. It shows on every launch.
+- After the splash there is now a short pitch screen ("Your set, on its own.") listing what BeatDeck does, with a "Start your experience" button that opens Home. It shows on every launch.
 
 ## Photo archive (28 Oct 2026)
 - Visuals settings, "Your photos": a new "Online archive" button opens The Met's open collection (public domain, no sign-up). Pick a theme (Highlights, Landscapes, Portraits, Flowers, Sea and ships, Cities, Night, Animals, Japanese prints, Photographs, Patterns, Impressionism), tick pictures, or use "Select all" or "Random" with a chosen number (10, 25, 50, 100 or 200). Pictures are copied small onto the phone like your own photos.
