@@ -65,3 +65,8 @@ Forked from SideDeck 1.1.1 (https://github.com/manueljpy/SideDeck), 20 Oct 2026.
 - Photos are copied as small JPEGs (about 900 pixels) into the app, up to 40. They show over the picture, slowly zooming and melting from one to the next. Photo strength (off to 100%) and how long each stays (10 s to 2 min) are in the same section; "Remove all photos" clears them.
 - Not yet: blend styles (glow through the dark parts, overlay), the Projector page and second screen showing the photos.
 
+
+## Home screen (28 Oct 2026)
+- After the splash, the app opens on a new Home screen. It lists everything that was in the top-right menu: Appearance, Projector, Explore, Connect my Mac, Send logs to Ben, Report a problem, Pro mode and Admin code, plus the test-version days left.
+- "The Booth" is the first button on Home. It goes to the genre screen (or straight back to the music if something is playing). A back arrow on the genre screen returns to Home.
+- The top-right menu is unchanged, so nothing was taken away.

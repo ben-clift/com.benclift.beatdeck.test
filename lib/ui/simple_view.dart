@@ -250,6 +250,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
   Timer? _keepAhead;
   DateTime _lastAsk = DateTime.fromMillisecondsSinceEpoch(0);
   bool _showChooser = false; // on the genre screen while music plays
+  bool _hub = true; // the home screen shown after the splash
   bool _introLoaded = false;
   bool _introDone = true;
   final _slUser = TextEditingController();
@@ -2024,7 +2025,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
       builder: (context, _) {
         final on = dj.automixOn;
         WidgetsBinding.instance.addPostFrameCallback((_) => _npUpdate(dj));
-        final viz = on && !_showChooser && _introDone;
+        final viz = on && !_showChooser && _introDone && !_hub;
         if (dj.spectrumOn != viz) {
           WidgetsBinding.instance.addPostFrameCallback((_) => dj.setSpectrumOn(viz));
         }
@@ -2039,13 +2040,19 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   if (!(viz && MediaQuery.of(context).orientation == Orientation.landscape)) Row(children: [
-                    if (on && !_showChooser)
+                    if (on && !_showChooser && !_hub)
                       IconButton(
                         tooltip: 'Back',
                         icon: const Icon(Ph.keyboardArrowDown, size: 30),
                         onPressed: () => setState(() => _showChooser = true),
+                      )
+                    else if (!_hub && _introDone)
+                      IconButton(
+                        tooltip: 'Home',
+                        icon: const Icon(Ph.arrowBack, size: 26),
+                        onPressed: () => setState(() => _hub = true),
                       ),
-                    Text(on && !_showChooser ? 'The Booth' : 'BeatDeck',
+                    Text(on && !_showChooser && !_hub ? 'The Booth' : 'BeatDeck',
                         style: const TextStyle(fontFamily: SideDeckTheme.label, fontSize: 26, fontWeight: FontWeight.w700, letterSpacing: 2.2)),
                     const Spacer(),
                     ValueListenableBuilder<bool>(
@@ -2096,7 +2103,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                     ),
                   ]),
                   const SizedBox(height: 8),
-                  Expanded(child: !_introLoaded ? const SizedBox.shrink() : (!_introDone ? _intro() : (on && !_showChooser ? _playing(dj) : _chooser()))),
+                  Expanded(child: !_introLoaded ? const SizedBox.shrink() : (!_introDone ? _intro() : (_hub ? _hubView(dj) : (on && !_showChooser ? _playing(dj) : _chooser())))),
                   if (viz && MediaQuery.of(context).orientation == Orientation.portrait) _bottomBar(dj),
                 ],
               ),
@@ -2105,6 +2112,71 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
         );
       },
     );
+  }
+
+  /// Home screen: everything that used to hide in the top-right menu, plus the Booth.
+  Widget _hubView(DjController dj) {
+    Widget tile(String title, String sub, IconData icon, VoidCallback onTap, {bool primary = false}) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: InkWell(
+          onTap: onTap,
+          child: Container(
+            padding: EdgeInsets.symmetric(vertical: primary ? 18 : 14, horizontal: 14),
+            decoration: ThemeSettings.instance.box(size: 50),
+            child: Row(children: [
+              Icon(icon, color: primary ? _green : SideDeckTheme.accentB, size: primary ? 32 : 26),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(title.toUpperCase(),
+                      style: TextStyle(fontFamily: SideDeckTheme.label, fontWeight: FontWeight.w700, fontSize: primary ? 21 : 17, letterSpacing: 1.4)),
+                  const SizedBox(height: 2),
+                  Text(sub, style: TextStyle(color: _dim, fontSize: 13)),
+                ]),
+              ),
+              Icon(Icons.chevron_right, color: SideDeckTheme.accentB),
+            ]),
+          ),
+        ),
+      );
+    }
+
+    final playing = dj.automixOn;
+    return ListView(padding: const EdgeInsets.only(bottom: 24), children: [
+      if (Expiry.expiresAt != null)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10, left: 4),
+          child: FutureBuilder<String?>(
+            future: Expiry.remaining(),
+            builder: (_, snap) => Text('Test version: ${snap.data ?? '…'}', style: TextStyle(color: _dim)),
+          ),
+        ),
+      Padding(
+        padding: const EdgeInsets.only(left: 4, bottom: 12),
+        child: Text('What do you want to do?', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
+      ),
+      tile('The Booth', playing ? 'Back to what is playing, or pick new genres' : 'Pick genres and start the music', Ph.equalizer,
+          () => setState(() {
+                _hub = false;
+                _showChooser = !playing;
+              }),
+          primary: true),
+      tile('Appearance', 'Colours, shapes, 3D', Icons.palette_outlined,
+          () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AppearancePage()))),
+      tile('Projector', 'Visuals on a wall or TV', Icons.cast, _openProjector),
+      tile('Explore', 'Find new artists, labels and tracks', Icons.travel_explore,
+          () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => ExplorePage(host: fullAppFinderHost(widget.library))))),
+      tile('Connect my Mac', 'Shared folders', Icons.laptop_mac, _macSheet),
+      tile('Send logs to Ben', 'Automatically, so problems get fixed', Icons.cloud_upload_outlined, _logSettings),
+      tile('Report a problem', 'Copy the log', Icons.bug_report_outlined, _copyLog),
+      tile('Pro mode', 'Switch to the full decks', Icons.tune, () => AppMode.set(false)),
+      ValueListenableBuilder<bool>(
+        valueListenable: Admin.on,
+        builder: (context, isAdmin, _) => tile(isAdmin ? 'Admin: turn off' : 'Admin code', 'Ben only', Icons.lock_outline,
+            () => showAdminDialog(context)),
+      ),
+    ]);
   }
 
   /// Small "now playing" bar on the genre screen: tap it to go back.
