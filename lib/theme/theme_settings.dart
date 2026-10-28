@@ -23,8 +23,20 @@ class ThemeSettings extends ChangeNotifier {
     ThemePreset('Violet', Color(0xFF120D1C), Color(0xFF1D1530), Color(0xFFB36BFF), Color(0xFFF1D9FF), Color(0xFFF0E8FA), Color(0xFF9A8FB0)),
     ThemePreset('Sunset', Color(0xFF1A0D10), Color(0xFF2A1519), Color(0xFFFF7A59), Color(0xFFFFD08A), Color(0xFFFBEDE6), Color(0xFFB09088)),
     ThemePreset('Mono', Color(0xFF0B0B0B), Color(0xFF181818), Color(0xFFFFFFFF), Color(0xFFBDBDBD), Color(0xFFEFEFEF), Color(0xFF8A8A8A)),
-    ThemePreset('Paper', Color(0xFFEFEBE3), Color(0xFFFBF8F2), Color(0xFFD9481C), Color(0xFF3B3328), Color(0xFF1E1A14), Color(0xFF6E665A)),
   ];
+
+  /// Backgrounds and boxes may not be very light, because the text would
+  /// vanish into them. Anything lighter than this is darkened to fit.
+  static const double maxLuminance = 0.25;
+  static bool tooLight(Color c) => c.computeLuminance() > maxLuminance;
+  static Color limitLight(Color c) {
+    if (!tooLight(c)) return c;
+    var h = HSVColor.fromColor(c);
+    for (var i = 0; i < 60 && tooLight(h.toColor()); i++) {
+      h = h.withValue(math.max(0.0, h.value - 0.02)).withSaturation(h.saturation);
+    }
+    return h.toColor();
+  }
 
   static const shapeNames = ['Square', 'Rounded', 'Soft', 'Bevel', 'Squircle'];
   static const depthNames = ['Flat', 'Soft', 'Raised', 'Deep'];
@@ -49,8 +61,18 @@ class ThemeSettings extends ChangeNotifier {
     try {
       final p = await SharedPreferences.getInstance();
       Color c(String k, Color d) => Color(p.getInt(k) ?? d.toARGB32());
-      bg = c('th_bg', bg);
-      panel = c('th_panel', panel);
+      // The old light "Paper" set is gone: go back to the default colours.
+      if (p.getString('th_preset') == 'Paper') {
+        await p.setString('th_preset', 'Ember');
+        await p.remove('th_bg');
+        await p.remove('th_panel');
+        await p.remove('th_a');
+        await p.remove('th_b');
+        await p.remove('th_text');
+        await p.remove('th_muted');
+      }
+      bg = limitLight(c('th_bg', bg));
+      panel = limitLight(c('th_panel', panel));
       accentA = c('th_a', accentA);
       accentB = c('th_b', accentB);
       text = c('th_text', text);
@@ -59,6 +81,11 @@ class ThemeSettings extends ChangeNotifier {
       depth = (p.getInt('th_depth') ?? 0).clamp(0, 3);
       background = (p.getInt('th_bgstyle') ?? 0).clamp(0, 4);
       preset = p.getString('th_preset') ?? 'Ember';
+      // A light background that has just been darkened would leave dark text unreadable.
+      if ((text.computeLuminance() - bg.computeLuminance()).abs() < 0.3) {
+        text = presets[0].text;
+        muted = presets[0].muted;
+      }
       notifyListeners();
     } catch (_) {}
   }
@@ -94,9 +121,9 @@ class ThemeSettings extends ChangeNotifier {
   void setColor(String which, Color c) {
     switch (which) {
       case 'bg':
-        bg = c;
+        bg = limitLight(c);
       case 'panel':
-        panel = c;
+        panel = limitLight(c);
       case 'a':
         accentA = c;
       case 'b':

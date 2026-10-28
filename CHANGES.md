@@ -81,3 +81,6 @@ Forked from SideDeck 1.1.1 (https://github.com/manueljpy/SideDeck), 20 Oct 2026.
 - The photo limit went from 40 to 200.
 - Mostly artworks, with a smaller number of historic photographs. Only pictures marked public domain are used.
 - The phone gallery picker has the same "Select all (up to the room left)" and "Random N" (10, 25, 50, 100, 200), picking from the whole open album and date choice, not just the photos on screen.
+
+## No very light backgrounds (28 Oct 2026)
+- In Appearance, the Background and Boxes and panels colours can no longer be very light, because the text vanished into them. A colour that is too light is darkened to the limit, and the slider says so. The light "Paper" colour set was removed. Anyone who had a light look saved goes back to the default colours.

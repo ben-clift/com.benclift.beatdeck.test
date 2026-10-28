@@ -152,9 +152,12 @@ class AppearancePage extends StatelessWidget {
       builder: (dc) => StatefulBuilder(
         builder: (dc, setD) {
           final c = hsv.toColor();
+          final limited = key == 'bg' || key == 'panel';
           void set(HSVColor v) {
-            setD(() => hsv = v);
-            ThemeSettings.instance.setColor(key, v.toColor());
+            // Backgrounds and boxes cannot go very light: the text would vanish.
+            final col = limited ? ThemeSettings.limitLight(v.toColor()) : v.toColor();
+            setD(() => hsv = limited ? HSVColor.fromColor(col) : v);
+            ThemeSettings.instance.setColor(key, col);
           }
           return AlertDialog(
             title: Text(name),
@@ -168,6 +171,9 @@ class AppearancePage extends StatelessWidget {
                 Slider(value: hsv.saturation, min: 0, max: 1, onChanged: (v) => set(hsv.withSaturation(v))),
                 const Text('Brightness'),
                 Slider(value: hsv.value, min: 0, max: 1, onChanged: (v) => set(hsv.withValue(v))),
+                if (limited)
+                  const Text('Very light colours are not allowed here, so the text stays easy to read.',
+                      style: TextStyle(fontSize: 12, color: Color(0xFF8A857C))),
                 const SizedBox(height: 6),
                 Wrap(spacing: 8, runSpacing: 8, children: [
                   for (final sw in const [
