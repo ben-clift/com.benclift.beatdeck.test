@@ -2162,6 +2162,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                 _showChooser = !playing;
               }),
           primary: true),
+      tile('Shazam', 'Name a song, then BeatDeck fetches it and more by the artist', Icons.hearing, _shazam),
       tile('Appearance', 'Colours, shapes, 3D', Icons.palette_outlined,
           () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AppearancePage()))),
       tile('Projector', 'Visuals on a wall or TV', Icons.cast, _openProjector),
