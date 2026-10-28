@@ -2159,9 +2159,10 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
       SizedBox(
         height: 60,
         width: double.infinity,
-        child: FilledButton(
+        child: FilledButton.icon(
           onPressed: () => setState(() => _welcome = false),
-          child: const Text('Start', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
+          icon: const Icon(Ph.playArrow, size: 28),
+          label: const Text('Find music and DJ', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800)),
         ),
       ),
       const SizedBox(height: 12),
