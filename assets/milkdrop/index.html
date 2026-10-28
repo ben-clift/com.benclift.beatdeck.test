@@ -30,6 +30,10 @@
     var names = Object.keys(bp);
     var order = names.slice().sort(function () { return Math.random() - 0.5; });
     var idx = -1, lastSwitch = 0, gain = 0.5, autoSecs = 30, held = null;
+    // Pace: how fast the pictures move (1 = normal) and how long a change from one picture to the next takes.
+    var ts = 1, fade = 2.7, vt = 0;
+    function mb(d) { return fade > d ? fade : d; }
+    window.setPace = function (s, f) { ts = Math.max(0.05, Math.min(1, s)); fade = Math.max(1, Math.min(40, f)); };
     names.sort();
     window.setGain = function (g) { gain = Math.max(0.05, Math.min(1.6, g)); };
     var fps = 15, lastDraw = 0;
@@ -43,9 +47,9 @@
     window.setShots = function (b) { shots = !!b; };
     window.setAuto = function (s) { autoSecs = s; lastSwitch = performance.now(); };
     window.loadName = function (n) {
-      if (n && bp[n]) { held = n; viz.loadPreset(bp[n], 1.5); lastSwitch = performance.now(); } else { held = null; }
+      if (n && bp[n]) { held = n; viz.loadPreset(bp[n], mb(1.5)); lastSwitch = performance.now(); } else { held = null; }
     };
-    window.nextPreset = function () { held = null; next(1.5); };
+    window.nextPreset = function () { held = null; next(mb(1.5)); };
     function next(blend) {
       idx = (idx + 1) % order.length;
       viz.loadPreset(bp[order[idx]], blend);
@@ -61,7 +65,7 @@
     });
     out.addEventListener('pointerup', function () {
       clearTimeout(holdT);
-      if (!held2) { paused = false; held = null; next(1.0); }
+      if (!held2) { paused = false; held = null; next(mb(1.0)); }
     });
     out.addEventListener('pointercancel', function () { clearTimeout(holdT); });
 
@@ -94,10 +98,10 @@
       var dt = (now - prev) / 1000; prev = now;
       var buf = new Float32Array(N), bufR = new Float32Array(N);
       for (var k = 0; k < nb; k++) {
-        sm[k] += (levels[k] - sm[k]) * 0.6;
+        sm[k] += (levels[k] - sm[k]) * Math.max(0.04, 0.6 * ts);
         var a = sm[k] * sm[k] * 11 * gain * gain * 2.2;
         if (a < 0.05) continue;
-        phase[k] += dt * (2.0 + k);
+        phase[k] += dt * ts * (2.0 + k);
         for (var j = -1; j <= 1; j++) {
           var f = bins[k] * (1 + j * 0.12);
           var p = phase[k] + j * 1.7;
@@ -113,11 +117,12 @@
         var w = Math.max(0, Math.min(255, 128 + bufR[i]));
         tb[i] = v; tl[i] = v; tr[i] = w;
       }
-      if (!held && autoSecs > 0 && now - lastSwitch > autoSecs * 1000) next(2.7);
+      vt += dt * ts;
+      if (!held && autoSecs > 0 && now - lastSwitch > autoSecs * 1000) next(fade);
       var due = now - lastDraw >= 1000 / fps - 2;
       if (!paused && due) {
         lastDraw = now; interval = 1000 / fps;
-        viz.render({ audioLevels: { timeByteArray: tb, timeByteArrayL: tl, timeByteArrayR: tr }, elapsedTime: (now - t0) / 1000 });
+        viz.render({ audioLevels: { timeByteArray: tb, timeByteArrayL: tl, timeByteArrayR: tr }, elapsedTime: vt });
         var sw = fa; fa = fb; fb = sw;
         fb.x.drawImage(canvas, 0, 0);
         if (newFrame) haveTwo = true;

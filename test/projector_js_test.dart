@@ -11,6 +11,8 @@ void main() {
     m.flipH = true;
     m.flipV = false;
     m.blend = true;
+    m.speed = 0.25;
+    m.fade = 20;
     m.preset = null;
     final js = milkdropSettingsJs(m);
     expect(js, contains('window.setGain'));
@@ -19,6 +21,7 @@ void main() {
     expect(js, contains('window.setAuto&&window.setAuto(60)'));
     expect(js, contains('window.setFlip&&window.setFlip(true,false)'));
     expect(js, contains('window.setBlend&&window.setBlend(true)'));
+    expect(js, contains('window.setPace&&window.setPace(0.25,20)'));
     expect(js, contains('window.loadName&&window.loadName(null)'));
   });
 

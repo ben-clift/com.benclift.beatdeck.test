@@ -34,6 +34,12 @@ class MilkdropSettings extends ChangeNotifier {
   /// Fade between frames at a low frame rate so the motion is smooth, not jerky.
   bool blend = true;
 
+  /// How fast the pictures move, 0.1 (very slow) .. 1 (normal).
+  double speed = 1.0;
+
+  /// Seconds a change from one picture to the next takes.
+  int fade = 3;
+
   /// A fixed preset name, or null to let it shuffle.
   String? preset;
   List<String> names = [];
@@ -50,6 +56,8 @@ class MilkdropSettings extends ChangeNotifier {
       flipH = p.getBool('md_flip_h') ?? false;
       flipV = p.getBool('md_flip_v') ?? false;
       blend = p.getBool('md_blend') ?? true;
+      speed = p.getDouble('md_speed') ?? 1.0;
+      fade = p.getInt('md_fade') ?? 3;
       preset = p.getString('md_preset');
       notifyListeners();
     } catch (_) {}
@@ -65,6 +73,8 @@ class MilkdropSettings extends ChangeNotifier {
       await p.setBool('md_flip_h', flipH);
       await p.setBool('md_flip_v', flipV);
       await p.setBool('md_blend', blend);
+      await p.setDouble('md_speed', speed);
+      await p.setInt('md_fade', fade);
       if (preset == null) {
         await p.remove('md_preset');
       } else {
@@ -73,7 +83,7 @@ class MilkdropSettings extends ChangeNotifier {
     } catch (_) {}
   }
 
-  void set({double? i, int? fpsV, double? dimV, int? auto, String? pick, bool shuffle = false, bool? flipHV, bool? flipVV, bool? blendV}) {
+  void set({double? i, int? fpsV, double? dimV, int? auto, String? pick, bool shuffle = false, bool? flipHV, bool? flipVV, bool? blendV, double? speedV, int? fadeV}) {
     if (i != null) intensity = i;
     if (auto != null) autoSecs = auto;
     if (fpsV != null) fps = fpsV;
@@ -81,6 +91,8 @@ class MilkdropSettings extends ChangeNotifier {
     if (flipHV != null) flipH = flipHV;
     if (flipVV != null) flipV = flipVV;
     if (blendV != null) blend = blendV;
+    if (speedV != null) speed = speedV;
+    if (fadeV != null) fade = fadeV;
     if (pick != null) preset = pick;
     if (shuffle) preset = null;
     notifyListeners();
@@ -110,6 +122,7 @@ String milkdropSettingsJs(MilkdropSettings m) {
       'window.setDim&&window.setDim(${m.dim.toStringAsFixed(2)});'
       'window.setFlip&&window.setFlip(${m.flipH},${m.flipV});'
       'window.setBlend&&window.setBlend(${m.blend});'
+      'window.setPace&&window.setPace(${m.speed.toStringAsFixed(2)},${m.fade});'
       'window.loadName&&window.loadName(${jsonEncode(m.preset)});';
 }
 
@@ -197,6 +210,41 @@ class _MilkdropViewState extends State<MilkdropView> {
     return Stack(fit: StackFit.expand, children: [
       if (!_ready) widget.fallback,
       Opacity(opacity: _ready ? 1 : 0, child: WebViewWidget(controller: _c)),
+    ]);
+  }
+}
+
+/// Motion speed, the length of a change between pictures, how often it
+/// changes, and a one-tap "slow and steady" setting. Used in the Visuals sheet
+/// and on the Projector page.
+class MilkdropPaceControls extends StatelessWidget {
+  const MilkdropPaceControls({super.key});
+
+  static String _t(int s) => s == 0 ? 'Never' : s < 60 ? '${s}s' : '${s ~/ 60}m';
+
+  @override
+  Widget build(BuildContext context) {
+    final m = MilkdropSettings.instance;
+    const secs = [0, 10, 20, 30, 60, 120, 300, 600];
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: OutlinedButton.icon(
+          onPressed: () => m.set(i: 0.15, speedV: 0.1, fadeV: 20, auto: 120, blendV: true),
+          icon: const Icon(Icons.spa_outlined),
+          label: const Text('Slow and steady'),
+        ),
+      ),
+      const SizedBox(height: 8),
+      Text('Motion speed: ${(m.speed * 100).round()}%', style: const TextStyle(fontWeight: FontWeight.w700)),
+      Slider(value: m.speed, min: 0.1, max: 1, onChanged: (v) => m.set(speedV: v)),
+      Text('Change blend: ${m.fade}s', style: const TextStyle(fontWeight: FontWeight.w700)),
+      const Text('How long one picture takes to melt into the next', style: TextStyle(fontSize: 12, color: Color(0xFF8A857C))),
+      Slider(value: m.fade.toDouble(), min: 2, max: 30, divisions: 28, onChanged: (v) => m.set(fadeV: v.round())),
+      const Text('Change picture every', style: TextStyle(fontWeight: FontWeight.w700)),
+      Wrap(spacing: 8, children: [
+        for (final s in secs) ChoiceChip(label: Text(_t(s)), selected: m.autoSecs == s, onSelected: (_) => m.set(auto: s)),
+      ]),
     ]);
   }
 }

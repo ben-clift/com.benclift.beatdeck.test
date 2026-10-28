@@ -3078,7 +3078,6 @@ class _VisualsBoxState extends State<_VisualsBox> {
     return ListenableBuilder(
       listenable: m,
       builder: (_, __) {
-        const secs = [0, 10, 20, 30, 60, 120];
         final shown = m.names.where((n) => n.toLowerCase().contains(_q.toLowerCase())).take(60).toList();
         return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Text('Intensity: ${m.intensity < 0.2 ? 'very calm' : m.intensity < 0.45 ? 'calm' : m.intensity < 0.7 ? 'medium' : m.intensity < 0.9 ? 'high' : 'wild'}',
@@ -3100,15 +3099,7 @@ class _VisualsBoxState extends State<_VisualsBox> {
             onChanged: (v) => m.set(blendV: v),
           ),
           const SizedBox(height: 8),
-          const Text('Change picture', style: TextStyle(fontWeight: FontWeight.w700)),
-          Wrap(spacing: 8, children: [
-            for (final s in secs)
-              ChoiceChip(
-                label: Text(s == 0 ? 'Never' : s < 60 ? '${s}s' : '${s ~/ 60}m'),
-                selected: m.autoSecs == s,
-                onSelected: (_) => m.set(auto: s),
-              ),
-          ]),
+          const MilkdropPaceControls(),
           const SizedBox(height: 8),
           Row(children: [
             Expanded(

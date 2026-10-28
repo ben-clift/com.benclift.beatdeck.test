@@ -147,7 +147,6 @@ class _ProjectorPageState extends State<ProjectorPage> {
       body: ListenableBuilder(
         listenable: Listenable.merge([m, _out]),
         builder: (context, _) {
-          const secs = [0, 10, 20, 30, 60, 120];
           final shown = m.names.where((n) => n.toLowerCase().contains(_q.toLowerCase())).take(60).toList();
           final found = _out.displays;
           return ListView(padding: const EdgeInsets.all(20), children: [
@@ -226,15 +225,7 @@ class _ProjectorPageState extends State<ProjectorPage> {
               value: m.blend,
               onChanged: (v) => m.set(blendV: v),
             ),
-            _label('Change picture'),
-            Wrap(spacing: 8, children: [
-              for (final s in secs)
-                ChoiceChip(
-                  label: Text(s == 0 ? 'Never' : s < 60 ? '${s}s' : '${s ~/ 60}m'),
-                  selected: m.autoSecs == s,
-                  onSelected: (_) => m.set(auto: s),
-                ),
-            ]),
+            const MilkdropPaceControls(),
             const SizedBox(height: 8),
             Row(children: [
               Expanded(
