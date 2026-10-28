@@ -2169,8 +2169,6 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
       tile('Explore', 'Find new artists, labels and tracks', Icons.travel_explore,
           () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => ExplorePage(host: fullAppFinderHost(widget.library))))),
       tile('Connect my Mac', 'Shared folders', Icons.laptop_mac, _macSheet),
-      tile('Send logs to Ben', 'Automatically, so problems get fixed', Icons.cloud_upload_outlined, _logSettings),
-      tile('Report a problem', 'Copy the log', Icons.bug_report_outlined, _copyLog),
       tile('Pro mode', 'Switch to the full decks', Icons.tune, () => AppMode.set(false)),
       ValueListenableBuilder<bool>(
         valueListenable: Admin.on,
