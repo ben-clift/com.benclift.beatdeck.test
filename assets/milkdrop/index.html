@@ -32,10 +32,21 @@
     var idx = -1, lastSwitch = 0, gain = 0.5, autoSecs = 30, held = null;
     // Pace: how fast the pictures move (1 = normal) and how long a change from one picture to the next takes.
     var ts = 1, fade = 2.7, vt = 0;
+    // Random: each switch picks a fresh value at every change of picture, between the lowest
+    // sensible value and the slider's setting. The change timer can be random too (autoSecs < 0).
+    var baseTs = 1, baseFade = 2.7, baseGain = 0.5, autoNow = 30, rS = false, rF = false, rI = false;
     function mb(d) { return fade > d ? fade : d; }
-    window.setPace = function (s, f) { ts = Math.max(0.05, Math.min(1, s)); fade = Math.max(1, Math.min(40, f)); };
+    function rnd(lo, hi) { return hi > lo ? lo + Math.random() * (hi - lo) : hi; }
+    function reroll() {
+      ts = rS ? rnd(0.1, baseTs) : baseTs;
+      fade = rF ? rnd(2, baseFade) : baseFade;
+      gain = rI ? rnd(0.15, baseGain) : baseGain;
+      autoNow = autoSecs < 0 ? rnd(10, 300) : autoSecs;
+    }
+    window.setPace = function (s, f) { baseTs = Math.max(0.05, Math.min(1, s)); baseFade = Math.max(1, Math.min(40, f)); reroll(); };
+    window.setRandom = function (s, f, i) { rS = !!s; rF = !!f; rI = !!i; reroll(); };
     names.sort();
-    window.setGain = function (g) { gain = Math.max(0.05, Math.min(1.6, g)); };
+    window.setGain = function (g) { baseGain = Math.max(0.05, Math.min(1.6, g)); reroll(); };
     var fps = 15, lastDraw = 0;
     window.setFps = function (f) { fps = Math.max(2, Math.min(60, f)); };
     window.setDim = function (b) { out.style.filter = 'brightness(' + Math.max(0.05, Math.min(1, b)) + ')'; };
@@ -45,14 +56,15 @@
     window.setBlend = function (b) { blendOn = !!b; };
     var shots = true;
     window.setShots = function (b) { shots = !!b; };
-    window.setAuto = function (s) { autoSecs = s; lastSwitch = performance.now(); };
+    window.setAuto = function (s) { autoSecs = s; reroll(); lastSwitch = performance.now(); };
     window.loadName = function (n) {
       if (n && bp[n]) { held = n; viz.loadPreset(bp[n], mb(1.5)); lastSwitch = performance.now(); } else { held = null; }
     };
-    window.nextPreset = function () { held = null; next(mb(1.5)); };
+    window.nextPreset = function () { held = null; next(1.5); };
     function next(blend) {
+      reroll();
       idx = (idx + 1) % order.length;
-      viz.loadPreset(bp[order[idx]], blend);
+      viz.loadPreset(bp[order[idx]], blend === 0 ? 0 : (blend == null ? fade : mb(blend)));
       lastSwitch = performance.now();
     }
     next(0);
@@ -65,7 +77,7 @@
     });
     out.addEventListener('pointerup', function () {
       clearTimeout(holdT);
-      if (!held2) { paused = false; held = null; next(mb(1.0)); }
+      if (!held2) { paused = false; held = null; next(1.0); }
     });
     out.addEventListener('pointercancel', function () { clearTimeout(holdT); });
 
@@ -118,7 +130,7 @@
         tb[i] = v; tl[i] = v; tr[i] = w;
       }
       vt += dt * ts;
-      if (!held && autoSecs > 0 && now - lastSwitch > autoSecs * 1000) next(fade);
+      if (!held && autoNow > 0 && now - lastSwitch > autoNow * 1000) next();
       var due = now - lastDraw >= 1000 / fps - 2;
       if (!paused && due) {
         lastDraw = now; interval = 1000 / fps;

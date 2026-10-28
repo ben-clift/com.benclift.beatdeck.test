@@ -37,6 +37,11 @@ class MilkdropSettings extends ChangeNotifier {
   /// How fast the pictures move, 0.1 (very slow) .. 1 (normal).
   double speed = 1.0;
 
+  /// Random: a new value at every change of picture, up to the slider's setting.
+  bool randSpeed = false;
+  bool randFade = false;
+  bool randIntensity = false;
+
   /// Seconds a change from one picture to the next takes.
   int fade = 3;
 
@@ -57,6 +62,9 @@ class MilkdropSettings extends ChangeNotifier {
       flipV = p.getBool('md_flip_v') ?? false;
       blend = p.getBool('md_blend') ?? true;
       speed = p.getDouble('md_speed') ?? 1.0;
+      randSpeed = p.getBool('md_rand_speed') ?? false;
+      randFade = p.getBool('md_rand_fade') ?? false;
+      randIntensity = p.getBool('md_rand_int') ?? false;
       fade = p.getInt('md_fade') ?? 3;
       preset = p.getString('md_preset');
       notifyListeners();
@@ -74,6 +82,9 @@ class MilkdropSettings extends ChangeNotifier {
       await p.setBool('md_flip_v', flipV);
       await p.setBool('md_blend', blend);
       await p.setDouble('md_speed', speed);
+      await p.setBool('md_rand_speed', randSpeed);
+      await p.setBool('md_rand_fade', randFade);
+      await p.setBool('md_rand_int', randIntensity);
       await p.setInt('md_fade', fade);
       if (preset == null) {
         await p.remove('md_preset');
@@ -83,7 +94,7 @@ class MilkdropSettings extends ChangeNotifier {
     } catch (_) {}
   }
 
-  void set({double? i, int? fpsV, double? dimV, int? auto, String? pick, bool shuffle = false, bool? flipHV, bool? flipVV, bool? blendV, double? speedV, int? fadeV}) {
+  void set({double? i, int? fpsV, double? dimV, int? auto, String? pick, bool shuffle = false, bool? flipHV, bool? flipVV, bool? blendV, double? speedV, int? fadeV, bool? randSpeedV, bool? randFadeV, bool? randIntensityV}) {
     if (i != null) intensity = i;
     if (auto != null) autoSecs = auto;
     if (fpsV != null) fps = fpsV;
@@ -93,6 +104,9 @@ class MilkdropSettings extends ChangeNotifier {
     if (blendV != null) blend = blendV;
     if (speedV != null) speed = speedV;
     if (fadeV != null) fade = fadeV;
+    if (randSpeedV != null) randSpeed = randSpeedV;
+    if (randFadeV != null) randFade = randFadeV;
+    if (randIntensityV != null) randIntensity = randIntensityV;
     if (pick != null) preset = pick;
     if (shuffle) preset = null;
     notifyListeners();
@@ -123,6 +137,7 @@ String milkdropSettingsJs(MilkdropSettings m) {
       'window.setFlip&&window.setFlip(${m.flipH},${m.flipV});'
       'window.setBlend&&window.setBlend(${m.blend});'
       'window.setPace&&window.setPace(${m.speed.toStringAsFixed(2)},${m.fade});'
+      'window.setRandom&&window.setRandom(${m.randSpeed},${m.randFade},${m.randIntensity});'
       'window.loadName&&window.loadName(${jsonEncode(m.preset)});';
 }
 
@@ -220,12 +235,12 @@ class _MilkdropViewState extends State<MilkdropView> {
 class MilkdropPaceControls extends StatelessWidget {
   const MilkdropPaceControls({super.key});
 
-  static String _t(int s) => s == 0 ? 'Never' : s < 60 ? '${s}s' : '${s ~/ 60}m';
+  static String _t(int s) => s == 0 ? 'Never' : s < 0 ? 'Random' : s < 60 ? '${s}s' : '${s ~/ 60}m';
 
   @override
   Widget build(BuildContext context) {
     final m = MilkdropSettings.instance;
-    const secs = [0, 10, 20, 30, 60, 120, 300, 600];
+    const secs = [0, -1, 10, 20, 30, 60, 120, 300, 600];
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Padding(
         padding: const EdgeInsets.only(top: 8),
@@ -244,6 +259,15 @@ class MilkdropPaceControls extends StatelessWidget {
       const Text('Change picture every', style: TextStyle(fontWeight: FontWeight.w700)),
       Wrap(spacing: 8, children: [
         for (final s in secs) ChoiceChip(label: Text(_t(s)), selected: m.autoSecs == s, onSelected: (_) => m.set(auto: s)),
+      ]),
+      const SizedBox(height: 8),
+      const Text('Random: a new value at every change', style: TextStyle(fontWeight: FontWeight.w700)),
+      const Text('Picks between the lowest setting and the slider each time the picture changes. "Random" above picks the time too (10 s to 5 min).',
+          style: TextStyle(fontSize: 12, color: Color(0xFF8A857C))),
+      Wrap(spacing: 8, children: [
+        FilterChip(label: const Text('Intensity'), selected: m.randIntensity, onSelected: (v) => m.set(randIntensityV: v)),
+        FilterChip(label: const Text('Motion speed'), selected: m.randSpeed, onSelected: (v) => m.set(randSpeedV: v)),
+        FilterChip(label: const Text('Change blend'), selected: m.randFade, onSelected: (v) => m.set(randFadeV: v)),
       ]),
     ]);
   }

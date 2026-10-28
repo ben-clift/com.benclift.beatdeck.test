@@ -57,4 +57,5 @@ Forked from SideDeck 1.1.1 (https://github.com/manueljpy/SideDeck), 20 Oct 2026.
 ## Slow and steady MilkDrop (28 Oct 2026)
 - Visuals settings and the Projector page have a "Slow and steady" button and two new sliders. Motion speed (10 to 100%) slows how fast the pictures move and how sharply they follow the music. Change blend (2 to 30 s) sets how long one picture takes to melt into the next, including when you tap for the next one. "Change picture every" now goes up to 10 minutes.
 - The shared controls are `MilkdropPaceControls` in `milkdrop_view.dart`.
+- Random (28 Oct 2026): a "Random" change timer (10 s to 5 min, a new time after each change), and Random switches for intensity, motion speed and change blend. Each picks a new value at every change of picture, between the lowest setting and the slider. Brightness and frame rate are not randomised.
 
