@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:sidedeck/ui/milkdrop_photo_store.dart';
 import 'package:sidedeck/ui/milkdrop_view.dart';
+import 'package:sidedeck/ui/photo_archive_page.dart';
 
 enum _When { any, week, month, year, custom }
 
@@ -365,6 +366,11 @@ class _MilkdropPhotoControlsState extends State<MilkdropPhotoControls> {
     if (n != null) _afterAdd(n);
   }
 
+  Future<void> _archive() async {
+    final n = await Navigator.of(context).push<int>(MaterialPageRoute<int>(builder: (_) => const PhotoArchivePage()));
+    if (n != null) _afterAdd(n);
+  }
+
   /// The phone's own picker. On many phones it shows Google Photos, with its
   /// people, places and albums.
   Future<void> _system() async {
@@ -406,6 +412,12 @@ class _MilkdropPhotoControlsState extends State<MilkdropPhotoControls> {
             onPressed: n >= MilkdropPhotos.maxPhotos || _busy ? null : _system,
             icon: const Icon(Icons.face_retouching_natural),
             label: const Text('Phone photo picker (people, places)'),
+          ),
+          const SizedBox(height: 6),
+          OutlinedButton.icon(
+            onPressed: n >= MilkdropPhotos.maxPhotos || _busy ? null : _archive,
+            icon: const Icon(Icons.public),
+            label: const Text('Online archive: thousands of famous pictures'),
           ),
           if (n > 0) ...[
             const SizedBox(height: 8),

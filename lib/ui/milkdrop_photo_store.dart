@@ -11,7 +11,7 @@ class MilkdropPhotos extends ChangeNotifier {
   MilkdropPhotos._();
   static final MilkdropPhotos instance = MilkdropPhotos._();
 
-  static const maxPhotos = 40;
+  static const maxPhotos = 200;
 
   List<File> files = [];
 
