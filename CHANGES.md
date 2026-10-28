@@ -59,3 +59,9 @@ Forked from SideDeck 1.1.1 (https://github.com/manueljpy/SideDeck), 20 Oct 2026.
 - The shared controls are `MilkdropPaceControls` in `milkdrop_view.dart`.
 - Random (28 Oct 2026): a "Random" change timer (10 s to 5 min, a new time after each change), and Random switches for intensity, motion speed and change blend. Each picks a new value at every change of picture, between the lowest setting and the slider. Brightness and frame rate are not randomised.
 
+## Your photos in MilkDrop (28 Oct 2026)
+- Visuals settings start with "Your photos". "Choose from my gallery" opens a browser for the phone's photos: pick an album (Camera, Screenshots, WhatsApp, Download and so on) and a time (any time, last 7 days, last 30 days, this year, or your own dates), tick photos and add them. It asks for permission to see photos, and reads them only on the phone.
+- "Phone photo picker (people, places)" opens Android's own picker, which on many phones shows Google Photos with its people, places and albums. BeatDeck cannot read the names of people itself, so this is the way to choose by who is in the photo.
+- Photos are copied as small JPEGs (about 900 pixels) into the app, up to 40. They show over the picture, slowly zooming and melting from one to the next. Photo strength (off to 100%) and how long each stays (10 s to 2 min) are in the same section; "Remove all photos" clears them.
+- Not yet: blend styles (glow through the dark parts, overlay), the Projector page and second screen showing the photos.
+

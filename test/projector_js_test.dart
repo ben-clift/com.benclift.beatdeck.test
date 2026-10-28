@@ -16,6 +16,8 @@ void main() {
     m.randSpeed = true;
     m.randFade = false;
     m.randIntensity = true;
+    m.photoStrength = 0.5;
+    m.photoSecs = 30;
     m.preset = null;
     final js = milkdropSettingsJs(m);
     expect(js, contains('window.setGain'));
@@ -26,6 +28,7 @@ void main() {
     expect(js, contains('window.setBlend&&window.setBlend(true)'));
     expect(js, contains('window.setPace&&window.setPace(0.25,20)'));
     expect(js, contains('window.setRandom&&window.setRandom(true,false,true)'));
+    expect(js, contains('window.setPhotos&&window.setPhotos(0.50,30)'));
     expect(js, contains('window.loadName&&window.loadName(null)'));
   });
 

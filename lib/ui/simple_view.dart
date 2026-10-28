@@ -37,6 +37,7 @@ import 'package:sidedeck/ui/equaliser_view.dart';
 import 'package:sidedeck/ui/explore_page.dart';
 import 'package:sidedeck/ui/finder_host_library.dart';
 import 'package:sidedeck/ui/milkdrop_view.dart';
+import 'package:sidedeck/ui/photo_gallery_page.dart';
 import 'package:sidedeck/ui/projector_page.dart';
 import 'package:sidedeck/ui/screenshot_import.dart';
 import 'package:sidedeck/wishlist/wishlist.dart';
@@ -3080,6 +3081,7 @@ class _VisualsBoxState extends State<_VisualsBox> {
       builder: (_, __) {
         final shown = m.names.where((n) => n.toLowerCase().contains(_q.toLowerCase())).take(60).toList();
         return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          const MilkdropPhotoControls(),
           Text('Intensity: ${m.intensity < 0.2 ? 'very calm' : m.intensity < 0.45 ? 'calm' : m.intensity < 0.7 ? 'medium' : m.intensity < 0.9 ? 'high' : 'wild'}',
               style: const TextStyle(fontWeight: FontWeight.w700)),
           Slider(value: m.intensity, onChanged: (v) => m.set(i: v)),

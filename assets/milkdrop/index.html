@@ -1,8 +1,8 @@
 <!doctype html>
 <html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-<style>html,body{margin:0;height:100%;background:#000;overflow:hidden}canvas{width:100%;height:100%;display:block}#c{position:fixed;left:0;top:0;opacity:0;pointer-events:none}</style>
-</head><body><canvas id="c"></canvas><canvas id="o"></canvas>
+<style>html,body{margin:0;height:100%;background:#000;overflow:hidden}canvas{width:100%;height:100%;display:block}#c{position:fixed;left:0;top:0;opacity:0;pointer-events:none}#w{position:fixed;left:0;top:0;width:100%;height:100%}#o,#p{position:absolute;left:0;top:0}#p{pointer-events:none;opacity:0}</style>
+</head><body><canvas id="c"></canvas><div id="w"><canvas id="o"></canvas><canvas id="p"></canvas></div>
 <script src="butterchurn.min.js"></script>
 <script src="butterchurnPresets.min.js"></script>
 <script>
@@ -20,6 +20,29 @@
     // motion melts from one picture to the next instead of jumping.
     var out = document.getElementById('o'), octx = out.getContext('2d');
     out.width = W; out.height = H;
+    // Your photos: a second layer over the picture, slowly zooming and melting from one to the next.
+    var wrap = document.getElementById('w'), pc = document.getElementById('p'), pctx = pc.getContext('2d');
+    pc.width = W; pc.height = H;
+    var photos = [], pStrength = 0, pSecs = 20, pStart = performance.now(), lastP = 0;
+    window.clearPhotos = function () { photos = []; pctx.clearRect(0, 0, W, H); };
+    window.addPhoto = function (u) { var im = new Image(); im.onload = function () { photos.push(im); }; im.src = u; };
+    window.setPhotos = function (s, secs) { pStrength = Math.max(0, Math.min(1, s)); pSecs = Math.max(4, secs); };
+    function cover(im, a, z) {
+      var sc = Math.max(W / im.width, H / im.height) * z, dw = im.width * sc, dh = im.height * sc;
+      pctx.globalAlpha = a; pctx.drawImage(im, (W - dw) / 2, (H - dh) / 2, dw, dh);
+    }
+    function drawPhotos(now) {
+      if (!photos.length || pStrength <= 0) { if (pc.style.opacity !== '0') { pc.style.opacity = '0'; pctx.clearRect(0, 0, W, H); } return; }
+      if (now - lastP < 50) return;
+      lastP = now; pc.style.opacity = String(pStrength);
+      var el = (now - pStart) / 1000, k = Math.floor(el / pSecs), t = el - k * pSecs, n = photos.length;
+      var cur = photos[k % n], nxt = photos[(k + 1) % n], f = Math.min(Math.max(2, fade), pSecs / 2);
+      var x = t > pSecs - f ? (t - (pSecs - f)) / f : 0;
+      pctx.clearRect(0, 0, W, H);
+      cover(cur, 1, 1 + 0.08 * (t / pSecs));
+      if (x > 0 && nxt !== cur) cover(nxt, x, 1);
+      pctx.globalAlpha = 1;
+    }
     function mk() { var c = document.createElement('canvas'); c.width = W; c.height = H; c.x = c.getContext('2d'); return c; }
     var fa = mk(), fb = mk(), haveTwo = false, newFrame = false, blendOn = true, blendStart = 0, interval = 200;
     var AC = window.AudioContext || window.webkitAudioContext;
@@ -49,9 +72,9 @@
     window.setGain = function (g) { baseGain = Math.max(0.05, Math.min(1.6, g)); reroll(); };
     var fps = 15, lastDraw = 0;
     window.setFps = function (f) { fps = Math.max(2, Math.min(60, f)); };
-    window.setDim = function (b) { out.style.filter = 'brightness(' + Math.max(0.05, Math.min(1, b)) + ')'; };
+    window.setDim = function (b) { wrap.style.filter = 'brightness(' + Math.max(0.05, Math.min(1, b)) + ')'; };
     // Projector: mirror left-right and/or upside down (for rear or ceiling projection).
-    window.setFlip = function (h, v) { out.style.transform = 'scale(' + (h ? -1 : 1) + ',' + (v ? -1 : 1) + ')'; };
+    window.setFlip = function (h, v) { wrap.style.transform = 'scale(' + (h ? -1 : 1) + ',' + (v ? -1 : 1) + ')'; };
     // The projector page does not need the cover-art stills.
     window.setBlend = function (b) { blendOn = !!b; };
     var shots = true;
@@ -141,6 +164,7 @@
         newFrame = true; blendStart = now; shot(now);
         if (!(blendOn && fps < 30 && haveTwo)) { octx.globalAlpha = 1; octx.drawImage(fb, 0, 0); }
       }
+      if (!fromTimer) drawPhotos(now);
       if (!paused && !fromTimer && blendOn && fps < 30 && haveTwo) {
         var al = Math.min(1, (now - blendStart) / interval);
         octx.globalAlpha = 1; octx.drawImage(fa, 0, 0);

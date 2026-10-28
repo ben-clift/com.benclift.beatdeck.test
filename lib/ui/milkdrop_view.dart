@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sidedeck/ui/milkdrop_photo_store.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 /// Receives a small still of the MilkDrop picture every few seconds (JPEG).
@@ -42,6 +43,10 @@ class MilkdropSettings extends ChangeNotifier {
   bool randFade = false;
   bool randIntensity = false;
 
+  /// Your photos over the picture: 0 = off, 1 = fully showing. Seconds each photo stays.
+  double photoStrength = 0;
+  int photoSecs = 20;
+
   /// Seconds a change from one picture to the next takes.
   int fade = 3;
 
@@ -65,6 +70,8 @@ class MilkdropSettings extends ChangeNotifier {
       randSpeed = p.getBool('md_rand_speed') ?? false;
       randFade = p.getBool('md_rand_fade') ?? false;
       randIntensity = p.getBool('md_rand_int') ?? false;
+      photoStrength = p.getDouble('md_photo') ?? 0;
+      photoSecs = p.getInt('md_photo_secs') ?? 20;
       fade = p.getInt('md_fade') ?? 3;
       preset = p.getString('md_preset');
       notifyListeners();
@@ -85,6 +92,8 @@ class MilkdropSettings extends ChangeNotifier {
       await p.setBool('md_rand_speed', randSpeed);
       await p.setBool('md_rand_fade', randFade);
       await p.setBool('md_rand_int', randIntensity);
+      await p.setDouble('md_photo', photoStrength);
+      await p.setInt('md_photo_secs', photoSecs);
       await p.setInt('md_fade', fade);
       if (preset == null) {
         await p.remove('md_preset');
@@ -94,7 +103,7 @@ class MilkdropSettings extends ChangeNotifier {
     } catch (_) {}
   }
 
-  void set({double? i, int? fpsV, double? dimV, int? auto, String? pick, bool shuffle = false, bool? flipHV, bool? flipVV, bool? blendV, double? speedV, int? fadeV, bool? randSpeedV, bool? randFadeV, bool? randIntensityV}) {
+  void set({double? i, int? fpsV, double? dimV, int? auto, String? pick, bool shuffle = false, bool? flipHV, bool? flipVV, bool? blendV, double? speedV, int? fadeV, bool? randSpeedV, bool? randFadeV, bool? randIntensityV, double? photoV, int? photoSecsV}) {
     if (i != null) intensity = i;
     if (auto != null) autoSecs = auto;
     if (fpsV != null) fps = fpsV;
@@ -107,6 +116,8 @@ class MilkdropSettings extends ChangeNotifier {
     if (randSpeedV != null) randSpeed = randSpeedV;
     if (randFadeV != null) randFade = randFadeV;
     if (randIntensityV != null) randIntensity = randIntensityV;
+    if (photoV != null) photoStrength = photoV;
+    if (photoSecsV != null) photoSecs = photoSecsV;
     if (pick != null) preset = pick;
     if (shuffle) preset = null;
     notifyListeners();
@@ -138,6 +149,7 @@ String milkdropSettingsJs(MilkdropSettings m) {
       'window.setBlend&&window.setBlend(${m.blend});'
       'window.setPace&&window.setPace(${m.speed.toStringAsFixed(2)},${m.fade});'
       'window.setRandom&&window.setRandom(${m.randSpeed},${m.randFade},${m.randIntensity});'
+      'window.setPhotos&&window.setPhotos(${m.photoStrength.toStringAsFixed(2)},${m.photoSecs});'
       'window.loadName&&window.loadName(${jsonEncode(m.preset)});';
 }
 
@@ -178,6 +190,7 @@ class _MilkdropViewState extends State<MilkdropView> {
         if (m.message == 'ok') {
           setState(() => _ready = true);
           _apply(true);
+          _sendPhotos();
         }
         if (m.message.startsWith('art:')) {
           try {
@@ -195,10 +208,34 @@ class _MilkdropViewState extends State<MilkdropView> {
       ..loadFlutterAsset('assets/milkdrop/index.html');
     MilkdropSettings.instance.load();
     MilkdropSettings.instance.addListener(_apply);
+    MilkdropPhotos.instance.load();
+    MilkdropPhotos.instance.addListener(_sendPhotos);
     _t = Timer.periodic(const Duration(milliseconds: 50), (_) {
       if (!_ready) return;
       _c.runJavaScript(milkdropLevelsJs(widget.levels));
     });
+  }
+
+  int _photoVer = -1;
+  bool _sending = false;
+
+  /// Sends the chosen photos to the page, one at a time, whenever the list changes.
+  Future<void> _sendPhotos() async {
+    final ph = MilkdropPhotos.instance;
+    if (!_ready || _sending || _photoVer == ph.version) return;
+    _sending = true;
+    try {
+      while (mounted && _photoVer != ph.version) {
+        _photoVer = ph.version;
+        await _c.runJavaScript('window.clearPhotos&&window.clearPhotos();');
+        for (final f in List.of(ph.files)) {
+          if (!mounted) break;
+          final b = base64Encode(await f.readAsBytes());
+          await _c.runJavaScript('window.addPhoto&&window.addPhoto("data:image/jpeg;base64,$b");');
+        }
+      }
+    } catch (_) {}
+    _sending = false;
   }
 
   int _seenPoke = 0;
@@ -215,6 +252,7 @@ class _MilkdropViewState extends State<MilkdropView> {
   @override
   void dispose() {
     MilkdropSettings.instance.removeListener(_apply);
+    MilkdropPhotos.instance.removeListener(_sendPhotos);
     _t?.cancel();
     super.dispose();
   }
