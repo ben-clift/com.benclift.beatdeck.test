@@ -1,0 +1,215 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+html,body{margin:0;height:100%;background:#06080d;overflow:hidden}
+#wrap{position:fixed;inset:0}
+canvas{width:100%;height:100%;display:block}
+</style></head>
+<body><div id="wrap"><canvas id="c"></canvas></div>
+<script>
+(function () {
+  var wrap = document.getElementById('wrap'), cv = document.getElementById('c'), ctx = cv.getContext('2d');
+  function post(m) { try { Md.postMessage(m); } catch (e) {} }
+  var W = 0, H = 0, S = 1;
+  function resize() {
+    S = Math.min(window.devicePixelRatio || 1, 1.5);
+    W = cv.width = Math.max(2, Math.round(cv.clientWidth * S));
+    H = cv.height = Math.max(2, Math.round(cv.clientHeight * S));
+  }
+  window.addEventListener('resize', resize); resize();
+
+  // ---- settings from the app -------------------------------------------
+  var gain = 0.5, fps = 30, autoSecs = 30, ts = 1, baseTs = 1, fade = 3, calmOn = false, dimV = 1, flipH = false, flipV = false;
+  var pStrength = 0, pSecs = 20;
+  function filt() {
+    wrap.style.filter = 'brightness(' + dimV + ')' + (calmOn ? ' saturate(0.6)' : '');
+  }
+  window.setGain = function (g) { gain = Math.max(0.05, Math.min(1.6, g)); };
+  window.setAuto = function (s) { autoSecs = s; lastSwitch = performance.now(); autoNow = pickAuto(); };
+  window.setFps = function (f) { fps = Math.max(5, Math.min(60, f)); };
+  window.setDim = function (b) { dimV = Math.max(0.05, Math.min(1, b)); filt(); };
+  window.setFlip = function (h, v) { wrap.style.transform = 'scale(' + (h ? -1 : 1) + ',' + (v ? -1 : 1) + ')'; };
+  window.setBlend = function () {};
+  window.setShots = function () {};
+  window.setRandom = function () {};
+  window.setPace = function (s, f) { baseTs = Math.max(0.05, Math.min(1, s)); fade = Math.max(1, Math.min(40, f)); };
+  window.setCalm = function (c) { calmOn = !!c; filt(); };
+  window.setPhotos = function (s, secs) { pStrength = Math.max(0, Math.min(1, s)); pSecs = Math.max(4, secs); };
+  var photos = [], pIdx = 0, pLast = 0, pFade = 1;
+  window.clearPhotos = function () { photos = []; pIdx = 0; };
+  window.addPhoto = function (u) { var im = new Image(); im.onload = function () { photos.push(im); }; im.src = u; };
+
+  // ---- music levels ----------------------------------------------------
+  var NB = 14, lv = new Array(NB).fill(0), sm = new Array(NB).fill(0);
+  window.setLevels = function (a) { for (var i = 0; i < NB && i < a.length; i++) lv[i] = a[i]; };
+  function band(a, b) { var s = 0; for (var i = a; i < b; i++) s += sm[i]; return s / (b - a); }
+
+  // ---- colour ----------------------------------------------------------
+  var PAL = [
+    [[56,189,248],[99,102,241],[20,184,166]],
+    [[244,114,182],[168,85,247],[251,146,60]],
+    [[226,232,240],[148,163,184],[100,116,139]],
+    [[251,191,36],[249,115,22],[244,63,94]],
+    [[52,211,153],[56,189,248],[167,243,208]]
+  ];
+  var palIdx = 0, cur = JSON.parse(JSON.stringify(PAL[0]));
+  function col(i, a) { var c = cur[i % 3]; return 'rgba(' + (c[0] | 0) + ',' + (c[1] | 0) + ',' + (c[2] | 0) + ',' + a + ')'; }
+  function lerpPal(dt) {
+    var k = Math.min(1, dt / Math.max(0.5, fade * 0.6)), t = PAL[palIdx];
+    for (var i = 0; i < 3; i++) for (var j = 0; j < 3; j++) cur[i][j] += (t[i][j] - cur[i][j]) * k;
+  }
+
+  // ---- looks -----------------------------------------------------------
+  var T = 0;
+  function amp() { return Math.min(1.4, 0.35 + gain) * (calmOn ? 0.6 : 1); }
+
+  function aurora(a) {
+    var bass = band(0, 3), mid = band(3, 8), A = amp();
+    ctx.globalCompositeOperation = 'lighter';
+    for (var i = 0; i < 4; i++) {
+      var base = H * (0.30 + i * 0.12), h = H * (0.22 + 0.12 * (i % 2)) * (0.6 + mid * A);
+      ctx.beginPath(); ctx.moveTo(0, H);
+      for (var x = 0; x <= W; x += W / 40) {
+        var y = base + Math.sin(x / W * 5 + T * 0.5 + i * 1.7) * h * 0.35 + Math.sin(x / W * 11 - T * 0.3 + i) * h * 0.12 * (0.5 + bass * A);
+        ctx.lineTo(x, y);
+      }
+      ctx.lineTo(W, H); ctx.closePath();
+      var g = ctx.createLinearGradient(0, base - h, 0, base + h);
+      g.addColorStop(0, col(i, 0)); g.addColorStop(0.5, col(i, 0.16 * a)); g.addColorStop(1, col(i, 0));
+      ctx.fillStyle = g; ctx.fill();
+    }
+  }
+
+  function orbs(a) {
+    var A = amp(); ctx.globalCompositeOperation = 'lighter';
+    for (var i = 0; i < 7; i++) {
+      var l = sm[(i * 2) % NB], r = Math.min(W, H) * (0.16 + 0.2 * l * A + 0.04 * (i % 3));
+      var x = W * (0.5 + 0.34 * Math.sin(T * 0.21 + i * 1.3)), y = H * (0.5 + 0.30 * Math.cos(T * 0.17 + i * 2.1));
+      var g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, col(i, 0.34 * a)); g.addColorStop(1, col(i, 0));
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832); ctx.fill();
+    }
+  }
+
+  function ring(a) {
+    var A = amp(), cx = W / 2, cy = H / 2, R = Math.min(W, H) * 0.24, N = 120;
+    ctx.globalCompositeOperation = 'lighter'; ctx.lineJoin = 'round';
+    for (var pass = 0; pass < 3; pass++) {
+      ctx.beginPath();
+      for (var i = 0; i <= N; i++) {
+        var f = (i % N) / N, m = f < 0.5 ? f * 2 : (1 - f) * 2, bi = m * (NB - 1), b0 = bi | 0, fr = bi - b0;
+        var v = sm[b0] * (1 - fr) + sm[Math.min(NB - 1, b0 + 1)] * fr;
+        var r = R * (1 + (pass === 2 ? 0.55 : 1) * v * A * 0.55) + (pass === 1 ? R * 0.06 : 0);
+        var ang = f * 6.2832 + T * 0.12;
+        var x = cx + Math.cos(ang) * r, y = cy + Math.sin(ang) * r;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.lineWidth = [10, 2.5, 1.2][pass] * S; ctx.strokeStyle = col(pass, [0.07, 0.9, 0.35][pass] * a); ctx.stroke();
+    }
+  }
+
+  function bars(a) {
+    var A = amp(), n = 28, gap = W / (n + 1), bw = Math.max(3 * S, gap * 0.52), cy = H * 0.55;
+    ctx.globalCompositeOperation = 'lighter';
+    for (var i = 0; i < n; i++) {
+      var m = i < n / 2 ? i / (n / 2) : (n - 1 - i) / (n / 2), bi = m * (NB - 1), b0 = bi | 0, fr = bi - b0;
+      var v = sm[b0] * (1 - fr) + sm[Math.min(NB - 1, b0 + 1)] * fr, h = Math.max(bw, v * A * H * 0.42);
+      var x = gap * (i + 1) - bw / 2, g = ctx.createLinearGradient(0, cy - h, 0, cy + h);
+      g.addColorStop(0, col(0, 0.9 * a)); g.addColorStop(0.5, col(1, 0.9 * a)); g.addColorStop(1, col(2, 0.9 * a));
+      ctx.fillStyle = g; ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(x, cy - h, bw, h * 2, bw / 2); else ctx.rect(x, cy - h, bw, h * 2);
+      ctx.fill();
+    }
+  }
+
+  function waves(a) {
+    var A = amp(), bass = band(0, 3), mid = band(3, 9); ctx.globalCompositeOperation = 'lighter'; ctx.lineWidth = 1.6 * S;
+    for (var k = 0; k < 6; k++) {
+      ctx.beginPath();
+      for (var x = 0; x <= W; x += W / 60) {
+        var u = x / W, y = H * 0.5 + Math.sin(u * (3 + k) + T * (0.3 + k * 0.07) + k) * H * 0.07 * (0.6 + bass * A * 2)
+                   + Math.sin(u * 9 - T * 0.4 + k * 2) * H * 0.03 * (0.4 + mid * A * 2) + (k - 2.5) * H * 0.05;
+        if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.strokeStyle = col(k, (0.28 + 0.08 * (k % 3)) * a); ctx.stroke();
+    }
+  }
+
+  var parts = [];
+  for (var pi = 0; pi < 90; pi++) parts.push({ x: Math.random(), y: Math.random(), z: 0.3 + Math.random() * 0.7, o: Math.random() * 6.28 });
+  function particles(a, dt) {
+    var A = amp(), bass = band(0, 3), tre = band(8, NB); ctx.globalCompositeOperation = 'lighter';
+    for (var i = 0; i < parts.length; i++) {
+      var p = parts[i];
+      p.y -= dt * (0.02 + 0.05 * p.z + tre * 0.08 * A) * ts; p.x += Math.sin(T * 0.3 + p.o) * dt * 0.01;
+      if (p.y < -0.05) { p.y = 1.05; p.x = Math.random(); }
+      var r = (1.5 + p.z * 4 + bass * A * 6) * S;
+      var g = ctx.createRadialGradient(p.x * W, p.y * H, 0, p.x * W, p.y * H, r * 3);
+      g.addColorStop(0, col(i, 0.6 * a * p.z)); g.addColorStop(1, col(i, 0));
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x * W, p.y * H, r * 3, 0, 6.2832); ctx.fill();
+    }
+  }
+
+  function line(a) {
+    var A = amp(), cy = H * 0.55, pts = [];
+    for (var i = 0; i < 29; i++) { var m = i < 14.5 ? i / 14 : (28 - i) / 14, bi = m * (NB - 1), b0 = bi | 0, fr = bi - b0;
+      pts.push([W * i / 28, cy - (sm[b0] * (1 - fr) + sm[Math.min(NB - 1, b0 + 1)] * fr) * A * H * 0.36]); }
+    ctx.globalCompositeOperation = 'lighter';
+    function path() { ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
+      for (var i = 1; i < pts.length - 1; i++) { var mx = (pts[i][0] + pts[i + 1][0]) / 2, my = (pts[i][1] + pts[i + 1][1]) / 2; ctx.quadraticCurveTo(pts[i][0], pts[i][1], mx, my); }
+      ctx.lineTo(pts[pts.length - 1][0], pts[pts.length - 1][1]); }
+    path(); ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath();
+    var g = ctx.createLinearGradient(0, cy - H * 0.3, 0, H); g.addColorStop(0, col(0, 0.22 * a)); g.addColorStop(1, col(1, 0));
+    ctx.fillStyle = g; ctx.fill();
+    path(); ctx.lineWidth = 2 * S; ctx.strokeStyle = col(0, 0.95 * a); ctx.stroke();
+  }
+
+  var LOOKS = [['Aurora', aurora], ['Soft orbs', orbs], ['Ring', ring], ['Bars', bars], ['Waves', waves], ['Particles', particles], ['Line', line]];
+  window.names = LOOKS.map(function (l) { return l[0]; });
+
+  var idx = 0, prev = -1, mixT = 1, held = null, lastSwitch = performance.now(), autoNow = 30;
+  function pickAuto() { return autoSecs < 0 ? 10 + Math.random() * 290 : autoSecs; }
+  function go(i) {
+    prev = idx; idx = ((i % LOOKS.length) + LOOKS.length) % LOOKS.length; mixT = 0;
+    palIdx = (palIdx + 1) % PAL.length; lastSwitch = performance.now(); autoNow = pickAuto();
+  }
+  window.loadName = function (n) {
+    var i = n ? window.names.indexOf(n) : -1;
+    if (i >= 0) { held = n; if (i !== idx) go(i); } else held = null;
+  };
+  window.nextPreset = function () { held = null; go(idx + 1); };
+  cv.addEventListener('pointerup', function () { held = null; go(idx + 1); });
+
+  // ---- main loop -------------------------------------------------------
+  var last = performance.now(), told = false;
+  function frame(now) {
+    requestAnimationFrame(frame);
+    if (now - last < 1000 / fps - 2) return;
+    var dt = Math.min(0.1, (now - last) / 1000); last = now;
+    try {
+      ts = calmOn ? Math.min(baseTs, 0.4) : baseTs; T += dt * ts;
+      for (var i = 0; i < NB; i++) sm[i] += (lv[i] - sm[i]) * Math.min(1, dt * (lv[i] > sm[i] ? 14 : 5));
+      lerpPal(dt);
+      if (mixT < 1) mixT = Math.min(1, mixT + dt / Math.max(1, calmOn ? Math.max(fade, 8) : fade));
+      if (!held && autoSecs !== 0 && (now - lastSwitch) / 1000 > autoNow) go(idx + 1);
+      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+      var bg = ctx.createRadialGradient(W / 2, H * 0.55, 0, W / 2, H * 0.55, Math.max(W, H) * 0.75);
+      bg.addColorStop(0, col(1, 0.10 + band(0, 3) * 0.10)); bg.addColorStop(1, 'rgba(6,8,13,1)');
+      ctx.fillStyle = '#06080d'; ctx.fillRect(0, 0, W, H); ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+      // photos underneath, softly
+      if (pStrength > 0 && photos.length) {
+        if (now - pLast > pSecs * 1000) { pLast = now; pIdx = (pIdx + 1) % photos.length; }
+        var im = photos[pIdx % photos.length], sc = Math.max(W / im.width, H / im.height);
+        ctx.globalAlpha = pStrength * 0.8; ctx.drawImage(im, (W - im.width * sc) / 2, (H - im.height * sc) / 2, im.width * sc, im.height * sc); ctx.globalAlpha = 1;
+      }
+      if (mixT < 1 && prev >= 0) LOOKS[prev][1](1 - mixT, dt);
+      LOOKS[idx][1](mixT < 1 ? mixT : 1, dt);
+      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+      if (!told) { told = true; post('ok'); post('names:' + JSON.stringify(window.names)); }
+    } catch (e) { post('fail'); }
+  }
+  requestAnimationFrame(frame);
+})();
+</script></body></html>

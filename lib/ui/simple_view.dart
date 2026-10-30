@@ -3215,6 +3215,19 @@ class _VisualsBoxState extends State<_VisualsBox> {
       builder: (_, __) {
         final shown = m.names.where((n) => n.toLowerCase().contains(_q.toLowerCase())).take(60).toList();
         return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Row(children: [
+            const Text('Visual style', style: TextStyle(fontWeight: FontWeight.w700)),
+            const Spacer(),
+            SegmentedButton<bool>(
+              showSelectedIcon: false,
+              segments: const [
+                ButtonSegment(value: true, label: Text('Modern')),
+                ButtonSegment(value: false, label: Text('Classic')),
+              ],
+              selected: {m.modern},
+              onSelectionChanged: (v) => m.set(modernV: v.first),
+            ),
+          ]),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             dense: true,

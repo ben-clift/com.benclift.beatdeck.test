@@ -32,6 +32,9 @@ class MilkdropSettings extends ChangeNotifier {
   bool flipH = false;
   bool flipV = false;
 
+  /// Modern look: clean, soft visuals instead of classic MilkDrop.
+  bool modern = true;
+
   /// Calm look: soft colours and gentle movement, not full psychedelic.
   bool calm = false;
 
@@ -70,6 +73,7 @@ class MilkdropSettings extends ChangeNotifier {
       flipV = p.getBool('md_flip_v') ?? false;
       blend = p.getBool('md_blend') ?? true;
       calm = p.getBool('md_calm') ?? false;
+      modern = p.getBool('md_modern') ?? true;
       speed = p.getDouble('md_speed') ?? 1.0;
       randSpeed = p.getBool('md_rand_speed') ?? false;
       randFade = p.getBool('md_rand_fade') ?? false;
@@ -93,6 +97,7 @@ class MilkdropSettings extends ChangeNotifier {
       await p.setBool('md_flip_v', flipV);
       await p.setBool('md_blend', blend);
       await p.setBool('md_calm', calm);
+      await p.setBool('md_modern', modern);
       await p.setDouble('md_speed', speed);
       await p.setBool('md_rand_speed', randSpeed);
       await p.setBool('md_rand_fade', randFade);
@@ -108,7 +113,7 @@ class MilkdropSettings extends ChangeNotifier {
     } catch (_) {}
   }
 
-  void set({double? i, int? fpsV, double? dimV, int? auto, String? pick, bool shuffle = false, bool? flipHV, bool? flipVV, bool? blendV, bool? calmV, double? speedV, int? fadeV, bool? randSpeedV, bool? randFadeV, bool? randIntensityV, double? photoV, int? photoSecsV}) {
+  void set({double? i, int? fpsV, double? dimV, int? auto, String? pick, bool shuffle = false, bool? flipHV, bool? flipVV, bool? blendV, bool? calmV, bool? modernV, double? speedV, int? fadeV, bool? randSpeedV, bool? randFadeV, bool? randIntensityV, double? photoV, int? photoSecsV}) {
     if (i != null) intensity = i;
     if (auto != null) autoSecs = auto;
     if (fpsV != null) fps = fpsV;
@@ -117,6 +122,11 @@ class MilkdropSettings extends ChangeNotifier {
     if (flipVV != null) flipV = flipVV;
     if (blendV != null) blend = blendV;
     if (calmV != null) calm = calmV;
+    if (modernV != null) {
+      modern = modernV;
+      preset = null;
+      names = [];
+    }
     if (speedV != null) speed = speedV;
     if (fadeV != null) fade = fadeV;
     if (randSpeedV != null) randSpeed = randSpeedV;
@@ -212,7 +222,8 @@ class _MilkdropViewState extends State<MilkdropView> {
         }
         if (m.message == 'fail') setState(() => _failed = true);
       })
-      ..loadFlutterAsset('assets/milkdrop/index.html');
+      ..loadFlutterAsset(MilkdropSettings.instance.modern ? 'assets/milkdrop/modern.html' : 'assets/milkdrop/index.html');
+    _loadedModern = MilkdropSettings.instance.modern;
     MilkdropSettings.instance.load();
     MilkdropSettings.instance.addListener(_apply);
     MilkdropPhotos.instance.load();
@@ -245,10 +256,19 @@ class _MilkdropViewState extends State<MilkdropView> {
     _sending = false;
   }
 
+  bool _loadedModern = true;
   int _seenPoke = 0;
   void _apply([bool force = false]) {
-    if (!_ready && force != true) return;
     final m = MilkdropSettings.instance;
+    if (m.modern != _loadedModern) {
+      // Switching between the modern and classic looks loads the other page.
+      _loadedModern = m.modern;
+      _photoVer = -1;
+      if (mounted) setState(() => _ready = false);
+      _c.loadFlutterAsset(m.modern ? 'assets/milkdrop/modern.html' : 'assets/milkdrop/index.html');
+      return;
+    }
+    if (!_ready && force != true) return;
     _c.runJavaScript(milkdropSettingsJs(m));
     if (m.poke != _seenPoke) {
       _seenPoke = m.poke;
