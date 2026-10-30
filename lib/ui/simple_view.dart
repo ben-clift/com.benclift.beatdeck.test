@@ -3215,6 +3215,14 @@ class _VisualsBoxState extends State<_VisualsBox> {
       builder: (_, __) {
         final shown = m.names.where((n) => n.toLowerCase().contains(_q.toLowerCase())).take(60).toList();
         return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            dense: true,
+            title: const Text('Calm look'),
+            subtitle: const Text('Soft colours and gentle movement, less psychedelic'),
+            value: m.calm,
+            onChanged: (v) => m.set(calmV: v),
+          ),
           const MilkdropPhotoControls(),
           Text('Intensity: ${m.intensity < 0.2 ? 'very calm' : m.intensity < 0.45 ? 'calm' : m.intensity < 0.7 ? 'medium' : m.intensity < 0.9 ? 'high' : 'wild'}',
               style: const TextStyle(fontWeight: FontWeight.w700)),

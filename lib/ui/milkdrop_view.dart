@@ -32,6 +32,9 @@ class MilkdropSettings extends ChangeNotifier {
   bool flipH = false;
   bool flipV = false;
 
+  /// Calm look: soft colours and gentle movement, not full psychedelic.
+  bool calm = false;
+
   /// Fade between frames at a low frame rate so the motion is smooth, not jerky.
   bool blend = true;
 
@@ -66,6 +69,7 @@ class MilkdropSettings extends ChangeNotifier {
       flipH = p.getBool('md_flip_h') ?? false;
       flipV = p.getBool('md_flip_v') ?? false;
       blend = p.getBool('md_blend') ?? true;
+      calm = p.getBool('md_calm') ?? false;
       speed = p.getDouble('md_speed') ?? 1.0;
       randSpeed = p.getBool('md_rand_speed') ?? false;
       randFade = p.getBool('md_rand_fade') ?? false;
@@ -88,6 +92,7 @@ class MilkdropSettings extends ChangeNotifier {
       await p.setBool('md_flip_h', flipH);
       await p.setBool('md_flip_v', flipV);
       await p.setBool('md_blend', blend);
+      await p.setBool('md_calm', calm);
       await p.setDouble('md_speed', speed);
       await p.setBool('md_rand_speed', randSpeed);
       await p.setBool('md_rand_fade', randFade);
@@ -103,7 +108,7 @@ class MilkdropSettings extends ChangeNotifier {
     } catch (_) {}
   }
 
-  void set({double? i, int? fpsV, double? dimV, int? auto, String? pick, bool shuffle = false, bool? flipHV, bool? flipVV, bool? blendV, double? speedV, int? fadeV, bool? randSpeedV, bool? randFadeV, bool? randIntensityV, double? photoV, int? photoSecsV}) {
+  void set({double? i, int? fpsV, double? dimV, int? auto, String? pick, bool shuffle = false, bool? flipHV, bool? flipVV, bool? blendV, bool? calmV, double? speedV, int? fadeV, bool? randSpeedV, bool? randFadeV, bool? randIntensityV, double? photoV, int? photoSecsV}) {
     if (i != null) intensity = i;
     if (auto != null) autoSecs = auto;
     if (fpsV != null) fps = fpsV;
@@ -111,6 +116,7 @@ class MilkdropSettings extends ChangeNotifier {
     if (flipHV != null) flipH = flipHV;
     if (flipVV != null) flipV = flipVV;
     if (blendV != null) blend = blendV;
+    if (calmV != null) calm = calmV;
     if (speedV != null) speed = speedV;
     if (fadeV != null) fade = fadeV;
     if (randSpeedV != null) randSpeed = randSpeedV;
@@ -147,6 +153,7 @@ String milkdropSettingsJs(MilkdropSettings m) {
       'window.setDim&&window.setDim(${m.dim.toStringAsFixed(2)});'
       'window.setFlip&&window.setFlip(${m.flipH},${m.flipV});'
       'window.setBlend&&window.setBlend(${m.blend});'
+      'window.setCalm&&window.setCalm(${m.calm});'
       'window.setPace&&window.setPace(${m.speed.toStringAsFixed(2)},${m.fade});'
       'window.setRandom&&window.setRandom(${m.randSpeed},${m.randFade},${m.randIntensity});'
       'window.setPhotos&&window.setPhotos(${m.photoStrength.toStringAsFixed(2)},${m.photoSecs});'

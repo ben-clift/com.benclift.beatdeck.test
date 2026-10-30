@@ -64,6 +64,8 @@
       ts = rS ? rnd(0.1, baseTs) : baseTs;
       fade = rF ? rnd(2, baseFade) : baseFade;
       gain = rI ? rnd(0.15, baseGain) : baseGain;
+      // Calm look: gentler motion, longer melts between pictures, less punch.
+      if (calmOn) { ts = Math.min(ts, 0.4); fade = Math.max(fade, 8); gain = Math.min(gain, 0.3); }
       autoNow = autoSecs < 0 ? rnd(10, 300) : autoSecs;
     }
     window.setPace = function (s, f) { baseTs = Math.max(0.05, Math.min(1, s)); baseFade = Math.max(1, Math.min(40, f)); reroll(); };
@@ -72,7 +74,13 @@
     window.setGain = function (g) { baseGain = Math.max(0.05, Math.min(1.6, g)); reroll(); };
     var fps = 15, lastDraw = 0;
     window.setFps = function (f) { fps = Math.max(2, Math.min(60, f)); };
-    window.setDim = function (b) { wrap.style.filter = 'brightness(' + Math.max(0.05, Math.min(1, b)) + ')'; };
+    var dimV = 1, calmOn = false;
+    function applyFilter() {
+      wrap.style.filter = 'brightness(' + dimV + ')' + (calmOn ? ' saturate(0.5) contrast(0.88)' : '');
+    }
+    window.setDim = function (b) { dimV = Math.max(0.05, Math.min(1, b)); applyFilter(); };
+    // Calm look: soft colours and gentle movement instead of full psychedelic.
+    window.setCalm = function (c) { calmOn = !!c; applyFilter(); reroll(); };
     // Projector: mirror left-right and/or upside down (for rear or ceiling projection).
     window.setFlip = function (h, v) { wrap.style.transform = 'scale(' + (h ? -1 : 1) + ',' + (v ? -1 : 1) + ')'; };
     // The projector page does not need the cover-art stills.
