@@ -278,6 +278,12 @@ class MilkdropPaceControls extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final m = MilkdropSettings.instance;
+    // Listens on its own: as a const child it would otherwise never redraw,
+    // so the sliders and chips looked stuck.
+    return ListenableBuilder(listenable: m, builder: (context, _) => _controls(m));
+  }
+
+  Widget _controls(MilkdropSettings m) {
     const secs = [0, -1, 10, 20, 30, 60, 120, 300, 600];
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Padding(
