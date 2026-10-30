@@ -84,3 +84,11 @@ Forked from SideDeck 1.1.1 (https://github.com/manueljpy/SideDeck), 20 Oct 2026.
 
 ## No very light backgrounds (28 Oct 2026)
 - In Appearance, the Background and Boxes and panels colours can no longer be very light, because the text vanished into them. A colour that is too light is darkened to the limit, and the slider says so. The light "Paper" colour set was removed. Anyone who had a light look saved goes back to the default colours.
+
+## Ableton Link (30 Oct 2026)
+- New Settings switch, "Ableton Link", OFF by default. When on, BeatDeck joins a Link session with Ableton Live and other Link apps on the same Wi-Fi and shares tempo: the master deck (or the playing deck if there is no master) follows the session tempo, and changing that deck's tempo changes the session. Double and half time are used when the tempo would not otherwise fit the deck's range.
+- Native side: `native/engine/link_bridge.cpp` over the Ableton Link SDK 4.1.1 (GPL v2 or later, vendored in `third_party/ableton-link`, with its bundled asio 1.38.2 in `third_party/asio-standalone`). Called only from the UI isolate, never the audio thread. Nothing is created or opened while the switch is off.
+- Android: holds a Wi-Fi multicast lock only while Link is on (needed to find other apps). New permissions: ACCESS_WIFI_STATE, CHANGE_WIFI_MULTICAST_STATE.
+- Decision rules are in `lib/engine/link_logic.dart` and covered by `test/link_logic_test.dart`.
+- Not yet: beat phase alignment, start/stop sync. Not tested against real Ableton Live yet: needs a phone and a computer on the same Wi-Fi.
+- The Play Store and finder builds are untouched by this switch; the finder app does not load the engine.

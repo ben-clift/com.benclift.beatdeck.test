@@ -1,3 +1,4 @@
+import 'package:sidedeck/engine/link_sync.dart';
 import 'package:flutter/material.dart';
 import 'package:sidedeck/theme/ph.dart';
 import 'package:sidedeck/state/screen_brightness.dart';
@@ -61,6 +62,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     LookController.instance.load();
     _dj = DjController();
+    LinkSync.instance.attach(_dj);
     _library = LibraryController();
     SlskSetup.dj = _dj;
     AutoFetch.instance.load();

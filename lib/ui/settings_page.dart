@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:sidedeck/theme/ph.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sidedeck/engine/link_sync.dart';
 import 'package:sidedeck/engine/usb_output.dart';
 import 'package:sidedeck/debug/debug_log.dart';
 import 'package:sidedeck/debug/log_upload.dart';
@@ -144,6 +145,33 @@ class _SettingsPageState extends State<SettingsPage> {
               await widget.dj.setExternalMixer(v);
               if (mounted) setState(() {});
             },
+          ),
+          const Divider(height: 32),
+          const Text(
+            'Ableton Link',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Shares tempo with Ableton Live and other Link apps on the same Wi-Fi. '
+            'The master deck (or the playing deck) follows the session tempo, and '
+            'changing its tempo changes the session. Beat alignment is not in yet.',
+            style: TextStyle(color: SideDeckTheme.muted, fontSize: 12, height: 1.4),
+          ),
+          const SizedBox(height: 8),
+          ListenableBuilder(
+            listenable: LinkSync.instance,
+            builder: (context, _) => SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Ableton Link'),
+              subtitle: Text(
+                LinkSync.instance.enabled && LinkSync.instance.tempo > 0
+                    ? '${LinkSync.instance.status} · ${LinkSync.instance.tempo.toStringAsFixed(1)} BPM'
+                    : LinkSync.instance.status,
+              ),
+              value: LinkSync.instance.enabled,
+              onChanged: (v) => LinkSync.instance.setEnabled(v),
+            ),
           ),
           const Divider(height: 32),
           ListTile(

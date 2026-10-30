@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
+import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -16,6 +17,27 @@ import io.flutter.plugin.common.MethodChannel
 class MainActivity : FlutterActivity() {
     private var usbHotplug: UsbHotplug? = null
     private var nowPlaying: NowPlaying? = null
+    // Ableton Link finds other apps with multicast packets; Android drops those
+    // unless a multicast lock is held. Held only while Link is switched on.
+    private var linkLock: WifiManager.MulticastLock? = null
+
+    private fun setLinkMulticast(on: Boolean): Boolean {
+        return try {
+            if (on) {
+                if (linkLock == null) {
+                    val wm = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+                    linkLock = wm.createMulticastLock("beatdeck-link").apply { setReferenceCounted(false) }
+                }
+                linkLock?.acquire()
+            } else {
+                linkLock?.let { if (it.isHeld) it.release() }
+            }
+            true
+        } catch (e: Exception) {
+            Log.w("BeatDeck", "Link multicast lock failed: $e")
+            false
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -44,6 +66,7 @@ class MainActivity : FlutterActivity() {
         MethodChannel(messenger, "sidedeck/audio")
             .setMethodCallHandler { call, result ->
                 when (call.method) {
+                    "linkMulticast" -> result.success(setLinkMulticast(call.argument<Boolean>("on") ?: false))
                     "usbOutputDevice" -> result.success(findUsbOutput(this))
                     "startUsbPlayback" -> {
                         val handle = (call.argument<Number>("handle") ?: 0).toLong()
