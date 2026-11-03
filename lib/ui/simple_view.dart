@@ -302,6 +302,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
     AutoFetch.instance.inUse = (path) =>
         widget.dj.deck(0).path == path || widget.dj.deck(1).path == path || widget.dj.automixUpcoming.contains(path);
     _restore();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _takeRoute());
     Starred.instance.load();
     AutoFetch.instance.loadSources();
     StyleSettings.instance.load();
@@ -687,6 +688,21 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed && _awaiting != null) _offerClipboard();
+    if (state == AppLifecycleState.resumed) _takeRoute();
+  }
+
+  /// SortedApp (the launcher) can ask for The Booth when its now-playing card is tapped.
+  Future<void> _takeRoute() async {
+    String? r;
+    try {
+      r = await const MethodChannel('sidedeck/audio').invokeMethod<String>('takeLaunchRoute');
+    } catch (_) {}
+    if (r == 'booth' && mounted) {
+      setState(() {
+        _hub = false;
+        _showChooser = !widget.dj.automixOn;
+      });
+    }
   }
 
   bool _isLink(String t, String kind) =>

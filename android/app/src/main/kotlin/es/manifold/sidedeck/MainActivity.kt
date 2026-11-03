@@ -39,8 +39,20 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    private var launchRoute: String? = null
+
+    private fun noteRoute(i: Intent?) {
+        i?.getStringExtra("open")?.let { launchRoute = it; i.removeExtra("open") }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        noteRoute(intent)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        noteRoute(intent)
         keepScreenOn()
     }
 
@@ -67,6 +79,11 @@ class MainActivity : FlutterActivity() {
             .setMethodCallHandler { call, result ->
                 when (call.method) {
                     "linkMulticast" -> result.success(setLinkMulticast(call.argument<Boolean>("on") ?: false))
+                    "takeLaunchRoute" -> {
+                        val r = launchRoute
+                        launchRoute = null
+                        result.success(r)
+                    }
                     "usbOutputDevice" -> result.success(findUsbOutput(this))
                     "startUsbPlayback" -> {
                         val handle = (call.argument<Number>("handle") ?: 0).toLong()
