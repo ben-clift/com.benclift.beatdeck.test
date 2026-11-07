@@ -40,6 +40,16 @@ class MainActivity : FlutterActivity() {
     }
 
     private var launchRoute: String? = null
+    private var preview: android.media.MediaPlayer? = null
+    private val previewHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private var previewStop: Runnable? = null
+
+    private fun stopPreview() {
+        previewStop?.let { previewHandler.removeCallbacks(it) }
+        previewStop = null
+        preview?.let { runCatching { it.stop() }; runCatching { it.release() } }
+        preview = null
+    }
 
     private fun noteRoute(i: Intent?) {
         i?.getStringExtra("open")?.let { launchRoute = it; i.removeExtra("open") }
@@ -123,6 +133,35 @@ class MainActivity : FlutterActivity() {
                     else -> result.notImplemented()
                 }
             }
+        MethodChannel(messenger, "beatdeck/preview")
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "play" -> {
+                        try {
+                            stopPreview()
+                            val mp = android.media.MediaPlayer()
+                            mp.setDataSource(call.argument<String>("path") ?: "")
+                            mp.prepare()
+                            val start = (call.argument<Number>("startMs") ?: 0).toInt().coerceIn(0, maxOf(0, mp.duration - 1000))
+                            mp.seekTo(start)
+                            mp.start()
+                            preview = mp
+                            val len = (call.argument<Number>("lenMs") ?: 30000).toLong()
+                            previewStop = Runnable { stopPreview() }
+                            previewHandler.postDelayed(previewStop!!, len)
+                            result.success(true)
+                        } catch (e: Exception) {
+                            stopPreview()
+                            result.error("preview", e.toString(), null)
+                        }
+                    }
+                    "stop" -> {
+                        stopPreview()
+                        result.success(null)
+                    }
+                    else -> result.notImplemented()
+                }
+            }
         MethodChannel(messenger, "beatdeck/projector")
             .setMethodCallHandler { call, result ->
                 when (call.method) {
@@ -169,6 +208,7 @@ class MainActivity : FlutterActivity() {
     }
 
     override fun onDestroy() {
+        stopPreview()
         nowPlaying?.release()
         nowPlaying = null
         usbHotplug?.stop()
