@@ -23,6 +23,7 @@ import 'package:sidedeck/ui/admin_hub.dart';
 import 'package:sidedeck/state/dj_controller.dart';
 import 'package:sidedeck/state/expiry.dart';
 import 'package:sidedeck/state/library_controller.dart';
+import 'package:sidedeck/ui/export_sheet.dart';
 import 'package:sidedeck/state/dislikes.dart';
 import 'package:sidedeck/state/ratings.dart';
 import 'package:sidedeck/suggest/harmony.dart';
@@ -689,6 +690,22 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed && _awaiting != null) _offerClipboard();
     if (state == AppLifecycleState.resumed) _takeRoute();
+  }
+
+  /// Everything this app downloaded to the phone, ready to send to Google Drive.
+  Future<void> _uploadDownloads() async {
+    final dirs = <String>{SlskSetup.dirFor(widget.library)};
+    if (SlskSetup.fallback.isNotEmpty) dirs.add(SlskSetup.fallback);
+    final mine = widget.library.tracks
+        .where((t) => dirs.any((d) => d.isNotEmpty && t.path.startsWith(d)))
+        .toList();
+    if (!mounted) return;
+    if (mine.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No downloaded music found on this phone yet.')));
+      return;
+    }
+    await showExportSheet(context, mine);
   }
 
   /// SortedApp (the launcher) can ask for The Booth when its now-playing card is tapped.
@@ -2248,6 +2265,8 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
                 _showChooser = !playing;
               }),
           primary: true),
+      tile('Upload music to Google Drive', 'Back up everything downloaded on this phone (opens the share sheet: choose Drive)', Icons.cloud_upload_outlined,
+          _uploadDownloads),
       tile('Shazam', 'Name a song, then BeatDeck fetches it and more by the artist', Icons.hearing, _shazam),
       tile('Appearance', 'Colours, shapes, 3D', Icons.palette_outlined,
           () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AppearancePage()))),
