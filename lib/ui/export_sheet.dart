@@ -4,6 +4,7 @@ import 'package:sidedeck/theme/ph.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:sidedeck/cloud/drive_upload.dart';
 import 'package:sidedeck/state/library_controller.dart';
 import 'package:sidedeck/state/ratings.dart';
 import 'package:sidedeck/theme/sidedeck_theme.dart';
@@ -175,6 +176,51 @@ class _ExportSheetState extends State<_ExportSheet> {
     }
   }
 
+  /// Signs in to Google and uploads into BeatDeck/<genre> folders on the person's Drive.
+  Future<void> _driveUpload() async {
+    final items = [
+      for (final t in _visible)
+        if (_sel.contains(t.path) && File(t.path).existsSync())
+          (path: t.path, genre: _genreOf(t) == _noTag ? 'Unsorted' : _genreOf(t)),
+    ];
+    if (items.isEmpty) return;
+    final up = DriveUploader('BeatDeck');
+    final progress = ValueNotifier<String>('Signing in to Google…');
+    setState(() => _busy = true);
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Uploading to Google Drive'),
+        content: ValueListenableBuilder<String>(
+          valueListenable: progress,
+          builder: (_, v, __) => Text(v),
+        ),
+        actions: [TextButton(onPressed: () => up.cancelled = true, child: const Text('Stop'))],
+      ),
+    );
+    String msg;
+    try {
+      final r = await up.run(items, (d, n, name) {
+        progress.value = name.isEmpty ? 'Finishing…' : '$d of $n\n$name';
+      });
+      msg = 'Uploaded ${r.uploaded}'
+          '${r.skipped > 0 ? ', ${r.skipped} already there' : ''}'
+          '${r.failed > 0 ? ', ${r.failed} failed (${r.lastError})' : ''}'
+          '${up.cancelled ? ' (stopped)' : ''}. Find them in Drive under BeatDeck.';
+    } catch (e) {
+      final t = '$e';
+      msg = t.contains('10') || t.contains('DEVELOPER')
+          ? 'Google sign-in is not set up for this app yet (error 10). It needs the one-off Google Cloud setup.'
+          : 'Upload stopped: $t';
+    }
+    if (mounted) {
+      Navigator.of(context, rootNavigator: true).pop();
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), duration: const Duration(seconds: 8)));
+      setState(() => _busy = false);
+    }
+  }
+
   Future<void> _send() async {
     final files = [
       for (final t in _visible)
@@ -325,14 +371,23 @@ class _ExportSheetState extends State<_ExportSheet> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.all(12),
-            child: SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: (nSel == 0 || _busy) ? null : _send,
-                icon: const Icon(Ph.cloudUploadOutlined),
-                label: Text(_busy ? 'Opening…' : 'Send $nSel to Google Drive'),
-              ),
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: (nSel == 0 || _busy) ? null : _driveUpload,
+                    icon: const Icon(Ph.cloudUploadOutlined),
+                    label: Text(_busy ? 'Working…' : 'Upload $nSel to Drive (BeatDeck / genre folders)'),
+                  ),
+                ),
+                TextButton(
+                  onPressed: (nSel == 0 || _busy) ? null : _send,
+                  child: const Text('Use the share sheet instead (no folders)'),
+                ),
+              ],
             ),
           ),
         ],
