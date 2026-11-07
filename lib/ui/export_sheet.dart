@@ -4,6 +4,7 @@ import 'package:sidedeck/theme/ph.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sidedeck/cloud/drive_upload.dart';
 import 'package:sidedeck/state/library_controller.dart';
 import 'package:sidedeck/state/ratings.dart';
@@ -42,6 +43,8 @@ class _ExportSheetState extends State<_ExportSheet> {
   late final double _bpmHi;
   late RangeValues _bpm;
   String? _playing;
+  String? _driveFolderId; // chosen Drive folder; null = a folder called BeatDeck in My Drive
+  String _driveFolderName = 'BeatDeck';
 
   @override
   void initState() {
@@ -50,6 +53,15 @@ class _ExportSheetState extends State<_ExportSheet> {
     _bpmLo = bpms.isEmpty ? 60 : bpms.reduce((a, b) => a < b ? a : b).floorToDouble();
     _bpmHi = bpms.isEmpty ? 200 : (bpms.reduce((a, b) => a > b ? a : b).ceilToDouble().clamp(_bpmLo + 1, 400)).toDouble();
     _bpm = RangeValues(_bpmLo, _bpmHi);
+    SharedPreferences.getInstance().then((p) {
+      final v = p.getString('drive_root_v1');
+      if (v != null && v.contains('|') && mounted) {
+        setState(() {
+          _driveFolderId = v.substring(0, v.indexOf('|'));
+          _driveFolderName = v.substring(v.indexOf('|') + 1);
+        });
+      }
+    });
     Ratings.instance.load().then((_) {
       if (mounted) setState(() {});
     });
@@ -176,6 +188,89 @@ class _ExportSheetState extends State<_ExportSheet> {
     }
   }
 
+  /// Browse My Drive and pick where the genre folders go.
+  Future<void> _chooseFolder() async {
+    final up = DriveUploader('BeatDeck');
+    final trail = <({String id, String name})>[(id: 'root', name: 'My Drive')];
+    List<({String id, String name})>? kids;
+    String? error;
+    Future<void> load(StateSetter set) async {
+      set(() {
+        kids = null;
+        error = null;
+      });
+      try {
+        final l = await up.listFolders(trail.last.id);
+        set(() => kids = l);
+      } catch (e) {
+        set(() => error = '$e');
+      }
+    }
+
+    var started = false;
+    final chosen = await showDialog<({String id, String name})>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, set) {
+          if (!started) {
+            started = true;
+            Future.microtask(() => load(set));
+          }
+          return AlertDialog(
+            title: Text(trail.map((t) => t.name).join(' / '), style: const TextStyle(fontSize: 14)),
+            content: SizedBox(
+              width: double.maxFinite,
+              height: 320,
+              child: error != null
+                  ? Text(error!)
+                  : kids == null
+                      ? const Center(child: CircularProgressIndicator())
+                      : ListView(
+                          children: [
+                            if (trail.length > 1)
+                              ListTile(
+                                dense: true,
+                                leading: const Icon(Icons.arrow_upward),
+                                title: const Text('Up one level'),
+                                onTap: () {
+                                  trail.removeLast();
+                                  load(set);
+                                },
+                              ),
+                            for (final f in kids!)
+                              ListTile(
+                                dense: true,
+                                leading: const Icon(Icons.folder_outlined),
+                                title: Text(f.name),
+                                onTap: () {
+                                  trail.add(f);
+                                  load(set);
+                                },
+                              ),
+                            if (kids!.isEmpty) const ListTile(dense: true, title: Text('No folders here')),
+                          ],
+                        ),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+              TextButton(
+                onPressed: trail.last.id == 'root' ? null : () => Navigator.pop(ctx, trail.last),
+                child: Text('Use "${trail.last.name}"'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+    if (chosen == null || !mounted) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('drive_root_v1', '${chosen.id}|${chosen.name}');
+    setState(() {
+      _driveFolderId = chosen.id;
+      _driveFolderName = chosen.name;
+    });
+  }
+
   /// Signs in to Google and uploads into BeatDeck/<genre> folders on the person's Drive.
   Future<void> _driveUpload() async {
     final items = [
@@ -184,7 +279,7 @@ class _ExportSheetState extends State<_ExportSheet> {
           (path: t.path, genre: _genreOf(t) == _noTag ? 'Unsorted' : _genreOf(t)),
     ];
     if (items.isEmpty) return;
-    final up = DriveUploader('BeatDeck');
+    final up = DriveUploader('BeatDeck', rootFolderId: _driveFolderId);
     final progress = ValueNotifier<String>('Signing in to Google…');
     setState(() => _busy = true);
     showDialog<void>(
@@ -207,7 +302,7 @@ class _ExportSheetState extends State<_ExportSheet> {
       msg = 'Uploaded ${r.uploaded}'
           '${r.skipped > 0 ? ', ${r.skipped} already there' : ''}'
           '${r.failed > 0 ? ', ${r.failed} failed (${r.lastError})' : ''}'
-          '${up.cancelled ? ' (stopped)' : ''}. Find them in Drive under BeatDeck.';
+          '${up.cancelled ? ' (stopped)' : ''}. Find them in Drive under $_driveFolderName.';
     } catch (e) {
       final t = '$e';
       msg = t.contains('10') || t.contains('DEVELOPER')
@@ -380,8 +475,13 @@ class _ExportSheetState extends State<_ExportSheet> {
                   child: FilledButton.icon(
                     onPressed: (nSel == 0 || _busy) ? null : _driveUpload,
                     icon: const Icon(Ph.cloudUploadOutlined),
-                    label: Text(_busy ? 'Working…' : 'Upload $nSel to Drive (BeatDeck / genre folders)'),
+                    label: Text(_busy ? 'Working…' : 'Upload $nSel to Drive ($_driveFolderName / genre folders)'),
                   ),
+                ),
+                TextButton.icon(
+                  onPressed: _busy ? null : _chooseFolder,
+                  icon: const Icon(Icons.folder_open, size: 18),
+                  label: Text('Folder: $_driveFolderName (change)'),
                 ),
                 TextButton(
                   onPressed: (nSel == 0 || _busy) ? null : _send,

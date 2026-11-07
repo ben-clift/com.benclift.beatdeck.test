@@ -6,13 +6,14 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Uploads tracks to the signed-in person's own Google Drive, into
-/// <root>/<genre> folders it creates. Only touches files and folders this app
-/// made (the narrow "drive.file" permission), never the rest of the Drive.
+/// <root>/<genre> folders. [rootFolderId] is a folder the person picked (for
+/// example one they already made); otherwise a folder called [root] is used or made.
 class DriveUploader {
-  DriveUploader(this.root);
+  DriveUploader(this.root, {this.rootFolderId});
   final String root;
+  final String? rootFolderId;
 
-  static final GoogleSignIn _gs = GoogleSignIn(scopes: const ['https://www.googleapis.com/auth/drive.file']);
+  static final GoogleSignIn _gs = GoogleSignIn(scopes: const ['https://www.googleapis.com/auth/drive']);
   static const _doneKey = 'drive_uploaded_v1';
   final Map<String, String> _folders = {};
   Set<String> _done = {};
@@ -36,6 +37,19 @@ class DriveUploader {
     var r = await call(await _headers());
     if (r.statusCode == 401) r = await call(await _headers(refresh: true));
     return r;
+  }
+
+  /// Folders directly inside [parentId] ('root' = My Drive), for the folder picker.
+  Future<List<({String id, String name})>> listFolders(String parentId) async {
+    final q = "mimeType='application/vnd.google-apps.folder' and trashed=false and '$parentId' in parents";
+    final res = await _send((h) => http.get(
+        Uri.https('www.googleapis.com', '/drive/v3/files',
+            {'q': q, 'fields': 'files(id,name)', 'orderBy': 'name', 'pageSize': '200'}),
+        headers: h));
+    if (res.statusCode != 200) throw 'Could not read your Drive folders (${res.statusCode}).';
+    return [
+      for (final f in (jsonDecode(res.body)['files'] as List)) (id: f['id'] as String, name: f['name'] as String),
+    ];
   }
 
   Future<String> _folder(String name, String? parent) async {
@@ -87,7 +101,7 @@ class DriveUploader {
     await _user();
     final prefs = await SharedPreferences.getInstance();
     _done = (prefs.getStringList(_doneKey) ?? const []).toSet();
-    final rootId = await _folder(root, null);
+    final rootId = rootFolderId ?? await _folder(root, null);
     var up = 0, skip = 0, fail = 0, n = 0;
     String? err;
     for (final it in items) {
