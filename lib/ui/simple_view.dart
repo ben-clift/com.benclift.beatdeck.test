@@ -24,6 +24,7 @@ import 'package:sidedeck/state/dj_controller.dart';
 import 'package:sidedeck/state/expiry.dart';
 import 'package:sidedeck/state/library_controller.dart';
 import 'package:sidedeck/ui/export_sheet.dart';
+import 'package:sidedeck/ui/remix_finder_page.dart';
 import 'package:sidedeck/state/dislikes.dart';
 import 'package:sidedeck/state/ratings.dart';
 import 'package:sidedeck/suggest/harmony.dart';
@@ -2267,6 +2268,8 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
           primary: true),
       tile('Upload music to Google Drive', 'Back up everything downloaded on this phone (opens the share sheet: choose Drive)', Icons.cloud_upload_outlined,
           _uploadDownloads),
+      tile('Find remixes', 'Type an artist and track, see every remix, edit and VIP, pick which to get', Icons.queue_music,
+          () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => RemixFinderPage(library: widget.library)))),
       tile('Shazam', 'Name a song, then BeatDeck fetches it and more by the artist', Icons.hearing, _shazam),
       tile('Appearance', 'Colours, shapes, 3D', Icons.palette_outlined,
           () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AppearancePage()))),
