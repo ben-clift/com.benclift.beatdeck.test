@@ -705,7 +705,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
           const SnackBar(content: Text('No downloaded music found on this phone yet.')));
       return;
     }
-    await showExportSheet(context, mine);
+    await showExportSheet(context, mine, lib: widget.library);
   }
 
   /// SortedApp (the launcher) can ask for The Booth when its now-playing card is tapped.

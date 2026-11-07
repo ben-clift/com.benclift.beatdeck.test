@@ -10,18 +10,19 @@ import 'package:sidedeck/theme/sidedeck_theme.dart';
 
 /// Pick tracks (filter by genre, BPM or favourites, and listen to a 30 second
 /// snip from one minute in) and send them to Google Drive.
-Future<void> showExportSheet(BuildContext context, List<LibraryTrack> shown) {
+Future<void> showExportSheet(BuildContext context, List<LibraryTrack> shown, {LibraryController? lib}) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
-    builder: (_) => _ExportSheet(shown: shown),
+    builder: (_) => _ExportSheet(shown: shown, lib: lib),
   ).whenComplete(() => const MethodChannel('beatdeck/preview').invokeMethod<void>('stop').catchError((_) {}));
 }
 
 class _ExportSheet extends StatefulWidget {
-  const _ExportSheet({required this.shown});
+  const _ExportSheet({required this.shown, this.lib});
   final List<LibraryTrack> shown;
+  final LibraryController? lib;
 
   @override
   State<_ExportSheet> createState() => _ExportSheetState();
@@ -29,12 +30,13 @@ class _ExportSheet extends StatefulWidget {
 
 class _ExportSheetState extends State<_ExportSheet> {
   static const _ch = MethodChannel('beatdeck/preview');
-  static const _anyGenre = 'Any genre';
+  static const _noTag = 'No genre tag';
 
   late final Set<String> _sel = {for (final t in widget.shown) t.path};
   bool _busy = false;
   bool _favOnly = false;
-  String _genre = _anyGenre;
+  final Set<String> _genreSel = {}; // empty = every genre
+  Map<String, String> _liveGenre = {};
   late final double _bpmLo;
   late final double _bpmHi;
   late RangeValues _bpm;
@@ -50,18 +52,94 @@ class _ExportSheetState extends State<_ExportSheet> {
     Ratings.instance.load().then((_) {
       if (mounted) setState(() {});
     });
+    // Genres are read from the files' tags in the background; pick them up as they arrive.
+    final lib = widget.lib;
+    if (lib != null) {
+      lib.addListener(_refreshGenres);
+      _refreshGenres();
+      lib.readTags();
+    }
   }
 
-  List<String> get _genres {
-    final g = {for (final t in widget.shown) if (t.genre.trim().isNotEmpty) t.genre.trim()}.toList()..sort();
-    return [_anyGenre, ...g];
+  void _refreshGenres() {
+    final lib = widget.lib;
+    if (lib == null || !mounted) return;
+    _liveGenre = {for (final t in lib.tracks) if (t.genre.trim().isNotEmpty) t.path: t.genre.trim()};
+    setState(() {});
+  }
+
+  @override
+  void dispose() {
+    widget.lib?.removeListener(_refreshGenres);
+    super.dispose();
+  }
+
+  String _genreOf(LibraryTrack t) {
+    final g = (_liveGenre[t.path] ?? t.genre).trim();
+    return g.isEmpty ? _noTag : g;
+  }
+
+  /// Genre name -> how many of these tracks have it (biggest first).
+  List<MapEntry<String, int>> get _genreCounts {
+    final m = <String, int>{};
+    for (final t in widget.shown) {
+      m[_genreOf(t)] = (m[_genreOf(t)] ?? 0) + 1;
+    }
+    final l = m.entries.toList()
+      ..sort((a, b) => a.key == _noTag ? 1 : (b.key == _noTag ? -1 : b.value.compareTo(a.value)));
+    return l;
+  }
+
+  Future<void> _pickGenres() async {
+    final counts = _genreCounts;
+    final pick = {..._genreSel};
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setD) => AlertDialog(
+          title: const Text('Genres'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView(
+              shrinkWrap: true,
+              children: [
+                for (final e in counts)
+                  CheckboxListTile(
+                    dense: true,
+                    value: pick.contains(e.key),
+                    title: Text('${e.key} (${e.value})'),
+                    onChanged: (v) => setD(() {
+                      if (v == true) {
+                        pick.add(e.key);
+                      } else {
+                        pick.remove(e.key);
+                      }
+                    }),
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => setD(pick.clear), child: const Text('Clear')),
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Done')),
+          ],
+        ),
+      ),
+    );
+    if (!mounted) return;
+    setState(() {
+      _genreSel
+        ..clear()
+        ..addAll(pick);
+      _filtersChanged();
+    });
   }
 
   List<LibraryTrack> get _visible {
     final bpmFiltered = _bpm.start > _bpmLo || _bpm.end < _bpmHi;
     return [
       for (final t in widget.shown)
-        if ((_genre == _anyGenre || t.genre.trim() == _genre) &&
+        if ((_genreSel.isEmpty || _genreSel.contains(_genreOf(t))) &&
             (!_favOnly || Ratings.instance.starsOf(t.path) > 0) &&
             (!bpmFiltered || (t.hasAnalysis && t.bpm! >= _bpm.start && t.bpm! <= _bpm.end)))
           t,
@@ -147,14 +225,15 @@ class _ExportSheetState extends State<_ExportSheet> {
             child: Row(
               children: [
                 Expanded(
-                  child: DropdownButton<String>(
-                    isExpanded: true,
-                    value: _genres.contains(_genre) ? _genre : _anyGenre,
-                    items: [for (final g in _genres) DropdownMenuItem(value: g, child: Text(g, overflow: TextOverflow.ellipsis))],
-                    onChanged: (v) => setState(() {
-                      _genre = v ?? _anyGenre;
-                      _filtersChanged();
-                    }),
+                  child: OutlinedButton.icon(
+                    onPressed: _pickGenres,
+                    icon: const Icon(Icons.library_music_outlined, size: 18),
+                    label: Text(
+                      _genreSel.isEmpty
+                          ? 'All genres (${_genreCounts.length})'
+                          : (_genreSel.length == 1 ? _genreSel.first : '${_genreSel.length} genres selected'),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -217,7 +296,7 @@ class _ExportSheetState extends State<_ExportSheet> {
                     [
                       if (t.artist.isNotEmpty) t.artist,
                       if (t.hasAnalysis) '${t.bpm!.round()} BPM',
-                      if (t.genre.trim().isNotEmpty) t.genre.trim(),
+                      if (_genreOf(t) != _noTag) _genreOf(t),
                     ].join('  ·  '),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,

@@ -481,7 +481,7 @@ class _LibraryOverlayState extends State<LibraryOverlay> {
                       visualDensity: VisualDensity.compact,
                       onPressed: lib.filtered.isEmpty
                           ? null
-                          : () => showExportSheet(context, lib.filtered),
+                          : () => showExportSheet(context, lib.filtered, lib: lib),
                       icon: const Icon(Ph.cloudUploadOutlined, size: 22),
                     ),
                     IconButton(
