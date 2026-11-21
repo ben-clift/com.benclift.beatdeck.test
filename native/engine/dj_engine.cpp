@@ -1300,6 +1300,39 @@ int dj_analyze_file(const char* path, float* bpm, int* key, float* beat_offset) 
   return 1;
 }
 
+int dj_analyze_structure(const char* path, float* bpm, int* key, float* beat_offset,
+                         float* env, int env_cap, int* env_len, float* duration_sec) {
+  if (!path) {
+    return 0;
+  }
+  const id3_meta::Tags tags = id3_meta::read(path);
+  auto pcm = Engine::decodeAnalyzeMono(path, (int)analyze_detail::kAnalyzeSr);
+  if (pcm.empty()) {
+    return 0;
+  }
+  AnalysisResult analysis =
+      analyzeTrack(pcm.data(), (int)pcm.size(), 1, analyze_detail::kAnalyzeSr, tags.bpm, tags.key);
+  if (bpm) *bpm = analysis.bpm;
+  if (key) *key = analysis.key;
+  if (beat_offset) *beat_offset = analysis.beatOffsetSec;
+  const double sr = (double)analyze_detail::kAnalyzeSr;
+  if (duration_sec) *duration_sec = (float)((double)pcm.size() / sr);
+  int n = 0;
+  if (env && env_cap > 0) {
+    const size_t bin = (size_t)(0.5 * sr);
+    for (size_t start = 0; start + bin <= pcm.size() && n < env_cap; start += bin) {
+      double sum = 0.0;
+      for (size_t k = start; k < start + bin; k++) {
+        const double v = (double)pcm[k];
+        sum += v * v;
+      }
+      env[n++] = (float)std::sqrt(sum / (double)bin);
+    }
+  }
+  if (env_len) *env_len = n;
+  return 1;
+}
+
 double dj_file_decoded_seconds(const char* path) {
   if (!path) {
     return 0.0;

@@ -23,6 +23,7 @@ import 'package:sidedeck/ui/admin_hub.dart';
 import 'package:sidedeck/state/dj_controller.dart';
 import 'package:sidedeck/state/expiry.dart';
 import 'package:sidedeck/state/library_controller.dart';
+import 'package:sidedeck/engine/mix_data.dart';
 import 'package:sidedeck/ui/export_sheet.dart';
 import 'package:sidedeck/ui/remix_finder_page.dart';
 import 'package:sidedeck/ui/storage_cleanup_page.dart';
@@ -306,6 +307,10 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
         widget.dj.deck(0).path == path || widget.dj.deck(1).path == path || widget.dj.automixUpcoming.contains(path);
     _restore();
     WidgetsBinding.instance.addPostFrameCallback((_) => _takeRoute());
+    // A minute after opening, quietly scan any track that has no saved mixing data yet.
+    Future.delayed(const Duration(seconds: 60), () {
+      if (mounted) widget.library.prepareForMixing();
+    });
     Starred.instance.load();
     AutoFetch.instance.loadSources();
     StyleSettings.instance.load();
@@ -2269,6 +2274,13 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
           primary: true),
       tile('Upload music to Google Drive', 'Back up everything downloaded on this phone (opens the share sheet: choose Drive)', Icons.cloud_upload_outlined,
           _uploadDownloads),
+      tile('Prepare tracks for mixing', 'Scan every track once for tempo, breaks and drops and save it to a file the mixer reads', Icons.graphic_eq,
+          () async {
+        final n = await widget.library.prepareForMixing();
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(n == 0 ? 'Every track is already scanned (${MixData.instance.count} saved).' : 'Scanned $n tracks and saved them for mixing.')));
+      }),
       tile('Free up space', 'Delete downloads that are not house or outside 120–140 BPM (you check the list first)', Icons.cleaning_services_outlined,
           () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => StorageCleanupPage(library: widget.library)))),
       tile('Find remixes', 'Type an artist and track, see every remix, edit and VIP, pick which to get', Icons.queue_music,

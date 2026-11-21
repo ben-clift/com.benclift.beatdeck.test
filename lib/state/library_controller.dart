@@ -12,6 +12,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sidedeck/engine/analysis_cache.dart';
+import 'package:sidedeck/engine/mix_data.dart';
 import 'package:sidedeck/engine/music_utils.dart';
 import 'package:sidedeck/engine/tags.dart';
 import 'package:sidedeck/engine/track_analyzer.dart';
@@ -742,6 +743,15 @@ class LibraryController extends ChangeNotifier {
     return _analyzeList(pending);
   }
 
+  /// Scans every track that has no saved mixing data yet (tempo, beat grid,
+  /// breakdowns, first drop) and saves it to the mix data file. Returns how many were scanned.
+  Future<int> prepareForMixing() async {
+    await MixData.instance.load();
+    final todo = [for (final t in tracks) if (!MixData.instance.has(t.path)) t.path];
+    if (todo.isEmpty || analyzing) return 0;
+    return (await _analyzeList(todo)).length;
+  }
+
   Future<List<String>> analyzeAll() async {
     return _analyzeList(tracks.map((t) => t.path).toList());
   }
@@ -760,9 +770,10 @@ class LibraryController extends ChangeNotifier {
         if (_cancelAnalyze) break;
         analyzingPath = path;
         _emit();
-        final result = await analyzeTrackFileOffUi(path);
+        final result = await analyzeTrackStructureOffUi(path);
         analyzeDone++;
         if (result == null) continue;
+        await MixData.instance.record(path, result);
         try {
           final stat = await File(path).stat();
           await _cache.put(
@@ -780,6 +791,7 @@ class LibraryController extends ChangeNotifier {
     } catch (e) {
       error = e.toString();
     }
+    await MixData.instance.save();
     analyzing = false;
     analyzingPath = null;
     analyzeTotal = 0;

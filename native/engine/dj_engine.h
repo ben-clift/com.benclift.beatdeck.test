@@ -82,6 +82,9 @@ int dj_waveform_copy(DjEngine engine, int deck, float* min_out, float* max_out, 
 
 /** Decode a 60s prefix (22 kHz mono) + BPM/key/grid. Uses ID3 TBPM/TKEY when present. */
 int dj_analyze_file(const char* path, float* bpm, int* key, float* beat_offset);
+/* Same, plus a loudness envelope (RMS per 0.5 s) for finding breakdowns and drops. */
+int dj_analyze_structure(const char* path, float* bpm, int* key, float* beat_offset,
+                         float* env, int env_cap, int* env_len, float* duration_sec);
 
 /** Length in seconds from the file header / decoder. Does not decode PCM. */
 double dj_file_duration(const char* path);

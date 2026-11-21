@@ -14,6 +14,7 @@ import 'package:sidedeck/engine/analysis_cache.dart';
 import 'package:sidedeck/automix/set_flow.dart';
 import 'package:sidedeck/automix/genre_family.dart';
 import 'package:sidedeck/automix/transition_style.dart';
+import 'package:sidedeck/engine/mix_data.dart';
 import 'package:sidedeck/state/avoids.dart';
 import 'package:sidedeck/state/screen_brightness.dart';
 import 'package:sidedeck/state/dislikes.dart';
@@ -2161,9 +2162,12 @@ class DjController extends ChangeNotifier {
     if (_breaksKey[i] != key) {
       _breaksKey[i] = key;
       _brkSkipped[i] = null;
+      final saved = d.path == null ? null : MixData.instance.infoFor(d.path!);
       _breaks[i] = d.path == null || d.bpm <= 1
           ? const []
-          : findBreaks(min: d.waveMin, max: d.waveMax, duration: d.duration, bpm: d.bpm, beatOffset: d.beatOffset);
+          : (d.waveMax.isEmpty && saved != null)
+              ? saved.breaks
+              : findBreaks(min: d.waveMin, max: d.waveMax, duration: d.duration, bpm: d.bpm, beatOffset: d.beatOffset);
       if (_breaks[i].isNotEmpty) {
         DebugLog.add('breaks', 'deck ${i + 1}: ${_breaks[i].length} breakdown(s) at ${[for (final b in _breaks[i]) '${b.start.round()}-${b.end.round()} s'].join(', ')}');
       }
@@ -3041,7 +3045,8 @@ class DjController extends ChangeNotifier {
         for (var k = 0; k < math.min(inc.waveMax.length, inc.waveMin.length); k++)
           (inc.waveMax[k] - inc.waveMin[k]).toDouble(),
       ];
-      final drop = firstDrop(amp, inc.duration, inc.bpm, inc.beatOffset);
+      final saved = inc.path == null ? null : MixData.instance.infoFor(inc.path!);
+      final drop = saved != null ? saved.drop : firstDrop(amp, inc.duration, inc.bpm, inc.beatOffset);
       if (drop != null) {
         final barIn = 4 * 60.0 / inc.bpm;
         final nBars = (breakIn * (inc.rate <= 0 ? 1 : inc.rate) / barIn).round();
