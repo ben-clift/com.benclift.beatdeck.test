@@ -2534,6 +2534,7 @@ class DjController extends ChangeNotifier {
           breakLeft = (end - pos) / (d.rate <= 0 ? 1 : d.rate);
         }
       }
+      _dropBreakLeft = breakLeft;
       var plan = planFor(automixStyle,
           outBpm: heardOut, inBpm: heardIn, baseSeconds: skipping ? 8.0 : (automixBlendSeconds > 0 ? automixBlendSeconds : automixFadeSeconds), breakSeconds: breakLeft);
       if (dropLeft > 0 && plan.kind != TransitionKind.breakdown) {
@@ -2947,6 +2948,9 @@ class DjController extends ChangeNotifier {
     return true;
   }
 
+  /// Seconds of break left on the playing track when a breakdown swap starts (0 = not a drop swap).
+  double _dropBreakLeft = 0;
+
   void _automixBeginFade(int cur, int other, int next) {
     final out = deck(cur);
     final inc = deck(other);
@@ -3026,7 +3030,30 @@ class DjController extends ChangeNotifier {
     }
     final room = math.max(0.0, inc.duration - _fadeLen - 5);
     final leadSil = _silenceEdges(inc).$1;
-    final start = math.min(math.max(startRaw + offset, leadSil > 1 ? leadSil : 0.0), room).clamp(0.0, math.max(0.0, inc.duration)).toDouble();
+    var start = math.min(math.max(startRaw + offset, leadSil > 1 ? leadSil : 0.0), room).clamp(0.0, math.max(0.0, inc.duration)).toDouble();
+    // Land the new track's drop exactly on the drop of the playing track's
+    // break: pick the start (in whole bars, so the beats stay locked) so that
+    // the new track's first drop arrives just as the break ends.
+    final breakIn = _dropBreakLeft;
+    _dropBreakLeft = 0;
+    if (!tempoClash && breakIn > 4 && inc.bpm > 1) {
+      final amp = [
+        for (var k = 0; k < math.min(inc.waveMax.length, inc.waveMin.length); k++)
+          (inc.waveMax[k] - inc.waveMin[k]).toDouble(),
+      ];
+      final drop = firstDrop(amp, inc.duration, inc.bpm, inc.beatOffset);
+      if (drop != null) {
+        final barIn = 4 * 60.0 / inc.bpm;
+        final nBars = (breakIn * (inc.rate <= 0 ? 1 : inc.rate) / barIn).round();
+        final target = drop - nBars * barIn;
+        if (nBars >= 1 && target >= 0 && target <= room) {
+          DebugLog.add('automix', 'drop swap: new track drops at ${drop.toStringAsFixed(1)} s, starting it at ${target.toStringAsFixed(1)} s so the drops land together in ${breakIn.toStringAsFixed(1)} s');
+          start = target;
+        } else {
+          DebugLog.add('automix', 'drop swap skipped: new track drop at ${drop.toStringAsFixed(1)} s does not fit the ${breakIn.toStringAsFixed(1)} s break');
+        }
+      }
+    }
     _engine.seek(other, start);
     inc.position = start;
     _automixFadeFrom = crossfaderEndFor(cur);

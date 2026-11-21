@@ -249,3 +249,35 @@ double? breakdownEnd(List<double> amp, double duration, double position, double 
   final end = j * binSec;
   return end - position >= minLeft ? end : null;
 }
+
+/// The first drop of a track: the first bar line where the music jumps from
+/// quiet (an intro or build) to full energy. Returns seconds into the file,
+/// snapped to the beat grid, or null when the track starts at full energy or
+/// has no clear drop in its first two minutes.
+double? firstDrop(List<double> amp, double duration, double bpm, double beatOffset) {
+  if (amp.length < 20 || duration <= 0 || bpm < 60) return null;
+  final sorted = [...amp]..sort();
+  final loud = sorted[(sorted.length * 0.75).floor()];
+  if (loud <= 0) return null;
+  final binSec = duration / amp.length;
+  final bar = 4 * 60.0 / bpm;
+  double barAvg(double from) {
+    final a = (from / binSec).floor().clamp(0, amp.length - 1);
+    final b = math.min(amp.length, ((from + bar) / binSec).ceil());
+    if (b <= a) return 0;
+    var s = 0.0;
+    for (var k = a; k < b; k++) {
+      s += amp[k];
+    }
+    return s / (b - a);
+  }
+
+  final first = beatOffset > 0 ? beatOffset % bar : 0.0;
+  final limit = math.min(duration - 2 * bar, 120.0);
+  // Quiet at the start is the sign of an intro; a track that opens loud has no drop to line up.
+  if (barAvg(first) >= loud * 0.7) return null;
+  for (var t = first + bar; t < limit; t += bar) {
+    if (barAvg(t) >= loud * 0.75 && barAvg(t - bar) < loud * 0.6) return t;
+  }
+  return null;
+}
