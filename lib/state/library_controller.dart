@@ -13,6 +13,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sidedeck/engine/analysis_cache.dart';
 import 'package:sidedeck/engine/mix_data.dart';
+import 'package:sidedeck/state/legends.dart';
 import 'package:sidedeck/engine/music_utils.dart';
 import 'package:sidedeck/engine/tags.dart';
 import 'package:sidedeck/engine/track_analyzer.dart';
@@ -367,6 +368,7 @@ class LibraryController extends ChangeNotifier {
     for (final t in list) {
       // A starred track is kept.
       if (Ratings.instance.starsOf(t.path) > 0) continue;
+      if (Legends.instance.has(t.path)) continue; // a Legend is never deleted
       try {
         await File(t.path).delete();
         tracks.removeWhere((x) => x.path == t.path);

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:sidedeck/soulseek/slsk_setup.dart';
 import 'package:sidedeck/state/library_controller.dart';
+import 'package:sidedeck/state/legends.dart';
 import 'package:sidedeck/state/ratings.dart';
 import 'package:sidedeck/theme/sidedeck_theme.dart';
 
@@ -49,13 +50,14 @@ class _StorageCleanupPageState extends State<StorageCleanupPage> {
     });
     final lib = widget.library;
     await Ratings.instance.load();
+    await Legends.instance.load();
     await lib.readTags();
     final dir = SlskSetup.dirFor(lib);
     final out = <_Item>[];
     var unknown = 0, starred = 0, kept = 0;
     for (final t in lib.tracks) {
       if (dir.isEmpty || !t.path.startsWith(dir)) continue; // only the downloads folder
-      if (Ratings.instance.starsOf(t.path) > 0) {
+      if (Ratings.instance.starsOf(t.path) > 0 || Legends.instance.has(t.path)) {
         starred++;
         continue;
       }

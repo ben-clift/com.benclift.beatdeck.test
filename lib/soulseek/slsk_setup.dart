@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:sidedeck/state/app_mode.dart';
 import 'dart:io';
 import 'package:sidedeck/state/backup_tracks.dart';
+import 'package:sidedeck/state/legends.dart';
 import 'package:sidedeck/state/ratings.dart';
 import 'package:sidedeck/state/dislikes.dart';
 import 'package:sidedeck/state/playlist_controller.dart';
@@ -75,6 +76,8 @@ class SlskSetup {
     final own = fallback.isNotEmpty && path.startsWith(fallback);
     if (!own && !AutoFetch.instance.wasFetched(path)) return;
     if ((await BackupTracks.paths()).contains(path)) return; // kept for another day
+    await Legends.instance.load();
+    if (Legends.instance.has(path)) return; // a Legend: kept for good
     await Ratings.instance.load();
     if (Ratings.instance.starsOf(path) > 0) return; // starred: never deleted
     try {
@@ -100,6 +103,7 @@ class SlskSetup {
     try {
       final dir = dirFor(lib);
       await Ratings.instance.load();
+      await Legends.instance.load();
       final backup = await BackupTracks.paths();
       final onDeck = <String>{
         for (var i = 0; i < 2; i++) if ((dj?.deck(i).path ?? '').isNotEmpty) dj!.deck(i).path!,
@@ -108,7 +112,7 @@ class SlskSetup {
           (dir.isNotEmpty && path.startsWith(dir)) || AutoFetch.instance.wasFetched(path);
       final cand = [
         for (final t in lib.tracks)
-          if (mine(t.path) && !onDeck.contains(t.path) && Ratings.instance.starsOf(t.path) == 0) t
+          if (mine(t.path) && !onDeck.contains(t.path) && Ratings.instance.starsOf(t.path) == 0 && !Legends.instance.has(t.path)) t
       ];
       int tier(LibraryTrack t) {
         if (backup.contains(t.path)) return 0;

@@ -24,6 +24,7 @@ import 'package:sidedeck/state/dj_controller.dart';
 import 'package:sidedeck/state/expiry.dart';
 import 'package:sidedeck/state/library_controller.dart';
 import 'package:sidedeck/engine/mix_data.dart';
+import 'package:sidedeck/state/legends.dart';
 import 'package:sidedeck/ui/export_sheet.dart';
 import 'package:sidedeck/ui/remix_finder_page.dart';
 import 'package:sidedeck/ui/storage_cleanup_page.dart';
@@ -316,6 +317,7 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
       if (mounted) widget.library.prepareForMixing();
     });
     Starred.instance.load();
+    Legends.instance.load();
     AutoFetch.instance.loadSources();
     StyleSettings.instance.load();
     _loadIntro();
@@ -3044,6 +3046,21 @@ Container(
         ]),
       );
 
+  /// Keep this track for good: it joins the Legends playlist and is never deleted.
+  Widget _legendOrb(DeckState d) => ListenableBuilder(
+        listenable: Legends.instance,
+        builder: (_, __) {
+          final path = d.path;
+          final on = path != null && Legends.instance.has(path);
+          return _orb(Icons.emoji_events, () async {
+            if (path == null || path.isEmpty) return;
+            await Legends.instance.toggle(path);
+            if (!mounted) return;
+            _toast(on ? 'Removed from Legends.' : 'Saved as a Legend. It is kept for good and never deleted.');
+          }, tip: on ? 'Remove from Legends' : 'Save as a Legend (kept for good)', color: on ? const Color(0xFFE9B949) : null, label: on ? 'Legend' : 'Save legend');
+        },
+      );
+
   Widget _starOrb(DjController dj, DeckState d) => ListenableBuilder(
         listenable: Starred.instance,
         builder: (_, __) {
@@ -3165,6 +3182,7 @@ Container(
                         _press('style', 'Finding something in your style', () => _styleFallback(force: true), secs: 5);
                       }
                     }, tip: 'Play My style now', color: SideDeckTheme.accentA, sel: _sel == 'style' || AutoFetch.instance.manualBusy, label: 'Style now'),
+                    _legendOrb(d),
                   ]),
                   const SizedBox(height: 16),
                   _actionRow(),
