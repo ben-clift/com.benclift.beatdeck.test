@@ -2857,6 +2857,14 @@ Container(
                 ),
               ]),
             ),
+            Builder(builder: (_) {
+              final who = d.artist.isNotEmpty ? d.artist : (d.path == null ? '' : _nameOf(d.path!).artist);
+              if (!d.loaded || who.isEmpty) return const SizedBox.shrink();
+              return Padding(
+                padding: const EdgeInsets.only(left: 32, top: 2),
+                child: Text(who, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: _dim, fontSize: 13)),
+              );
+            }),
             Padding(padding: const EdgeInsets.only(left: 32, top: 2), child: Wrap(spacing: 6, children: [
               _srcTag(d.path),
               if (d.path != null && AutoFetch.instance.isStyle(d.path!)) _styleTag(),
