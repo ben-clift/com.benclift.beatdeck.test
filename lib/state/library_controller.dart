@@ -63,10 +63,10 @@ class LibraryTrack {
     );
   }
 
-  LibraryTrack withTags(String genre, int year) => LibraryTrack(
+  LibraryTrack withTags(String genre, int year, [String tagArtist = '']) => LibraryTrack(
         path: path,
         title: title,
-        artist: artist,
+        artist: tagArtist.isNotEmpty ? tagArtist : artist,
         durationMs: durationMs,
         bpm: bpm,
         key: key,
@@ -516,24 +516,27 @@ class LibraryController extends ChangeNotifier {
         if (t.tagsRead) continue;
         var genre = '';
         var year = 0;
+        var tagArtist = '';
         final c = saved[t.path];
-        if (c is List && c.length == 2) {
+        if (c is List && c.length == 3) {
           genre = c[0] as String;
           year = c[1] as int;
+          tagArtist = c[2] as String;
         } else {
           final tags = await readTrackTags(t.path);
           genre = tags.genre;
           year = tags.year;
+          tagArtist = tags.artist;
           if (year == 0) {
             final m = RegExp(r'(?<!\d)(19[2-9]\d|20[0-2]\d)(?!\d)').firstMatch(p.basename(t.path));
             if (m != null) year = int.parse(m.group(1)!);
           }
-          saved[t.path] = [genre, year];
+          saved[t.path] = [genre, year, tagArtist];
         }
         final hand = _genreOverrides[t.path];
         if (hand != null && hand.isNotEmpty) genre = hand;
         final at = tracks.indexWhere((x) => x.path == t.path);
-        if (at >= 0) tracks[at] = tracks[at].withTags(genre, year);
+        if (at >= 0) tracks[at] = tracks[at].withTags(genre, year, tagArtist);
         if (genre.isNotEmpty) _genreByPath[t.path] = genre;
         if (++changed % 25 == 0) {
           _emit();

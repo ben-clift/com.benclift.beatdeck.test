@@ -4,9 +4,12 @@ import 'dart:typed_data';
 
 /// Genre and release year read from a file's tags (MP3 ID3v2, FLAC).
 class TrackTags {
-  const TrackTags(this.genre, this.year, [this.label = '']);
+  const TrackTags(this.genre, this.year, [this.label = '', this.artist = '']);
   final String genre;
   final int year;
+
+  /// Artist name from the file's tag (ID3 TPE1, FLAC ARTIST), empty when not tagged.
+  final String artist;
 
   /// Record label (ID3 TPUB, FLAC LABEL), empty when not tagged.
   final String label;
@@ -127,6 +130,7 @@ Future<TrackTags> _id3(RandomAccessFile f, Uint8List head) async {
   var year = 0;
   var recording = 0;
   var label = '';
+  var artist = '';
   final idLen = ver == 2 ? 3 : 4;
   final hdrLen = ver == 2 ? 6 : 10;
   while (pos + hdrLen < end) {
@@ -143,7 +147,7 @@ Future<TrackTags> _id3(RandomAccessFile f, Uint8List head) async {
       n = (h[4] << 24) | (h[5] << 16) | (h[6] << 8) | h[7];
     }
     if (n <= 0 || pos + hdrLen + n > end + 1) break;
-    final wanted = const {'TCON', 'TCO', 'TYER', 'TYE', 'TDRC', 'TORY', 'TDOR', 'TDRL', 'TPUB', 'TPB'};
+    final wanted = const {'TCON', 'TCO', 'TYER', 'TYE', 'TDRC', 'TORY', 'TDOR', 'TDRL', 'TPUB', 'TPB', 'TPE1', 'TP1'};
     if (wanted.contains(id) && n < 4096) {
       final data = await f.read(n);
       final text = _decode(data);
@@ -151,11 +155,12 @@ Future<TrackTags> _id3(RandomAccessFile f, Uint8List head) async {
       if (id == 'TYER' || id == 'TYE' || id == 'TDRC' || id == 'TDRL') year = year == 0 ? _yearOf(text) : year;
       if (id == 'TORY' || id == 'TDOR') recording = _yearOf(text);
       if (id == 'TPUB' || id == 'TPB') label = text.trim();
+      if ((id == 'TPE1' || id == 'TP1') && artist.isEmpty) artist = text.trim();
     }
     pos += hdrLen + n;
   }
   // The original release year is the better one for a reissue.
-  return TrackTags(genre, recording > 0 ? recording : year, label);
+  return TrackTags(genre, recording > 0 ? recording : year, label, artist);
 }
 
 Future<TrackTags> _flac(RandomAccessFile f) async {
@@ -181,6 +186,7 @@ Future<TrackTags> _flac(RandomAccessFile f) async {
       var year = 0;
       var original = 0;
       var label = '';
+      var artist = '';
       for (var c = 0; c < count && o + 4 <= len; c++) {
         final l = bd.getUint32(o, Endian.little);
         o += 4;
@@ -194,9 +200,10 @@ Future<TrackTags> _flac(RandomAccessFile f) async {
         if (k == 'GENRE' && genre.isEmpty) genre = _cleanGenre(v);
         if ((k == 'DATE' || k == 'YEAR') && year == 0) year = _yearOf(v);
         if (k == 'ORIGINALDATE' || k == 'ORIGINALYEAR') original = _yearOf(v);
+        if (k == 'ARTIST' && artist.isEmpty) artist = v.trim();
         if ((k == 'LABEL' || k == 'ORGANIZATION' || k == 'PUBLISHER') && label.isEmpty) label = v.trim();
       }
-      return TrackTags(genre, original > 0 ? original : year, label);
+      return TrackTags(genre, original > 0 ? original : year, label, artist);
     }
     if (last) break;
     pos += 4 + len;

@@ -307,6 +307,10 @@ class _SimpleViewState extends State<SimpleView> with WidgetsBindingObserver {
         widget.dj.deck(0).path == path || widget.dj.deck(1).path == path || widget.dj.automixUpcoming.contains(path);
     _restore();
     WidgetsBinding.instance.addPostFrameCallback((_) => _takeRoute());
+    // Read artist and genre from each file's tags so the Booth can show them.
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) widget.library.readTags();
+    });
     // A minute after opening, quietly scan any track that has no saved mixing data yet.
     Future.delayed(const Duration(seconds: 60), () {
       if (mounted) widget.library.prepareForMixing();
